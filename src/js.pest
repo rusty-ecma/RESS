@@ -1,3 +1,5 @@
+whitespace = _{WhiteSpace}
+comments = {SingleLineComment | MultiLineComment}
 
 InputElementDiv = {
     WhiteSpace |
@@ -6,6 +8,7 @@ InputElementDiv = {
     Token |
     DivPunctuator
 }
+
 DivPunctuator = {
     "/" |
     "/="
@@ -38,7 +41,6 @@ lf = {"\u{000A}"}
 cr = {"\u{000D}"}
 ls = {"\u{2028}"}
 ps = {"\u{2029}"}
-not_lf = {^"\u{000A}"}
 
 LineTerminator = {
     lf |
@@ -49,7 +51,7 @@ LineTerminator = {
 
 LineTerminatorSequence = {
     lf |
-    cr ~ not_lf |
+    cr ~ !(lf) |
     ls |
     ps |
     cr ~ lf
@@ -73,10 +75,12 @@ PostAsteriskCommentChars = {
     "*" ~ PostAsteriskCommentChars*
 }
 MultiLineNotAsteriskChar = {
-    SourceCharacter // but not *
+    !("*") ~
+    SourceCharacter
 }
 MultiLineNotForwardSlashOrAsteriskChar  = {
-    SourceCharacter //but not one of / or *
+    !("/" | "*") ~
+    SourceCharacter
 }
 SingleLineComment = {
     "//" ~ SingleLineCommentChar*
@@ -87,7 +91,8 @@ SingleLineCommentChars = {
 }
 
 SingleLineCommentChar = {
-    SourceCharacter// but not LineTerminator
+    !(LineTerminator) ~
+    SourceCharacter
 }
 
 
@@ -98,12 +103,12 @@ Token = {
     StringLiteral
 }
 
-dentifier  = {
-    IdentifierName //but not ReservedWord
+Identifier = {
+    !(ReservedWord) ~
+    IdentifierName
 }
 IdentifierName  = {
-    IdentifierStart |
-    IdentifierName ~ IdentifierPart
+    IdentifierStart ~ IdentifierPart*
 }
 IdentifierStart  = {
     UnicodeLetter |
@@ -115,9 +120,9 @@ IdentifierPart  = {
     IdentifierStart |
     UnicodeCombiningMark |
     UnicodeDigit |
-    UnicodeConnectorPunctuation //|
-    //<ZWNJ> |
-    //<ZWJ>
+    UnicodeConnectorPunctuation |
+    "\u{200C}" |
+    "\u{200D}"
 }
 UnicodeLetter  = {
     SourceCharacter //any character in the Unicode categories “Uppercase letter (Lu)”, “Lowercase letter (Ll)”, “Titlecase letter (Lt)”, “Modifier letter (Lm)”, “Other letter (Lo)”, or “Letter number (Nl)”.
@@ -180,51 +185,51 @@ FutureReservedWord = {
 }
 
 Punctuator = {
-    "{" |
-    "}" |
-    "(" |
-    ")" |
-    "[" |
-    "]" |
-    "." |
-    ";" |
-    "," |
-    "<" |
-    ">" |
-    "<=" |
-    ">=" |
-    "==" |
-    "!=" |
-    "===" |
-    "!==" |
-    "+" |
-    "-" |
-    "*" |
-    "%" |
-    "++" |
-    "--" |
-    "<<" |
-    ">>" |
-    ">>>" |
-    "&" |
-    "|" |
-    "^" |
-    "!" |
-    "~" |
-    "&&" |
-    "||" |
-    "?" |
-    ":" |
-    "=" |
-    "+=" |
-    "-=" |
-    "*=" |
-    "%=" |
-    "<<=" |
-    ">>=" |
+    "{"    |
+    "}"    |
+    "("    |
+    ")"    |
+    "["    |
+    "]"    |
+    "."    |
+    ";"    |
+    ","    |
+    "<"    |
+    ">"    |
+    "<="   |
+    ">="   |
+    "=="   |
+    "!="   |
+    "==="  |
+    "!=="  |
+    "+"    |
+    "-"    |
+    "*"    |
+    "%"    |
+    "++"   |
+    "--"   |
+    "<<"   |
+    ">>"   |
+    ">>>"  |
+    "&"    |
+    "|"    |
+    "^"    |
+    "!"    |
+    "~"    |
+    "&&"   |
+    "||"   |
+    "?"    |
+    ":"    |
+    "="    |
+    "+="   |
+    "-="   |
+    "*="   |
+    "%="   |
+    "<<="  |
+    ">>="  |
     ">>>=" |
-    "&=" |
-    "|=" |
+    "&="   |
+    "|="   |
     "^="
 }
 
@@ -256,8 +261,8 @@ DecimalIntegerLiteral = {
 
 
 DecimalDigits = {
-    DecimalDigit |
-    DecimalDigits ~ DecimalDigit
+    DecimalDigit ~ DecimalDigits |
+    DecimalDigit?
 }
 
 DecimalDigit = { '0' .. '9' }
@@ -269,15 +274,14 @@ ExponentPart = {
 
 ExponentIndicator = { "e" | "E" }
 SignedInteger = {
-    DecimalDigits |
     "+" ~ DecimalDigits |
-    "-" ~ DecimalDigit
+    "-" ~ DecimalDigits  |
+    DecimalDigits
 }
 
 HexIntegerLiteral = {
-    "0x" ~ HexDigit |
-    "0X" ~ HexDigit |
-    HexIntegerLiteral ~ HexDigit
+    "0x" ~ HexDigit* |
+    "0X" ~ HexDigit*
 }
 
 HexDigit = {
@@ -300,13 +304,17 @@ SingleStringCharacters = {
 }
 
 DoubleStringCharacter = {
-    SourceCharacter | //but not one of \" or \ or LineTerminator
+    (
+        !(DoubleQuote | "\\" | LineTerminator) ~
+        SourceCharacter) |
     "\\" ~ EscapeSequence |
     LineContinuation
 }
 
 SingleStringCharacter = {
-    SourceCharacter | //but not one of ' or \ or LineTerminator
+    (
+        !(SingleQuote | "\\" | LineTerminator) ~
+        SourceCharacter) |
     "\\" ~ EscapeSequence |
     LineContinuation
 }
@@ -317,7 +325,7 @@ LineContinuation = {
 
 EscapeSequence = {
     CharacterEscapeSequence |
-    "0" |// [lookahead ∉ DecimalDigit]
+    "0" ~ !(DecimalDigit) |
     HexEscapeSequence |
     UnicodeEscapeSequence
 }
@@ -340,6 +348,10 @@ SingleEscapeCharacter = {
 }
 
 NonEscapeCharacter = {
+    !(
+        EscapeCharacter |
+        LineTerminator
+    ) ~
     SourceCharacter //but not one of EscapeCharacter or LineTerminator
 }
 
@@ -367,18 +379,23 @@ RegularExpressionBody = {
 }
 
 RegularExpressionChars = {
-    //empty?
-    RegularExpressionChars ~ RegularExpressionChar
+    RegularExpressionChar ~ RegularExpressionChars |
+    RegularExpressionChar?
 }
 
 RegularExpressionFirstChar = {
-    RegularExpressionNonTerminator |// but not one of * or \ or / or [
+    (
+        !("*" | "\\" | "/" | "[") ~
+        RegularExpressionNonTerminator) |// but not one of * or \ or / or [
     RegularExpressionBackslashSequence |
     RegularExpressionClass
 }
 
 RegularExpressionChar = {
-    RegularExpressionNonTerminator |//but not one of \ or / or [
+    (
+        !("\\" | "/" | "[") ~
+        RegularExpressionNonTerminator
+    ) |
     RegularExpressionBackslashSequence |
     RegularExpressionClass
 }
@@ -388,16 +405,19 @@ RegularExpressionBackslashSequence = {
 }
 
 RegularExpressionNonTerminator = {
-    SourceCharacter // but not LineTerminator
+    !(
+        LineTerminator
+    ) ~
+    SourceCharacter
 }
 
 RegularExpressionClass = {
-    RegularExpressionClassChars+
+    RegularExpressionClassChars*
 }
 
 RegularExpressionClassChars = {
-    //empty?
-    RegularExpressionClassChars ~ RegularExpressionClassChar
+    RegularExpressionClassChar ~ RegularExpressionClassChars |
+    RegularExpressionClassChar?
 }
 
 RegularExpressionClassChar = {
@@ -406,8 +426,8 @@ RegularExpressionClassChar = {
 }
 
 RegularExpressionFlags = {
-    //empty?
-    RegularExpressionFlags ~ IdentifierPart
+    (IdentifierPart ~ RegularExpressionFlags) |
+    IdentifierPart?
 }
 
 SourceCharacter = {
