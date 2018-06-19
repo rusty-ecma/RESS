@@ -1,606 +1,473 @@
-// The entire ECMAScript language as a Parser Expression Grammar
-// Parser rules which share a name with ECMA-262 productions are intended to match the same language
-//(though not necessarily with the same derivation).
-
-Program = {
-    soi ~ (S? ~ (Statement | FunctionDeclaration))* ~ S? ~ eoi
-}
-
-FunctionBody = {
-    (S? ~ (Statement | FunctionDeclaration))* ~ S?
-}
-
-FunctionDeclaration = {
-    FunctionTok ~ S? ~ Identifier ~ S? ~ "(" ~ S? ~ FormalParameterList? ~
-    S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
-}
-
-FunctionExpression = {
-    FunctionTok ~ S? ~ Identifier? ~ S? ~ "(" ~ S? ~ FormalParameterList? ~
-    S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
-}
-
-FormalParameterList = {
-    Identifier ~ ("," ~ S? ~ Identifier)*
-}
-
-UseStrictDirective = {
-    "use" ~ S ~ "strict" ~ S ~ ( "," ~ !(LineTerminator) ~ SourceCharacter )*
-}
-
-// Statements
-Statement = {
-      Block
-    | VariableStatement
-    | EmptyStatement
-    | ExpressionStatement
-    | IfStatement
-    | IterationStatement
-    | ContinueStatement
-    | BreakStatement
-    | ReturnStatement
-    | WithStatement
-    | LabelledStatement
-    | SwitchStatement
-    | ThrowStatement
-    | TryStatement
-    | DebuggerStatement
-}
-
-Block = {
-      "{" ~ (S? ~ Statement)* ~ S? ~ "}"
-}
-
-VariableStatement = {
-    VarTok ~ S? ~ VariableDeclaration ~ (S? ~ "," ~ S? ~ VariableDeclaration)* ~ EOS
-}
-
-VariableDeclaration = {
-    Identifier ~ (S? ~ "=" ~ !("=") ~ S? ~ AssignmentExpression)?
-}
-
-VariableDeclarationNoIn = {
-    Identifier ~ (S? ~ "=" ~ !("=") ~ S? ~ AssignmentExpressionNoIn)?
-}
-
-VariableDeclarationListNoIn = {
-    VariableDeclarationNoIn ~ (S? ~ "," ~ S? ~ VariableDeclarationNoIn)*
-}
-
-// an empty statement is marked by an explicit semicolon, ASI does not apply
-EmptyStatement = { ";" }
-
-ExpressionStatement = { !("{" | FunctionTok) ~ Expression ~ EOS
-}
-
-IfStatement = {
-      IfTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement ~
-      (S? ~ ElseTok ~ S? ~ Statement)?
-}
-
-IterationStatement = {
-     DoWhileStatement
- | WhileStatement
- | ForInStatement
- | ForStatement
-}
-
-DoWhileStatement = {
-    DoTok ~ S? ~ Statement ~ S? ~ WhileTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ EOS
-}
-
-WhileStatement = {
-    WhileTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
-}
-
-ForInStatement = {
-    ForTok ~ S? ~ "(" ~ (ForInLeft | ForInVarLeft) ~ InTok ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
-}
-
-ForInLeft = {
-      S? ~ LeftHandSideExpression ~ S?
-}
-
-ForInVarLeft = {
-      S? ~ VarTok ~ S? ~ VariableDeclarationNoIn ~ S?
-}
-
-ForStatement = {
-    ForTok ~ S? ~ "(" ~ S? ~ (ForInit | ForVarInit)? ~ S? ~ ";" ~ S? ~
-      ForTest? ~ S? ~ ";" ~ S? ~ ForUpdate? ~ S? ~ ")" ~ S? ~ Statement
-}
-
-ForInit = {
-    ExpressionNoIn
-}
-
-ForVarInit = {
-    VarTok ~ S? ~ VariableDeclarationListNoIn
-}
-
-ForTest = {
-    Expression
-}
-
-ForUpdate = {
-    Expression
-}
-
-ContinueStatement = {
-    ContinueTok ~ SnoLB? ~ (Identifier ~ EOS | EOSnoLB)
-}
-
-BreakStatement = {
-    BreakTok ~ SnoLB? ~ (Identifier ~ EOS | EOSnoLB)
-}
-
-ReturnStatement = {
-    ReturnTok ~ SnoLB? ~ (EOSnoLB | Expression ~ EOS)
-}
-
-WithStatement = {
-    WithTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
-}
-
-LabelledStatement = {
-    Identifier ~ S? ~ ":" ~ S? ~ Statement
-}
-
-SwitchStatement = {
-    SwitchTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ "{" ~
-    CaseClause* ~ (DefaultClause ~ CaseClause*)? ~ S? ~ "}"
-}
-
-CaseClause = {
-    S? ~ CaseTok ~ S? ~ Expression ~ S? ~ ":" ~ (S? ~ Statement)*
-}
-
-DefaultClause = {
-    S? ~ DefaultTok ~ S? ~ ":" ~ (S? ~ Statement)*
-}
-
-ThrowStatement = {
-    ThrowTok ~ SnoLB? ~ (EOSnoLB | Expression ~ EOS)
-}
-
-TryStatement = {
-    TryTok ~ S? ~ Block ~ S? ~ (Catch ~ S? ~ Finally? | Finally)
-}
-
-Catch = {
-    CatchTok ~ S? ~ "(" ~ S? ~ Identifier ~ S? ~ ")" ~ S? ~ Block
-}
-
-Finally = {
-    FinallyTok ~ S? ~ Block
-}
-
-DebuggerStatement = {
-    DebuggerTok ~ S? ~ EOS
-}
-
-// Expressions
-Expression = {
-    AssignmentExpression ~ (S? ~ "," ~ S? ~ AssignmentExpression)*
-}
-
-ExpressionNoIn = {
-    AssignmentExpressionNoIn ~ (S? ~ "," ~ S? ~ AssignmentExpressionNoIn)*
-}
-
-AssignmentExpression = {
-    LeftHandSideExpression ~ S? ~ AssignmentOperator ~ S? ~ AssignmentExpression
-    | ConditionalExpression
-}
-
-AssignmentExpressionNoIn = {
-    LeftHandSideExpression ~ S? ~ AssignmentOperator ~ S? ~ AssignmentExpressionNoIn
-    | ConditionalExpressionNoIn
-}
-
-AssignmentOperator = {
-    "=" ~ !("=")
-    | "*="
-    | "/="
-    | "%="
-    | "+="
-    | "-="
-    | "<<="
-    | ">>="
-    | ">>>="
-    | "&="
-    | "^="
-    | "|="
-}
-
-ConditionalExpression = {
-    LogicalOrExpression ~ (S? ~ "?" ~ S? ~ AssignmentExpression ~ S? ~ ":" ~ S? ~ AssignmentExpression)?
+SourceCharacter = {
+    '\u{00}' .. '\u{10FFFF}'
 }
 
-ConditionalExpressionNoIn = {
-    LogicalOrExpressionNoIn ~ (S? ~ "?" ~ S? ~ AssignmentExpressionNoIn ~ S? ~ ":" ~ S? ~ AssignmentExpressionNoIn)?
+InputElementDiv = {
+    WhiteSpace     |
+    LineTerminator |
+    Comment        |
+    Token          |
+    DivPunctuator
 }
 
-LogicalOrExpression = {
-    LogicalAndExpression ~ (S? ~ "||" ~ S? ~ LogicalAndExpression)*
+InputElementRegExp = {
+    WhiteSpace     |
+    LineTerminator |
+    Comment        |
+    Token          |
+    RegularExpressionLiteral
 }
 
-LogicalOrExpressionNoIn = {
-    LogicalAndExpressionNoIn ~ (S? ~ "||" ~ S? ~ LogicalAndExpressionNoIn)*
+BS = {"\u{0008}"}
+HT = {"\u{0009}"}
+VT = {"\u{000B}"}
+FF = {"\u{000C}"}
+DQ = {"\""}
+SQ = {"\'"}
+BOM = {"\u{FEFF}"}
+SP = {"\u{0020}"}
+NBS = {"\u{00A0}"}
+USP = {"\u{0020}" | "\u{00A0}" | "\u{1680}" | "\u{2000}" | "\u{2001}" | "\u{2002}" | "\u{2003}" | "\u{2004}" | "\u{2005}" | "\u{2006}"}
+WhiteSpace = {
+    HT  |
+    VT   |
+    FF   |
+    SP   |
+    NBS |
+    BOM  |
+    USP
 }
 
-LogicalAndExpression = {
-    BitwiseOrExpression ~ (S? ~ "&&" ~ S? ~ BitwiseOrExpression)*
-}
-
-LogicalAndExpressionNoIn = {
-    BitwiseOrExpressionNoIn ~ (S? ~ "&&" ~ S? ~ BitwiseOrExpressionNoIn)*
-}
-
-BitwiseOrExpression = {
-    BitwiseXOrExpression ~ (S? ~ "|" ~ !("=") ~ S? ~ BitwiseXOrExpression)*
-}
-
-BitwiseOrExpressionNoIn = {
-    BitwiseXOrExpressionNoIn ~ (S? ~ "|" ~ !("=") ~ S? ~ BitwiseXOrExpressionNoIn)*
-}
-
-BitwiseXOrExpression = {
-    BitwiseAndExpression ~ (S? ~ "^" ~ !("=") ~ S? ~ BitwiseAndExpression)*
-}
-
-BitwiseXOrExpressionNoIn = {
-    BitwiseAndExpressionNoIn ~ (S? ~ "^" ~ !("=") ~ S? ~ BitwiseAndExpressionNoIn)*
-}
-
-BitwiseAndExpression = {
-    EqualityExpression ~ (S? ~ "&" ~ !("=") ~ S? ~ EqualityExpression)*
-}
-
-BitwiseAndExpressionNoIn = {
-    EqualityExpressionNoIn ~ (S? ~ "&" ~ !("=") ~ S? ~ EqualityExpressionNoIn)*
-}
-
-EqualityExpression = {
-    RelationalExpression ~ (S? ~ EqualityOp ~ S? ~ RelationalExpression)*
-}
-
-EqualityExpressionNoIn = {
-    RelationalExpressionNoIn ~ (S? ~ EqualityOp ~ S? ~ RelationalExpressionNoIn)*
-}
-
-EqualityOp = {
-    "==="
-    | "!=="
-    | "=="
-    | "!="
-}
-
-RelationalExpression = {
-    ShiftExpression ~ (S? ~ RelationalOp ~ S? ~ ShiftExpression)*
-}
-
-RelationalExpressionNoIn = {
-    ShiftExpression ~ (S? ~ RelationalOpNoIn ~ S? ~ ShiftExpression)*
-}
-
-RelationalOp = {
-    "<="
-    | ">="
-    | "<"
-    | ">"
-    | InstanceOfTok
-    | InTok
-}
-
-RelationalOpNoIn = {
-    "<="
-    | ">="
-    | "<"
-    | ">"
-    | InstanceOfTok
-}
-
-ShiftExpression = {
-    AdditiveExpression ~ (S? ~ ShiftOp ~ S? ~ AdditiveExpression)*
-}
-
-ShiftOp = {
-    "<<"
-    | ">>>"
-    | ">>"
-}
-
-AdditiveExpression = {
-    MultiplicativeExpression ~ (S? ~ AdditiveOp ~ S? ~ MultiplicativeExpression)*
-}
-
-AdditiveOp = {
-     "+" ~ !("+" | "=")
-    | "-" ~ !("-" | "=")
-}
-
-MultiplicativeExpression = {
-    UnaryExpression ~ (S? ~ MultiplicativeOp ~ S? ~ UnaryExpression)*
-}
-
-MultiplicativeOp = {
-    ("*" | "/" | "%") ~ !("=")
-}
-
-UnaryExpression = {
-    PostfixExpression
-    | DeleteExpression
-    | VoidExpression
-    | TypeofExpression
-    | PreIncrementExpression
-    | PreDecrementExpression
-    | UnaryPlusExpression
-    | UnaryMinusExpression
-    | BitwiseNotExpression
-    | LogicalNotExpression
-}
-
-DeleteExpression = {
-    DeleteTok ~ S? ~ UnaryExpression
-}
-
-VoidExpression = {
-    VoidTok ~ S? ~ UnaryExpression
-}
-
-TypeofExpression = {
-    TypeofTok ~ S? ~ UnaryExpression
-}
-
-PreIncrementExpression = {
-    "++" ~ S? ~ UnaryExpression
-}
-
-PreDecrementExpression = {
-    "--" ~ S? ~ UnaryExpression
-}
-
-UnaryPlusExpression = {
-    "+" ~ S? ~ UnaryExpression
-}
-
-UnaryMinusExpression = {
-    "-" ~ S? ~ UnaryExpression
-}
-
-BitwiseNotExpression = {
-    "~" ~ S? ~ UnaryExpression
-}
-
-LogicalNotExpression = {
-    "!" ~ S? ~ UnaryExpression
-}
-
-// why isn't ++a++ a valid UnaryExpression?
-// answer: it is, and parses as ++(a++), the evaluation of which must throw a ReferenceError per spec
-PostfixExpression = {
-    LeftHandSideExpression ~ (SnoLB? ~ (PostIncrementOp | PostDecrementOp))?
-}
-
-PostIncrementOp = {
-    "++"
-}
-
-PostDecrementOp = {
-    "--"
-}
-
-// This LHSExpression adheres to the spec, which gives semantics for CallExpression and NewExpression
-// See ECMAScript_5_streamable.peg for an alternative approach.
-LeftHandSideExpression = {
-    CallExpression
-    | NewExpression
-}
-
-CallExpression = {
-    MemberExpression ~ S? ~ Arguments ~ (S? ~ Arguments | S? ~ BracketAccessor | S? ~ DotAccessor)*
-}
-
-BracketAccessor = {
-    "[" ~ S? ~ Expression ~ S? ~ "]"
-}
-
-DotAccessor = {
-    "." ~ S? ~ IdentifierName
-}
-
-Arguments = {
-    "(" ~ S? ~ ArgumentList? ~ S? ~ ")"
-}
+LF = { "\u{000A}" }
+CR = { "\u{000D}" }
+LS = { "\u{2028}" }
+PS = { "\u{2029}" }
 
-ArgumentList = {
-    AssignmentExpression ~ (S? ~ "," ~ S? ~ AssignmentExpression)*
+LineTerminator = {
+    LF |
+    CR |
+    LS |
+    PS
 }
 
-NewExpression = {
-    MemberExpression
-    | NewTok ~ S? ~ NewExpression
+LineTerminatorSequence = {
+    LF |
+    CR ~ !(LF) |
+    LS |
+    PS |
+    CR ~ LF
 }
 
-MemberExpression = {
-    ( PrimaryExpression | FunctionExpression | NewTok ~ S? ~ MemberExpression ~ S? ~ Arguments ) ~
-    ( S? ~ "[" ~ S? ~ Expression ~ S? ~ "]" | S? ~ "." ~ S? ~ IdentifierName )*
+Comment = {
+    MultiLineComment |
+    SingleLineComment
 }
 
-PrimaryExpression = {
-    ThisTok
-    | Identifier
-    | Literal
-    | ArrayLiteral
-    | ObjectLiteral
-    | "(" ~ S? ~ Expression ~ S? ~ ")"
+MultiLineComment = {
+    "/*" ~ MultiLineCommentChars* ~ "*/"
 }
 
-ArrayLiteral = {
-    "[" ~ Elision? ~ S? ~ "]"
-    | "[" ~ ElementList ~ S? ~ "]"
-    | "[" ~ ElementList ~ S? ~ "," ~ Elision? ~ S? ~ "]"
+MultiLineCommentChars = {
+    MultiLineNotAsteriskChar ~ MultiLineCommentChars* |
+    "*" ~ PostAsteriskCommentChars*
 }
 
-ElementList = {
-    Elision? ~ S? ~ AssignmentExpression ~ (S? ~ "," ~ Elision? ~ S? ~ AssignmentExpression)*
+PostAsteriskCommentChars = {
+    MultiLineNotForwardSlashOrAsteriskChar ~ MultiLineCommentChars* |
+    "*" ~ PostAsteriskCommentChars*
 }
 
-Elision = {
-    (S? ~ ",") ~ Elision?
+MultiLineNotAsteriskChar = {
+    !("*") ~
+    SourceCharacter
 }
 
-ObjectLiteral = {
-    "{" ~ ( S? ~ PropertyNameAndValueList ~ S? ~ ","? )? ~ S? ~ "}"
-}
-
-PropertyNameAndValueList = {
-    PropertyAssignment ~ (S? ~ "," ~ S? ~ PropertyAssignment)*
-}
-
-PropertyAssignment = {
-    PropertyName ~ S? ~ ":" ~ S? ~ AssignmentExpression
-    | PropertyGetter
-    | PropertySetter
-}
-
-PropertyGetter = {
-    "get" ~ S? ~ PropertyName ~ S? ~ "(" ~ S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
-}
-
-PropertySetter = {
-    "set" ~ S? ~ PropertyName ~ S? ~ "(" ~ S? ~ PropertySetParameterList ~ S? ~
-    ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
-}
-
-PropertyName = {
-    IdentifierName | StringLiteral | NumericLiteral
-}
+MultiLineNotForwardSlashOrAsteriskChar = {
+    !("/" | "*") ~
+    SourceCharacter
+}
+
+SingleLineComment = {
+    "//" ~ SingleLineCommentChars*
+}
+
+SingleLineCommentChars = {
+    SingleLineCommentChar ~ SingleLineCommentChars*
+}
+
+SingleLineCommentChar = {
+    !(LineTerminator) ~
+    SourceCharacter
+}
 
-PropertySetParameterList = {
-    Identifier
+Token = {
+    IdentifierName |
+    Punctuator |
+    NumericLiteral |
+    StringLiteral
+}
+
+Identifier = {
+    !(ReservedWord) ~
+    IdentifierName // but not ReservedWord
+}
+
+IdentifierName = {
+    IdentifierStart |
+    IdentifierName ~ IdentifierPart
+}
+
+IdentifierStart = {
+    UnicodeLetter |
+    "$"             |
+    "_"             |
+    "\\"             |
+    UnicodeEscapeSequence
+}
+
+IdentifierPart = {
+    IdentifierStart |
+    UnicodeCombiningMark |
+    UnicodeDigit |
+    UnicodeConnectorPunctuation |
+    "\u{200C}" |
+    "\u{200D}"
+}
+// Unicode sets
+
+
+UnicodeLetter = {
+    Lu |
+    Ll |
+    Lt |
+    Lm |
+    Lo |
+    Nl
+}
+
+UnicodeCombiningMark = {
+    Mn |
+    Mc
+}
+
+UnicodeDigit = {
+    '\u{0030}' .. '\u{0039}' |
+    '\u{0660}' .. '\u{0669}' |
+    '\u{06F0}' .. '\u{06F9}' |
+    '\u{07C0}' .. '\u{07C9}' |
+    '\u{0966}' .. '\u{096F}' |
+    '\u{09E6}' .. '\u{09EF}' |
+    '\u{0A66}' .. '\u{0A6F}' |
+    '\u{0B66}' .. '\u{0B6F}' |
+    '\u{0BE6}' .. '\u{0BEF}' |
+    '\u{0C66}' .. '\u{0C6F}' |
+    '\u{0CE6}' .. '\u{0CEF}' |
+    '\u{0D66}' .. '\u{0D6F}' |
+    '\u{0DE6}' .. '\u{0DEF}' |
+    '\u{0E50}' .. '\u{0E59}' |
+    '\u{0ED0}' .. '\u{0ED9}' |
+    '\u{0F20}' .. '\u{0F29}' |
+    '\u{1040}' .. '\u{1049}' |
+    '\u{1090}' .. '\u{1099}' |
+    '\u{17E0}' .. '\u{17E9}' |
+    '\u{1810}' .. '\u{1819}' |
+    '\u{1946}' .. '\u{194F}' |
+    '\u{19D0}' .. '\u{19D9}' |
+    '\u{1A80}' .. '\u{1A89}' |
+    '\u{1A90}' .. '\u{1A99}' |
+    '\u{1B50}' .. '\u{1B59}' |
+    '\u{1BB0}' .. '\u{1BB9}' |
+    '\u{1C40}' .. '\u{1C49}' |
+    '\u{1C50}' .. '\u{1C59}' |
+    '\u{A620}' .. '\u{A629}' |
+    '\u{A8D0}' .. '\u{A8D9}' |
+    '\u{A900}' .. '\u{A909}' |
+    '\u{A9D0}' .. '\u{A9D9}' |
+    '\u{A9F0}' .. '\u{A9F9}' |
+    '\u{AA50}' .. '\u{AA59}' |
+    '\u{ABF0}' .. '\u{ABF9}' |
+    '\u{FF10}' .. '\u{FF19}' |
+    '\u{104A0}' .. '\u{104A9}' |
+    '\u{10D30}' .. '\u{10D39}' |
+    '\u{11066}' .. '\u{1106F}' |
+    '\u{110F0}' .. '\u{110F9}' |
+    '\u{11136}' .. '\u{1113F}' |
+    '\u{111D0}' .. '\u{112F0}' |
+    '\u{112F1}' .. '\u{112F9}' |
+    '\u{11450}' .. '\u{11459}' |
+    '\u{114D0}' .. '\u{114D9}' |
+    '\u{11650}' .. '\u{11659}' |
+    '\u{116C0}' .. '\u{116C9}' |
+    '\u{11730}' .. '\u{11739}' |
+    '\u{118E0}' .. '\u{118E9}' |
+    '\u{11C50}' .. '\u{11C59}' |
+    '\u{11D50}' .. '\u{11D59}' |
+    '\u{11DA0}' .. '\u{11DA9}' |
+    '\u{16A60}' .. '\u{16A69}' |
+    '\u{16B50}' .. '\u{16B59}' |
+    '\u{1D7CE}' .. '\u{1D7CF}' |
+    '\u{1D7D0}' .. '\u{1D7DF}' |
+    '\u{1D7E0}' .. '\u{1D7EF}' |
+    '\u{1D7F0}' .. '\u{1D7FF}' |
+    '\u{1E950}' .. '\u{1E959}'
+}
+
+UnicodeConnectorPunctuation = {
+    "_" |
+    "‿" |
+    "⁀" |
+    "⁔" |
+    "︳" |
+    "︴" |
+    "﹍" |
+    "﹎" |
+    "﹏" |
+    "＿"
+}
+
+ReservedWord = {
+    Keyword |
+    FutureReservedWord |
+    NullLiteral |
+    BooleanLiteral
+}
+
+Keyword = {
+    "break"      |
+    "do"         |
+    "instanceof" |
+    "typeof"     |
+    "case"       |
+    "else"       |
+    "new"        |
+    "var"        |
+    "catch"      |
+    "finally"    |
+    "return"     |
+    "void"       |
+    "continue"   |
+    "for"        |
+    "switch"     |
+    "while"      |
+    "debugger"   |
+    "function"   |
+    "this"       |
+    "with"       |
+    "default"    |
+    "if"         |
+    "throw"      |
+    "delete"     |
+    "in"         |
+    "try"
+}
+
+FutureReservedWord = {
+    "class"   |
+    "enum"    |
+    "extends" |
+    "super"   |
+    "const"   |
+    "export"  |
+    "import"
+}
+
+StrictReservedWords = {
+    FutureReservedWord   |
+    "implements"         |
+    "let"                |
+    "private"            |
+    "public"             |
+    "interface"          |
+    "package"            |
+    "protected"          |
+    "static"             |
+    "yield"
+}
+
+Punctuator = {
+    "{"    |
+    "}"    |
+    "("    |
+    ")"    |
+    "["    |
+    "]"    |
+    "."    |
+    ";"    |
+    ","    |
+    "<"    |
+    ">"    |
+    "<="   |
+    ">="   |
+    "=="   |
+    "!="   |
+    "==="  |
+    "!=="  |
+    "+"    |
+    "-"    |
+    "*"    |
+    "%"    |
+    "++"   |
+    "--"   |
+    "<<"   |
+    ">>"   |
+    ">>>"  |
+    "&"    |
+    "|"    |
+    "^"    |
+    "!"    |
+    "~"    |
+    "&&"   |
+    "||"   |
+    "?"    |
+    ":"    |
+    "="    |
+    "+="   |
+    "-="   |
+    "*="   |
+    "%="   |
+    "<<="  |
+    ">>="  |
+    ">>>=" |
+    "&="   |
+    "|="   |
+    "^="
+}
+
+DivPunctuator = {
+    "/"  |
+    "/="
 }
 
-// Lexical tokens
 Literal = {
-    NullLiteral
-    | BooleanLiteral
-    | NumericLiteral
-    | StringLiteral
-    | RegularExpressionLiteral
-    | NullLiteral
+    NullLiteral    |
+    BooleanLiteral |
+    NumericLiteral |
+    StringLiteral  |
+    RegularExpressionLiteral
 }
 
 NullLiteral = {
-    NullTok
+    "null"
 }
 
 BooleanLiteral = {
-    TrueTok
-    | FalseTok
+    "true" |
+    "false"
 }
-
 NumericLiteral = {
-    DecimalLiteral ~ !(IdentifierStart)
-    | HexIntegerLiteral ~ !(IdentifierStart)
+    DecimalLiteral |
+    HexIntegerLiteral
 }
-
 DecimalLiteral = {
-    DecimalIntegerLiteral ~ "." ~ DecimalDigit* ~ ExponentPart?
-    | "." ~ DecimalDigit+ ~ ExponentPart?
-    | DecimalIntegerLiteral ~ ExponentPart?
+    DecimalIntegerLiteral ~ "." ~ DecimalDigits* ~ ExponentPart* |
+    "." ~ DecimalDigits ~ ExponentPart* |
+    DecimalIntegerLiteral ~ ExponentPart*
 }
-
 DecimalIntegerLiteral = {
-    "0"
-    | ('1' .. '9') ~ DecimalDigit*
+    "0" |
+    NonZeroDigit ~ DecimalDigits*
 }
-
+DecimalDigits = {
+    DecimalDigit |
+    DecimalDigits ~ DecimalDigit
+}
 DecimalDigit = {
-    '0' .. '9'
+    '0'.. '9'
+}
+NonZeroDigit = {
+    '1' .. '9'
 }
 
 ExponentPart = {
-    ("e" | "E") ~ SignedInteger
+    ExponentIndicator ~ SignedInteger
+}
+
+ExponentIndicator = {
+    "e" |
+    "E"
 }
 
 SignedInteger = {
-    DecimalDigit+
-    | "+" ~ DecimalDigit+
-    | "-" ~ DecimalDigit+
+    DecimalDigits |
+    "+" ~ DecimalDigits |
+    "-" ~ DecimalDigits
 }
 
 HexIntegerLiteral = {
-    "0x" ~ HexDigit+
-    | "0X" ~ HexDigit+
+    "0x" ~ HexDigit |
+    "0X" ~ HexDigit |
+    HexIntegerLiteral ~ HexDigit
 }
 
-DQ = {
-    "\u{0022}"
-}
-
-SQ = {
-    "\u{0027}"
+HexDigit = {
+    '0' .. '9' |
+    'a' .. 'f' |
+    'A' .. 'F'
 }
 
 StringLiteral = {
-    DQ ~ DoubleStringCharacter* ~ DQ
-    | SQ ~ SingleStringCharacter* ~ SQ
+    "\"" ~DoubleStringCharacters* ~ "\"" |
+    "'" ~ SingleStringCharacters* ~ "'"
 }
 
-RS = {
-    "\u{005C}"
+DoubleStringCharacters = {
+    DoubleStringCharacter ~ DoubleStringCharacters*
+}
+
+SingleStringCharacters = {
+    SingleStringCharacter ~ SingleStringCharacters*
 }
 
 DoubleStringCharacter = {
-    !( DQ | RS | LineTerminator ) ~ SourceCharacter
-    | RS ~ EscapeSequence
-    | LineContinuation
+    (!("\"" | "\\" | LineTerminator) ~ SourceCharacter) | //but not double-quote " or backslash \ or LineTerminator
+    "\\" ~ EscapeSequence |
+    LineContinuation
 }
 
 SingleStringCharacter = {
-    !( SQ | RS | LineTerminator ) ~ SourceCharacter
-    | RS ~ EscapeSequence
-    | LineContinuation
+    (!("'" | "\\" | LineTerminator) ~ SourceCharacter) | //but not single-quote ' orbackslash \ or LineTerminator
+    "\\" ~ EscapeSequence |
+    LineContinuation
 }
 
 LineContinuation = {
-    RS ~ LineTerminatorSequence
+    "\\" ~ LineTerminatorSequence
 }
 
 EscapeSequence = {
-    CharacterEscapeSequence
-    | "0" ~ !(DecimalDigit)
-    | HexEscapeSequence
-    | UnicodeEscapeSequence
+    CharacterEscapeSequence |
+    "0" ~ !(DecimalDigit) |// [lookahead ∉DecimalDigit]
+    HexEscapeSequence |
+    UnicodeEscapeSequence
 }
 
 CharacterEscapeSequence = {
-    SingleEscapeCharacter
-    | NonEscapeCharacter
+    SingleEscapeCharacter |
+    NonEscapeCharacter
 }
 
 SingleEscapeCharacter = {
-    "\u{0027}"
-    | "\u{0022}"
-    | "\u{005C}"
-    | "b"
-    | "f"
-    | "n"
-    | "r"
-    | "t"
-    | "v"
+    "\'" |
+    "\"" |
+    "\\" |
+    "b" |
+    "f" |
+    "n" |
+    "r" |
+    "t" |
+    "v"
 }
 
 NonEscapeCharacter = {
-    !(EscapeCharacter | LineTerminator) ~ SourceCharacter
+    !(EscapeCharacter | LineTerminator) ~
+    SourceCharacter // but notEscapeCharacter or LineTerminator
 }
 
 EscapeCharacter = {
-    SingleEscapeCharacter
-    | DecimalDigit
-    |  ("x" | "u")
+    SingleEscapeCharacter |
+    DecimalDigit          |
+    "x"                   |
+    "u"
 }
 
 HexEscapeSequence = {
@@ -608,8 +475,7 @@ HexEscapeSequence = {
 }
 
 UnicodeEscapeSequence = {
-    "u" ~ HexDigit{4}
-
+    "u" ~ HexDigit ~ HexDigit ~ HexDigit ~ HexDigit
 }
 
 RegularExpressionLiteral = {
@@ -617,360 +483,727 @@ RegularExpressionLiteral = {
 }
 
 RegularExpressionBody = {
-    RegularExpressionFirstChar ~ RegularExpressionChar*
+    RegularExpressionFirstChar ~ RegularExpressionChars
+}
+
+RegularExpressionChars = {
+    //[empty] |
+    (RegularExpressionChars ~ RegularExpressionChar)?
 }
 
 RegularExpressionFirstChar = {
-    !( LineTerminator |  "*" | "\u{005C}" | "[" ) ~ SourceCharacter //double check this
-    | RegularExpressionBackslashSequence
-    | RegularExpressionClass
+    (!("*" | "\\" | "/" | "[") ~
+    RegularExpressionNonTerminator)     |//but not * or \ or / or [
+    RegularExpressionBackslashSequence |
+    RegularExpressionClass
 }
 
 RegularExpressionChar = {
-    !( LineTerminator | "\u{005C}" | "[" ) ~ SourceCharacter
-    | RegularExpressionBackslashSequence
-    | RegularExpressionClass
+    (!("\\" | "/" | "[") ~
+    RegularExpressionNonTerminator)     |
+    RegularExpressionBackslashSequence |
+    RegularExpressionClass
 }
 
 RegularExpressionBackslashSequence = {
-    RS ~ !(LineTerminator) ~ SourceCharacter
+    "\\" ~ RegularExpressionNonTerminator
+}
+
+RegularExpressionNonTerminator = {
+    SourceCharacter //but not LineTerminator
 }
 
 RegularExpressionClass = {
-    "[" ~ RegularExpressionClassChar* ~ "]"
+    "[" ~ RegularExpressionClassChars ~ "]"
+}
+
+RegularExpressionClassChars = {
+    //empty
+    (RegularExpressionClassChars ~ RegularExpressionClassChar)?
 }
 
 RegularExpressionClassChar = {
-    !(LineTerminator | "\u{005C}" | "\u{005D}") ~ SourceCharacter
-    | RegularExpressionBackslashSequence
+    !("]" | "\\") ~
+    RegularExpressionNonTerminator |
+    RegularExpressionBackslashSequence
 }
 
 RegularExpressionFlags = {
-    IdentifierPart*
+    (RegularExpressionFlags ~ IdentifierPart)?
 }
 
-SourceCharacter = {
-    '\u{0000}' .. '\u{10FFFF}'
+StringNumericLiteral = {
+    StrWhiteSpace* |
+    StrWhiteSpace* ~ StrNumericLiteral ~ StrWhiteSpace*
 }
 
-WhiteSpace = {
-    "\u{0009}"
-    | "\u{000B}"
-    | "\u{000C}"
-    | "\u{0020}"
-    | "\u{0085}"
-    | "\u{00A0}"
-    | "\u{200B}"
-    | "\u{FEFF}"
-    | Zs
+StrWhiteSpace = {
+    StrWhiteSpaceChar ~ StrWhiteSpace*
 }
 
-LF = {
-    "\u{000A}"
+StrWhiteSpaceChar = {
+    WhiteSpace |
+    LineTerminator
 }
 
-CR = {
-    "\u{000D}"
+StrNumericLiteral = {
+    StrDecimalLiteral |
+    HexIntegerLiteral
 }
 
-LS = {
-    "\u{2028}"
+StrDecimalLiteral = {
+    StrUnsignedDecimalLiteral   |
+    "+" ~ StrUnsignedDecimalLiteral |
+    "-" ~ StrUnsignedDecimalLiteral
 }
 
-PS = {
-    "\u{2029}"
+StrUnsignedDecimalLiteral = {
+    DecimalDigits ~ "." ~ DecimalDigits* ~ ExponentPart* |
+    "." ~ DecimalDigits ~ ExponentPart* |
+    DecimalDigits ~ ExponentPart* |
+    "Infinity"
 }
 
-LineTerminator = {
-    LF
-    | CR
-    | LS
-    | PS
+PrimaryExpression = {
+    "this" |
+    Identifier |
+    Literal |
+    ArrayLiteral |
+    ObjectLiteral |
+    "(" ~ Expression ~ ")"
 }
 
-LineTerminatorSequence = {
-    LF
-    | CR ~ LF
-    | CR
-    | LS
-    | PS
+ArrayLiteral = {
+    "[" ~ Elision* ~ "]" |
+    "[" ~ ElementList ~ "]" |
+    "[" ~ ElementList ~ "," ~ Elision* ~ "]"
 }
 
-Comment = {
-    MultiLineComment
-    | SingleLineComment
+ElementList = {
+    Elision* ~ AssignmentExpression |
+    ElementList ~ "," ~ Elision* ~ AssignmentExpression
 }
 
-MultiLineComment = {
-    "/*" ~ (!("*/") ~ SourceCharacter)* ~ "*/"
+Elision = {
+    "," |
+    Elision ~ ","
 }
 
-MultiLineCommentNoLB = {
-    "/*" ~ (!("*/") ~ !(LineTerminator) ~ SourceCharacter)* ~ "*/"
+ObjectLiteral = {
+    "{" ~ "}" |
+    "{" ~ PropertyNameAndValueList ~ "}" |
+    "{" ~ PropertyNameAndValueList ~ "," ~ "}"
 }
 
-SingleLineComment = {
-    "//" ~
-    (!("\u{000A}"
-    | "\u{000D}"
-    | "\u{2028}"
-    |"\u{2029}") ~ any)*
+PropertyNameAndValueList = {
+    PropertyAssignment |
+    PropertyNameAndValueList ~ "," ~ PropertyAssignment
 }
 
-S = {
-    ( WhiteSpace | LineTerminatorSequence | Comment )+
+PropertyAssignment = {
+    PropertyName ~ ":" ~ AssignmentExpression |
+    "get" ~ PropertyName ~ "()" ~ "{" ~ FunctionBody ~ "}" |
+    "set" ~ PropertyName ~ "(" ~ PropertySetParameterList ~ ")" ~ "{" ~ FunctionBody ~ "}"
 }
 
-SnoLB = {
-    ( WhiteSpace | SingleLineComment | MultiLineCommentNoLB )+
+PropertyName = {
+    IdentifierName |
+    StringLiteral |
+    NumericLiteral
 }
 
-// end of statement
-EOS = {
-    S? ~ ";"
-    | SnoLB? ~ LineTerminatorSequence
-    | SnoLB? ~ &("}")
-    | S? ~ EOF
+PropertySetParameterList = {
+    Identifier
 }
 
-// end of statement in a "no linebreak here" context
-// EOSnoLB will consume a linebreak, but it won't extend to the next line
-EOSnoLB = {
-    SnoLB? ~ ";"
-    | SnoLB? ~ LineTerminatorSequence
-    | SnoLB? ~ &("}")
-    | SnoLB? ~ EOF
+MemberExpression = {
+    PrimaryExpression |
+    FunctionExpression |
+    MemberExpression ~ "[" ~ Expression ~ "]" |
+    MemberExpression ~ "." ~ IdentifierName |
+    "new" ~ MemberExpression ~ Arguments
 }
 
-EOF = {
-    !(SourceCharacter)
-}
-ReservedWord = {
-    ( Keyword
-    | FutureReservedWord
-    | "null"
-    | "true"
-    | "false"
-     ) ~ !(IdentifierPart)
-}
-Keyword = {
-    "break"
-    | "case"
-    | "catch"
-    | "continue"
-    | "debugger"
-    | "default"
-    | "delete"
-    | "do"
-    | "else"
-    | "finally"
-    | "for"
-    | "function"
-    | "if"
-    | "instanceof"
-    | "in"
-    | "new"
-    | "return"
-    | "switch"
-    | "this"
-    | "throw"
-    | "try"
-    | "typeof"
-    | "var"
-    | "void"
-    | "while"
-    | "with"
+NewExpression = {
+    MemberExpression |
+    "new" ~ NewExpression
 }
 
-FutureReservedWord = {
-    "abstract"
-    | "boolean"
-    | "byte"
-    | "char"
-    | "class"
-    | "const"
-    | "double"
-    | "enum"
-    | "export"
-    | "extends"
-    | "final"
-    | "float"
-    | "goto"
-    | "implements"
-    | "import"
-    | "interface"
-    | "int"
-    | "long"
-    | "native"
-    | "package"
-    | "private"
-    | "protected"
-    | "public"
-    | "short"
-    | "static"
-    | "super"
-    | "synchronized"
-    | "throws"
-    | "transient"
-    | "volatile"
+CallExpression = {
+    MemberExpression ~ Arguments |
+    CallExpression ~ Arguments |
+    CallExpression ~ "[" ~ Expression ~ "]" |
+    CallExpression ~ "." ~ IdentifierName
 }
 
-Identifier = {
-    !(ReservedWord) ~ IdentifierName
+Arguments = {
+    "(" ~ ")" |
+    "(" ~ ArgumentList ~ ")"
 }
 
-IdentifierName = {
-    IdentifierStart ~ IdentifierPart*
+ArgumentList = {
+    AssignmentExpression |
+    ArgumentList ~ "," ~ AssignmentExpression
 }
 
-IdentifierStart = {
-    UnicodeLetter
-    | "$"
-    | "_"
-    | RS ~ UnicodeEscapeSequence
+LeftHandSideExpression = {
+    NewExpression |
+    CallExpression
 }
 
-IdentifierPart = {
-    IdentifierStart
-    | (
-        Mn
-        | Mc
-        | Nd
-        | Pc
-    )
+PostfixExpression = {
+    LeftHandSideExpression |
+    LeftHandSideExpression ~ !(LineTerminator) ~ "++" |
+    LeftHandSideExpression ~ !(LineTerminator) ~ "--"
 }
 
-UnicodeLetter = {
-    Lu
-    | Ll
-    | Lt
-    | Lm
-    | Lo
-    | Nl
+UnaryExpression = {
+    PostfixExpression |
+    "delete" ~ UnaryExpression |
+    "void" ~ UnaryExpression |
+    "typeof" ~ UnaryExpression |
+    "++" ~ UnaryExpression |
+    "--" ~ UnaryExpression |
+    "+" ~ UnaryExpression |
+    "-" ~ UnaryExpression |
+    "~" ~ UnaryExpression |
+    "!" ~ UnaryExpression
 }
 
-HexDigit = {
-    '0' .. '9'
-    | 'a' .. 'f'
-    | 'A' .. 'F'
+MultiplicativeExpression = {
+    UnaryExpression |
+    MultiplicativeExpression ~ "*" ~ UnaryExpression |
+    MultiplicativeExpression ~ "/" ~ UnaryExpression |
+    MultiplicativeExpression ~ "%" ~ UnaryExpression
 }
 
-FalseTok = {
-    "false" ~ !(IdentifierPart)
+AdditiveExpression = {
+    MultiplicativeExpression |
+    AdditiveExpression ~ "+" ~ MultiplicativeExpression |
+    AdditiveExpression ~ "-" ~ MultiplicativeExpression
 }
 
-TrueTok = {
-    "true" ~ !(IdentifierPart)
+ShiftExpression = {
+    AdditiveExpression |
+    ShiftExpression ~ "<<" ~ AdditiveExpression |
+    ShiftExpression ~ ">>" ~ AdditiveExpression |
+    ShiftExpression ~ ">>>" ~ AdditiveExpression
 }
 
-NullTok = {
-    "null" ~ !(IdentifierPart)
+RelationalExpression = {
+    ShiftExpression |
+    RelationalExpression ~ "<" ~ ShiftExpression |
+    RelationalExpression ~ ">" ~ ShiftExpression |
+    RelationalExpression ~ "<=" ~ ShiftExpression |
+    RelationalExpression ~ ">=" ~ ShiftExpression |
+    RelationalExpression ~ "instanceof" ~ ShiftExpression |
+    RelationalExpression ~ "in" ~ ShiftExpression
 }
 
-BreakTok = {
-    "break" ~ !(IdentifierPart)
+RelationalExpressionNoIn = {
+    ShiftExpression |
+    RelationalExpressionNoIn ~ "<" ~ ShiftExpression |
+    RelationalExpressionNoIn ~ ">" ~ ShiftExpression |
+    RelationalExpressionNoIn ~ "<=" ~ ShiftExpression |
+    RelationalExpressionNoIn ~ ">=" ~ ShiftExpression |
+    RelationalExpressionNoIn ~ "instanceof" ~ ShiftExpression
 }
 
-ContinueTok = {
-    "continue" ~ !(IdentifierPart)
+EqualityExpression = {
+    RelationalExpression |
+    EqualityExpression ~ "==" ~ RelationalExpression |
+    EqualityExpression ~ "!=" ~ RelationalExpression |
+    EqualityExpression ~ "===" ~ RelationalExpression |
+    EqualityExpression ~ "!==" ~ RelationalExpression
 }
 
-DebuggerTok = {
-    "debugger" ~ !(IdentifierPart)
+EqualityExpressionNoIn = {
+    RelationalExpressionNoIn |
+    EqualityExpressionNoIn ~ "==" ~ RelationalExpressionNoIn |
+    EqualityExpressionNoIn ~ "!=" ~ RelationalExpressionNoIn |
+    EqualityExpressionNoIn ~ "===" ~ RelationalExpressionNoIn |
+    EqualityExpressionNoIn ~ "!==" ~ RelationalExpressionNoIn
 }
 
-InTok = {
-    "in" ~ !(IdentifierPart)
+BitwiseANDExpression = {
+    BitwiseANDExpression ~ "&" ~ EqualityExpression |
+    EqualityExpression
 }
 
-InstanceOfTok = {
-    "instanceof" ~ !(IdentifierPart)
+BitwiseANDExpressionNoIn = {
+    BitwiseANDExpressionNoIn ~ "&" ~ EqualityExpressionNoIn |
+    EqualityExpressionNoIn
 }
 
-DeleteTok = {
-    "delete" ~ !(IdentifierPart)
+BitwiseXORExpression = {
+    BitwiseXORExpression ~ "^" ~ BitwiseANDExpression |
+    BitwiseANDExpression
 }
 
-FunctionTok = {
-    "function" ~ !(IdentifierPart)
+BitwiseXORExpressionNoIn = {
+    BitwiseXORExpressionNoIn ~ "^" ~ BitwiseANDExpressionNoIn |
+    BitwiseANDExpressionNoIn
 }
 
-NewTok = {
-    "new" ~ !(IdentifierPart)
+BitwiseORExpression = {
+    BitwiseORExpression ~ "|" ~ BitwiseXORExpression |
+    BitwiseXORExpression
 }
 
-ThisTok = {
-    "this" ~ !(IdentifierPart)
+BitwiseORExpressionNoIn = {
+    BitwiseORExpressionNoIn ~ "|" ~ BitwiseXORExpressionNoIn |
+    BitwiseXORExpressionNoIn
 }
 
-TypeofTok = {
-    "typeof" ~ !(IdentifierPart)
+LogicalANDExpression = {
+    LogicalANDExpression ~ "&&" ~ BitwiseORExpression |
+    BitwiseORExpression
 }
 
-VoidTok = {
-    "void" ~ !(IdentifierPart)
+LogicalANDExpressionNoIn = {
+    LogicalANDExpressionNoIn ~ "&&" ~ BitwiseORExpressionNoIn |
+    BitwiseORExpressionNoIn
 }
 
-IfTok = {
-    "if" ~ !(IdentifierPart)
+LogicalORExpression = {
+    LogicalORExpression ~ "||" ~ LogicalANDExpression |
+    LogicalANDExpression
 }
 
-ElseTok = {
-    "else" ~ !(IdentifierPart)
+LogicalORExpressionNoIn = {
+    LogicalORExpressionNoIn ~ "||" ~ LogicalANDExpressionNoIn |
+    LogicalANDExpressionNoIn
 }
 
-DoTok = {
-    "do" ~ !(IdentifierPart)
+ConditionalExpression = {
+    LogicalORExpression ~ "?" ~ AssignmentExpression ~ ":" ~ AssignmentExpression |
+    LogicalORExpression
 }
 
-WhileTok = {
-    "while" ~ !(IdentifierPart)
+ConditionalExpressionNoIn = {
+    LogicalORExpressionNoIn ~ "?" ~ AssignmentExpressionNoIn ~ ":" ~ AssignmentExpressionNoIn |
+    LogicalORExpressionNoIn
 }
 
-ForTok = {
-    "for" ~ !(IdentifierPart)
+AssignmentExpression = {
+    LeftHandSideExpression ~ AssignmentOperator ~ AssignmentExpression |
+    ConditionalExpression
 }
 
-VarTok = {
-    "var" ~ !(IdentifierPart)
+AssignmentExpressionNoIn = {
+    LeftHandSideExpression ~ AssignmentOperator ~ AssignmentExpressionNoIn |
+    ConditionalExpressionNoIn
 }
 
-ReturnTok = {
-    "return" ~ !(IdentifierPart)
+AssignmentOperator = {
+    "=" |
+    "*=" |
+    "/=" |
+    "%=" |
+    "+=" |
+    "-=" |
+    "<<=" |
+    ">>=" |
+    ">>>=" |
+    "&=" |
+    "^=" |
+    "|="
 }
 
-CaseTok = {
-    "case" ~ !(IdentifierPart)
+Expression = {
+    Expression ~ "," ~ AssignmentExpression |
+    AssignmentExpression
 }
 
-DefaultTok = {
-    "default" ~ !(IdentifierPart)
+ExpressionNoIn = {
+    ExpressionNoIn ~ "," ~ AssignmentExpressionNoIn |
+    AssignmentExpressionNoIn
 }
 
-SwitchTok = {
-    "switch" ~ !(IdentifierPart)
+//A.4 Statements # Ⓣ
+
+Statement = {
+    Block |
+    VariableStatement |
+    EmptyStatement |
+    ExpressionStatement |
+    IfStatement |
+    IterationStatement |
+    ContinueStatement |
+    BreakStatement |
+    ReturnStatement |
+    WithStatement |
+    LabelledStatement |
+    SwitchStatement |
+    ThrowStatement |
+    TryStatement |
+    DebuggerStatement
 }
 
-ThrowTok = {
-    "throw" ~ !(IdentifierPart)
+Block = {
+    "{" ~ StatementList* ~ "}"
 }
 
-CatchTok = {
-    "catch" ~ !(IdentifierPart)
+StatementList = {
+    Statement ~ StatementList |
+    Statement?
 }
 
-FinallyTok = {
-    "finally" ~ !(IdentifierPart)
+VariableStatement = {
+    "var" ~ VariableDeclarationList ~ ";"
 }
 
-TryTok = {
-    "try" ~ !(IdentifierPart)
+VariableDeclarationList = {
+    VariableDeclarationList ~ "," ~ VariableDeclaration |
+    VariableDeclaration
 }
 
-WithTok = {
-    "with" ~ !(IdentifierPart)
+VariableDeclarationListNoIn = {
+    VariableDeclarationListNoIn ~ "," ~ VariableDeclarationNoIn |
+    VariableDeclarationNoIn
 }
 
+VariableDeclaration = {
+    Identifier ~ Initialiser*
+}
+
+VariableDeclarationNoIn = {
+    Identifier ~ InitialiserNoIn*
+}
+
+Initialiser = {
+    "=" ~ AssignmentExpression
+}
+
+InitialiserNoIn = {
+    "=" ~ AssignmentExpressionNoIn
+}
+
+EmptyStatement = {
+    ";"
+}
+
+ExpressionStatement = {
+    !("function" | "{") ~ Expression ~ ";"
+}
+
+IfStatement = {
+    "if" ~ "(" ~ Expression ~ ")" ~ Statement ~ "else" ~ Statement |
+    "if" ~ "(" ~ Expression ~ ")" ~ Statement
+}
+
+IterationStatement = {
+    "do" ~ Statement ~ "while" ~ "(" ~ Expression ~ ")" ~ ";" |
+    "while" ~ "(" ~ Expression ~ ")" ~ Statement |
+    "for" ~ "(" ~ ExpressionNoIn* ~ ";" ~ Expression* ~ ";" ~ Expression* ~ ")" ~ Statement |
+    "for" ~ "(" ~ "var" ~ VariableDeclarationListNoIn ~ ";" ~ Expression* ~ ";" ~ Expression* ~ ")" ~ Statement |
+    "for" ~ "(" ~ LeftHandSideExpression ~ "in" ~ Expression ~ ")" ~ Statement |
+    "for" ~ "(" ~ "var" ~ VariableDeclarationNoIn ~ "in" ~ Expression ~ ")" ~ Statement
+}
+
+ContinueStatement = {
+    "continue" ~ !(LineTerminator) ~ Identifier* ~ ";"
+}
+
+BreakStatement = {
+    "break" ~ !(LineTerminator) ~ Identifier* ~ ";"
+}
+
+ReturnStatement = {
+    "return" ~ !(LineTerminator) ~ Expression* ~ ";"
+}
+
+WithStatement = {
+    "with" ~ "(" ~ Expression ~ ")" ~ Statement
+}
+
+SwitchStatement = {
+    "switch" ~ "(" ~ Expression ~ ")" ~ CaseBlock
+}
+
+CaseBlock = {
+    "{" ~ CaseClauses* ~ CaseClauses* ~ DefaultClause ~ "}" |
+    "{" ~ CaseClauses* ~ "}"
+}
+
+
+CaseClauses = {
+    CaseClause ~ CaseClauses |
+    CaseClause?
+}
+
+CaseClause = {
+    "case" ~ Expression ~ ":" ~ StatementList*
+}
+
+DefaultClause = {
+    "default" ~ ":" ~ StatementList*
+}
+
+
+LabelledStatement = {
+    Identifier ~ ":" ~ Statement
+}
+
+
+ThrowStatement = {
+    "throw" ~ !(LineTerminator) ~ Expression ~ ";"?
+}
+
+TryStatement = {
+    "try" ~ Block ~ Catch ~ Finally |
+    "try" ~ Block ~ Catch |
+    "try" ~ Block ~ Finally
+}
+
+
+Catch = {
+    "catch" ~ "(" ~ Identifier ~ ")" ~ Block
+}
+
+Finally = {
+    "finally" ~ Block
+}
+
+DebuggerStatement = {
+    "debugger" ~ ";"?
+}
+
+//A.5 Functions and Programs # Ⓣ
+
+FunctionDeclaration = {
+    "function" ~ Identifier ~ "(" ~ FormalParameterList* ~ ")" ~ "{" ~ FunctionBody ~ "}"
+}
+
+
+FunctionExpression = {
+    "function" ~ Identifier*  ~ "(" ~
+    FormalParameterList* ~ ")" ~ "{" ~
+    FunctionBody ~ "}"
+}
+
+FormalParameterList = {
+    Identifier |
+    FormalParameterList ~ "," ~ Identifier
+}
+
+FunctionBody = {
+    SourceElements*
+}
+
+Program = {
+    SourceElements*
+}
+
+SourceElements = {
+    SourceElement |
+    SourceElements ~ SourceElement
+}
+
+SourceElement = {
+    Statement |
+    FunctionDeclaration
+}
+
+//A.6 Universal Resource Identifier Character Classes # Ⓣ
+
+uri = {
+    uriCharacters*
+}
+
+uriCharacters = {
+    uriCharacter ~ uriCharacters*
+}
+
+uriCharacter = {
+    uriReserved |
+    uriUnescaped |
+    uriEscaped
+}
+
+uriReserved = {
+    ";" |
+    "/" |
+    "?" |
+    ":" |
+    "@" |
+    "&" |
+    "=" |
+    "+" |
+    "$" |
+    ","
+}
+
+uriUnescaped = {
+    uriAlpha |
+    DecimalDigit |
+    uriMark
+}
+
+uriEscaped = {
+    "%" ~ HexDigit ~ HexDigit
+}
+
+uriAlpha = {
+    'a' .. 'z' |
+    'A' .. 'Z'
+}
+
+uriMark = {
+    "-" |
+    "_" |
+    "." |
+    "!" |
+    "~" |
+    "*" |
+    "‘" |
+    "(" |
+    ")"
+}
+
+
+Pattern = {
+    Disjunction
+}
+
+Disjunction = {
+    Alternative
+    // Alternative | Disjunction
+}
+
+Alternative = {
+    (Alternative ~ Term)?
+}
+
+Term = {
+    Atom ~ Quantifier |
+    Assertion |
+    Atom
+}
+
+Assertion = {
+    "^" |
+    "$" |
+    "\\" ~ "b" |
+    "\\" ~ "B"
+    // ( ? = Disjunction )
+    // ( ? ! Disjunction )
+}
+
+Quantifier = {
+    QuantifierPrefix ~ any
+}
+QuantifierPrefix = {
+    "*" |
+    "+" |
+    "?" //|
+    // { DecimalDigits }
+    // { DecimalDigits , }
+    // { DecimalDigits , DecimalDigits }
+}
+
+Atom = {
+    PatternCharacter |
+    "." |
+    "\\" ~ AtomEscape |
+    CharacterClass
+    // ( Disjunction )
+    // ( ? : Disjunction )
+}
+
+PatternCharacter = {
+    !("^" | "$" | "\\" | "*" | "+" |
+      "?" | "(" | ")"  | "[" | "]" |
+      "{" | "}" | "|") ~
+    SourceCharacter
+}
+
+AtomEscape = {
+    DecimalEscape   |
+    CharacterEscape |
+    CharacterClassEscape
+}
+
+CharacterEscape = {
+    "c" ~ ControlLetter   |
+    ControlEscape         |
+    HexEscapeSequence     |
+    UnicodeEscapeSequence |
+    IdentityEscape
+}
+
+ControlEscape = {
+    "f" |
+    "n" |
+    "r" |
+    "t" |
+    "v"
+}
+
+ControlLetter = {
+    'a' .. 'z' |
+    'A' .. 'Z'
+}
+
+IdentityEscape = {
+    !(IdentifierPart) ~
+    SourceCharacter |
+    "\u{200C}"      |
+    "\u{200D}"
+}
+
+DecimalEscape = {
+    DecimalIntegerLiteral ~ !(DecimalDigit)
+}
+CharacterClassEscape = {
+    "d" |
+    "D" |
+    "s" |
+    "S" |
+    "w" |
+    "W"
+}
+
+CharacterClass = {
+    // [ [lookahead ∉ {^}] ClassRanges ]
+    "[" ~ "^" ~ ClassRanges ~ "]"
+}
+
+ClassRanges = {
+    NonemptyClassRanges?
+}
+
+NonemptyClassRanges = {
+    ClassAtom ~ "–" ~ ClassAtom ~ ClassRanges |
+    ClassAtom ~ NonemptyClassRangesNoDash     |
+    ClassAtom
+}
+
+NonemptyClassRangesNoDash = {
+    ClassAtomNoDash ~ "–" ~ ClassAtom ~ ClassRanges |
+    ClassAtomNoDash ~ NonemptyClassRangesNoDash     |
+    ClassAtom
+}
+
+ClassAtom = {
+    "-" |
+    ClassAtomNoDash
+}
+
+ClassAtomNoDash = {
+    !(
+        "\\" | "]" | "-"
+    ) ~
+    SourceCharacter |
+    "\\" ~ ClassEscape
+}
+
+ClassEscape = {
+    DecimalEscape        |
+    "b"                  |
+    CharacterEscape      |
+    CharacterClassEscape
+}
 
 //Unicode sets
 Ll = {
@@ -2868,77 +3101,4 @@ Zs = {
     '\u{3000}' .. '\u{3000}' |
     '\u{0020}' .. '\u{0020}' |
     '\u{00A0}' .. '\u{00A0}'
-}
-
-Pc = {
-    '\u{203F}' .. '\u{203F}' |
-    '\u{2040}' .. '\u{2040}' |
-    '\u{2054}' .. '\u{2054}' |
-    '\u{005F}' .. '\u{005F}' |
-    '\u{FE33}' .. '\u{FE34}' |
-    '\u{FE4D}' .. '\u{FE4F}' |
-    '\u{FF3F}' .. '\u{FF3F}'
-}
-
-Nd = {
-    '\u{1040}' .. '\u{1049}' |
-    '\u{1090}' .. '\u{1099}' |
-    '\u{1810}' .. '\u{1819}' |
-    '\u{1946}' .. '\u{194F}' |
-    '\u{11066}' .. '\u{1106F}' |
-    '\u{11136}' .. '\u{1113F}' |
-    '\u{11450}' .. '\u{11459}' |
-    '\u{11650}' .. '\u{11659}' |
-    '\u{11730}' .. '\u{11739}' |
-    '\u{0030}' .. '\u{0039}' |
-    '\u{0660}' .. '\u{0669}' |
-    '\u{06F0}' .. '\u{06F9}' |
-    '\u{07C0}' .. '\u{07C9}' |
-    '\u{0966}' .. '\u{096F}' |
-    '\u{09E6}' .. '\u{09EF}' |
-    '\u{0A66}' .. '\u{0A6F}' |
-    '\u{0AE6}' .. '\u{0AEF}' |
-    '\u{0B66}' .. '\u{0B6F}' |
-    '\u{0BE6}' .. '\u{0BEF}' |
-    '\u{0C66}' .. '\u{0C6F}' |
-    '\u{0CE6}' .. '\u{0CEF}' |
-    '\u{0D66}' .. '\u{0D6F}' |
-    '\u{0DE6}' .. '\u{0DEF}' |
-    '\u{0E50}' .. '\u{0E59}' |
-    '\u{0ED0}' .. '\u{0ED9}' |
-    '\u{0F20}' .. '\u{0F29}' |
-    '\u{17E0}' .. '\u{17E9}' |
-    '\u{19D0}' .. '\u{19D9}' |
-    '\u{1A80}' .. '\u{1A89}' |
-    '\u{1A90}' .. '\u{1A99}' |
-    '\u{1B50}' .. '\u{1B59}' |
-    '\u{1BB0}' .. '\u{1BB9}' |
-    '\u{1C40}' .. '\u{1C49}' |
-    '\u{1C50}' .. '\u{1C59}' |
-    '\u{A620}' .. '\u{A629}' |
-    '\u{A8D0}' .. '\u{A8D9}' |
-    '\u{A900}' .. '\u{A909}' |
-    '\u{A9D0}' .. '\u{A9D9}' |
-    '\u{A9F0}' .. '\u{A9F9}' |
-    '\u{AA50}' .. '\u{AA59}' |
-    '\u{ABF0}' .. '\u{ABF9}' |
-    '\u{FF10}' .. '\u{FF19}' |
-    '\u{104A0}' .. '\u{104A9}' |
-    '\u{10D30}' .. '\u{10D39}' |
-    '\u{110F0}' .. '\u{110F9}' |
-    '\u{111D0}' .. '\u{111D9}' |
-    '\u{112F0}' .. '\u{112F9}' |
-    '\u{114D0}' .. '\u{114D9}' |
-    '\u{116C0}' .. '\u{116C9}' |
-    '\u{118E0}' .. '\u{118E9}' |
-    '\u{11C50}' .. '\u{11C59}' |
-    '\u{11D50}' .. '\u{11D59}' |
-    '\u{11DA0}' .. '\u{11DA9}' |
-    '\u{16A60}' .. '\u{16A69}' |
-    '\u{16B50}' .. '\u{16B59}' |
-    '\u{1D7CE}' .. '\u{1D7CF}' |
-    '\u{1D7D0}' .. '\u{1D7DF}' |
-    '\u{1D7E0}' .. '\u{1D7EF}' |
-    '\u{1D7F0}' .. '\u{1D7FF}' |
-    '\u{1E950}' .. '\u{1E959}'
 }

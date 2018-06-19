@@ -3,10 +3,8 @@ extern crate pest;
 use pest::Parser;
 use js_parser::JsParser;
 fn main() {
-    let js = "\
-    function(x) {
-        let y = 0;
-    }\
-    ";
+    let js = r#"function() {
+    let x = 0;
+}"#;
     js_parser::parse(js);
 }

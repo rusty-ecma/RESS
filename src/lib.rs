@@ -3,7 +3,6 @@ extern crate pest;
 extern crate pest_derive;
 extern crate estree_rs;
 
-use estree_rs::*;
 
 use pest::{Parser, iterators::Pair};
 const _GRAMMAR: &str = include_str!("js.pest");
@@ -14,9 +13,7 @@ pub struct JsParser;
 
 pub fn parse(js: &str)  {
     let x = JsParser::parse(Rule::Program, js).unwrap();
-    for pair in x {
-        recurse(pair, 0);
-    }
+    println!("{:#?}", x);
 }
 
 pub fn recurse(pair: Pair<Rule>, i: usize) {
