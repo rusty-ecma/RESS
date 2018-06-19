@@ -1,0 +1,15 @@
+[package]
+name = "js_parse"
+version = "0.1.0"
+authors = ["Robert Masen <r@robertmasen.pizza>"]
+
+[dependencies]
+pest = "1"
+pest_derive = "1"
+estree-rs = { path = "../estree-rs/" }
+
+[lib]
+name = "js_parser"
+
+[[bin]]
+name = "js_parse"

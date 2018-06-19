@@ -1,0 +1,415 @@
+
+InputElementDiv = {
+    WhiteSpace |
+    LineTerminator |
+    Comment |
+    Token |
+    DivPunctuator
+}
+DivPunctuator = {
+    "/" |
+    "/="
+}
+
+InputElementRegExp = {
+    WhiteSpace |
+    LineTerminator |
+    Comment |
+    Token |
+    RegularExpressionLiteral
+}
+
+ControlCharacters = {
+    "\u{200C}" |
+    "\u{200D}" |
+    "\u{FEFF}"
+}
+
+WhiteSpace = {
+    "\u{0009}" |
+    "\u{000B}" |
+    "\u{000C}" |
+    "\u{0020}" |
+    "\u{00A0}" |
+    "\u{FEFF}"
+}
+
+lf = {"\u{000A}"}
+cr = {"\u{000D}"}
+ls = {"\u{2028}"}
+ps = {"\u{2029}"}
+not_lf = {^"\u{000A}"}
+
+LineTerminator = {
+    lf |
+    cr |
+    ls |
+    ps
+}
+
+LineTerminatorSequence = {
+    lf |
+    cr ~ not_lf |
+    ls |
+    ps |
+    cr ~ lf
+}
+
+
+Comment = {
+    MultiLineComment |
+    SingleLineComment
+}
+
+MultiLineComment  = {
+ "/*" ~ MultiLineCommentChars* ~ "*/"
+}
+MultiLineCommentChars = {
+    MultiLineNotAsteriskChar ~ MultiLineCommentChars* |
+    "*" ~ PostAsteriskCommentChars*
+}
+PostAsteriskCommentChars = {
+    MultiLineNotForwardSlashOrAsteriskChar ~ MultiLineCommentChars* |
+    "*" ~ PostAsteriskCommentChars*
+}
+MultiLineNotAsteriskChar = {
+    SourceCharacter // but not *
+}
+MultiLineNotForwardSlashOrAsteriskChar  = {
+    SourceCharacter //but not one of / or *
+}
+SingleLineComment = {
+    "//" ~ SingleLineCommentChar*
+}
+
+SingleLineCommentChars = {
+    SingleLineCommentChar ~ SingleLineCommentChar*
+}
+
+SingleLineCommentChar = {
+    SourceCharacter// but not LineTerminator
+}
+
+
+Token = {
+    IdentifierName |
+    Punctuator |
+    NumericLiteral |
+    StringLiteral
+}
+
+dentifier  = {
+    IdentifierName //but not ReservedWord
+}
+IdentifierName  = {
+    IdentifierStart |
+    IdentifierName ~ IdentifierPart
+}
+IdentifierStart  = {
+    UnicodeLetter |
+    "$" |
+    "_" |
+    "\\" ~ UnicodeEscapeSequence
+}
+IdentifierPart  = {
+    IdentifierStart |
+    UnicodeCombiningMark |
+    UnicodeDigit |
+    UnicodeConnectorPunctuation //|
+    //<ZWNJ> |
+    //<ZWJ>
+}
+UnicodeLetter  = {
+    SourceCharacter //any character in the Unicode categories “Uppercase letter (Lu)”, “Lowercase letter (Ll)”, “Titlecase letter (Lt)”, “Modifier letter (Lm)”, “Other letter (Lo)”, or “Letter number (Nl)”.
+}
+UnicodeCombiningMark  = {
+    SourceCharacter //any character in the Unicode categories “Non-spacing mark (Mn)” or “Combining spacing mark (Mc)”
+}
+UnicodeDigit  = {
+    SourceCharacter //any character in the Unicode category “Decimal number (Nd)”
+}
+UnicodeConnectorPunctuation  = {
+    SourceCharacter //any character in the Unicode category “Connector punctuation (Pc)”
+}
+
+
+ReservedWord = {
+    Keyword |
+    FutureReservedWord |
+    NullLiteral |
+    BooleanLiteral
+}
+
+Keyword = {
+    "break" |
+    "do" |
+    "instanceof" |
+    "typeof" |
+    "case" |
+    "else" |
+    "new" |
+    "var" |
+    "catch" |
+    "finally" |
+    "return" |
+    "void" |
+    "continue" |
+    "for" |
+    "switch" |
+    "while" |
+    "debugger" |
+    "function" |
+    "this" |
+    "with" |
+    "default" |
+    "if" |
+    "throw" |
+    "delete" |
+    "in" |
+    "try"
+}
+
+FutureReservedWord = {
+    "class" |
+    "enum" |
+    "extends" |
+    "super" |
+    "const" |
+    "export" |
+    "import"
+}
+
+Punctuator = {
+    "{" |
+    "}" |
+    "(" |
+    ")" |
+    "[" |
+    "]" |
+    "." |
+    ";" |
+    "," |
+    "<" |
+    ">" |
+    "<=" |
+    ">=" |
+    "==" |
+    "!=" |
+    "===" |
+    "!==" |
+    "+" |
+    "-" |
+    "*" |
+    "%" |
+    "++" |
+    "--" |
+    "<<" |
+    ">>" |
+    ">>>" |
+    "&" |
+    "|" |
+    "^" |
+    "!" |
+    "~" |
+    "&&" |
+    "||" |
+    "?" |
+    ":" |
+    "=" |
+    "+=" |
+    "-=" |
+    "*=" |
+    "%=" |
+    "<<=" |
+    ">>=" |
+    ">>>=" |
+    "&=" |
+    "|=" |
+    "^="
+}
+
+Literal = {
+    NullLiteral |
+    BooleanLiteral |
+    NumericLiteral |
+    StringLiteral |
+    RegularExpressionLiteral
+}
+
+NullLiteral = { "null" }
+BooleanLiteral = { "true" | "false" }
+NumericLiteral = {
+    DecimalLiteral |
+    HexIntegerLiteral
+}
+
+DecimalLiteral = {
+    DecimalIntegerLiteral ~ "." ~ DecimalDigit* ~ ExponentPart* |
+    "." ~ DecimalDigits ~ ExponentPart* |
+    DecimalIntegerLiteral ~ ExponentPart*
+}
+
+DecimalIntegerLiteral = {
+    "0" |
+    NonZeroDigit ~ DecimalDigit*
+}
+
+
+DecimalDigits = {
+    DecimalDigit |
+    DecimalDigits ~ DecimalDigit
+}
+
+DecimalDigit = { '0' .. '9' }
+NonZeroDigit = { '1' .. '9' }
+
+ExponentPart = {
+    ExponentIndicator ~ SignedInteger
+}
+
+ExponentIndicator = { "e" | "E" }
+SignedInteger = {
+    DecimalDigits |
+    "+" ~ DecimalDigits |
+    "-" ~ DecimalDigit
+}
+
+HexIntegerLiteral = {
+    "0x" ~ HexDigit |
+    "0X" ~ HexDigit |
+    HexIntegerLiteral ~ HexDigit
+}
+
+HexDigit = {
+    '0' .. '9' | 'A' .. 'F'
+}
+
+DoubleQuote = {"\""}
+SingleQuote = {"\'"}
+StringLiteral = {
+    DoubleQuote ~ DoubleStringCharacters* ~ DoubleQuote |
+    SingleQuote ~ SingleStringCharacters* ~ SingleQuote
+}
+
+DoubleStringCharacters = {
+    DoubleStringCharacter ~ DoubleStringCharacter*
+}
+
+SingleStringCharacters = {
+    SingleStringCharacter ~ SingleStringCharacter*
+}
+
+DoubleStringCharacter = {
+    SourceCharacter | //but not one of \" or \ or LineTerminator
+    "\\" ~ EscapeSequence |
+    LineContinuation
+}
+
+SingleStringCharacter = {
+    SourceCharacter | //but not one of ' or \ or LineTerminator
+    "\\" ~ EscapeSequence |
+    LineContinuation
+}
+
+LineContinuation = {
+    "\\" ~ LineTerminatorSequence
+}
+
+EscapeSequence = {
+    CharacterEscapeSequence |
+    "0" |// [lookahead ∉ DecimalDigit]
+    HexEscapeSequence |
+    UnicodeEscapeSequence
+}
+
+CharacterEscapeSequence = {
+    SingleEscapeCharacter |
+    NonEscapeCharacter
+}
+
+SingleEscapeCharacter = {
+    SingleQuote |
+    DoubleQuote |
+     "\\" |
+     "b" |
+     "f" |
+     "n" |
+     "r" |
+     "t" |
+     "v"
+}
+
+NonEscapeCharacter = {
+    SourceCharacter //but not one of EscapeCharacter or LineTerminator
+}
+
+EscapeCharacter = {
+    SingleEscapeCharacter |
+    DecimalDigit |
+    "x" |
+    "u"
+}
+
+HexEscapeSequence = {
+    "x" ~ HexDigit ~ HexDigit
+}
+
+UnicodeEscapeSequence = {
+    "u" ~ HexDigit ~ HexDigit ~ HexDigit ~ HexDigit
+}
+
+RegularExpressionLiteral = {
+    "/" ~ RegularExpressionBody ~ "/" ~ RegularExpressionFlags
+}
+
+RegularExpressionBody = {
+    RegularExpressionFirstChar ~ RegularExpressionChars
+}
+
+RegularExpressionChars = {
+    //empty?
+    RegularExpressionChars ~ RegularExpressionChar
+}
+
+RegularExpressionFirstChar = {
+    RegularExpressionNonTerminator |// but not one of * or \ or / or [
+    RegularExpressionBackslashSequence |
+    RegularExpressionClass
+}
+
+RegularExpressionChar = {
+    RegularExpressionNonTerminator |//but not one of \ or / or [
+    RegularExpressionBackslashSequence |
+    RegularExpressionClass
+}
+
+RegularExpressionBackslashSequence = {
+    "\\" ~ RegularExpressionNonTerminator
+}
+
+RegularExpressionNonTerminator = {
+    SourceCharacter // but not LineTerminator
+}
+
+RegularExpressionClass = {
+    RegularExpressionClassChars+
+}
+
+RegularExpressionClassChars = {
+    //empty?
+    RegularExpressionClassChars ~ RegularExpressionClassChar
+}
+
+RegularExpressionClassChar = {
+    RegularExpressionNonTerminator |// but not one of ] or \
+    RegularExpressionBackslashSequence
+}
+
+RegularExpressionFlags = {
+    //empty?
+    RegularExpressionFlags ~ IdentifierPart
+}
+
+SourceCharacter = {
+    '\u{00}'..'\u{10FFFF}'
+}
