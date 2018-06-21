@@ -1,31 +1,30 @@
 // The entire ECMAScript language as a Parser Expression Grammar
 // Parser rules which share a name with ECMA-262 productions are intended to match the same language
 //(though not necessarily with the same derivation).
-
+whitespace = _{ S }
 Program = {
-    soi ~ (S? ~ (Statement | FunctionDeclaration))* ~ S? ~ eoi
+    soi ~ ((Statement | FunctionDeclaration))*  ~  eoi
 }
 
-FunctionBody = {
+FunctionBody = @{
     (S? ~ (Statement | FunctionDeclaration))* ~ S?
 }
 
 FunctionDeclaration = {
-    FunctionTok ~ S? ~ Identifier ~ S? ~ "(" ~ S? ~ FormalParameterList? ~
-    S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
+    FunctionTok ~ Identifier ~ "(" ~ FormalParameterList? ~ ")" ~ "{" ~ FunctionBody ~ "}"
 }
 
-FunctionExpression = {
-    FunctionTok ~ S? ~ Identifier? ~ S? ~ "(" ~ S? ~ FormalParameterList? ~
-    S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
+FunctionExpression = @{
+    FunctionTok  ~  Identifier?  ~  "("  ~  FormalParameterList? ~
+    S? ~ ")"  ~  "{"  ~  FunctionBody  ~  "}"
 }
 
-FormalParameterList = {
-    Identifier ~ ("," ~ S? ~ Identifier)*
+FormalParameterList = @{
+    Identifier ~ (","  ~  Identifier)*
 }
 
-UseStrictDirective = {
-    "use" ~ S ~ "strict" ~ S ~ ( "," ~ !(LineTerminator) ~ SourceCharacter )*
+UseStrictDirective = @{
+    "use" ~ whitespace ~ "strict" ~ ( "," ~ !(LineTerminator) ~ SourceCharacter )*
 }
 
 // Statements
@@ -47,35 +46,36 @@ Statement = {
     | DebuggerStatement
 }
 
-Block = {
-      "{" ~ (S? ~ Statement)* ~ S? ~ "}"
+Block = @{
+      "{"  ~ ( Statement)*  ~  "}"
 }
 
-VariableStatement = {
-    VarTok ~ S? ~ VariableDeclaration ~ (S? ~ "," ~ S? ~ VariableDeclaration)* ~ EOS
+VariableStatement = @{
+    VarTok  ~  VariableDeclaration  ~ ( ","  ~  VariableDeclaration)* ~ EOS
 }
 
-VariableDeclaration = {
-    Identifier ~ (S? ~ "=" ~ !("=") ~ S? ~ AssignmentExpression)?
+VariableDeclaration = @{
+    Identifier  ~ ( "=" ~ !("=")  ~  AssignmentExpression)?
 }
 
-VariableDeclarationNoIn = {
-    Identifier ~ (S? ~ "=" ~ !("=") ~ S? ~ AssignmentExpressionNoIn)?
+VariableDeclarationNoIn = @{
+    Identifier  ~ ( "=" ~ !("=")  ~  AssignmentExpressionNoIn)?
 }
 
-VariableDeclarationListNoIn = {
-    VariableDeclarationNoIn ~ (S? ~ "," ~ S? ~ VariableDeclarationNoIn)*
+VariableDeclarationListNoIn = @{
+    VariableDeclarationNoIn  ~ ( ","  ~  VariableDeclarationNoIn)*
 }
 
 // an empty statement is marked by an explicit semicolon, ASI does not apply
 EmptyStatement = { ";" }
 
-ExpressionStatement = { !("{" | FunctionTok) ~ Expression ~ EOS
+ExpressionStatement = @{
+    !("{" | FunctionTok) ~ Expression ~ EOS
 }
 
-IfStatement = {
-      IfTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement ~
-      (S? ~ ElseTok ~ S? ~ Statement)?
+IfStatement = @{
+      IfTok  ~  "("  ~  Expression  ~  ")"  ~  Statement ~
+      (S? ~ ElseTok  ~  Statement)?
 }
 
 IterationStatement = {
@@ -85,121 +85,122 @@ IterationStatement = {
  | ForStatement
 }
 
-DoWhileStatement = {
-    DoTok ~ S? ~ Statement ~ S? ~ WhileTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ EOS
+DoWhileStatement = @{
+    DoTok  ~  Statement  ~  WhileTok  ~  "("  ~  Expression  ~  ")" ~ EOS
 }
 
-WhileStatement = {
-    WhileTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
+WhileStatement = @{
+    WhileTok  ~  "("  ~  Expression  ~  ")"  ~  Statement
 }
 
-ForInStatement = {
-    ForTok ~ S? ~ "(" ~ (ForInLeft | ForInVarLeft) ~ InTok ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
+ForInStatement = @{
+    ForTok  ~  "(" ~ (ForInLeft | ForInVarLeft) ~ InTok  ~  Expression  ~  ")"  ~  Statement
 }
 
-ForInLeft = {
+ForInLeft = @{
       S? ~ LeftHandSideExpression ~ S?
 }
 
-ForInVarLeft = {
-      S? ~ VarTok ~ S? ~ VariableDeclarationNoIn ~ S?
+ForInVarLeft = @{
+      S? ~ VarTok  ~  VariableDeclarationNoIn ~ S?
 }
 
-ForStatement = {
-    ForTok ~ S? ~ "(" ~ S? ~ (ForInit | ForVarInit)? ~ S? ~ ";" ~ S? ~
-      ForTest? ~ S? ~ ";" ~ S? ~ ForUpdate? ~ S? ~ ")" ~ S? ~ Statement
+ForStatement = @{
+    ForTok  ~  "("  ~  (ForInit | ForVarInit)?  ~  ";"  ~ 
+      ForTest?  ~  ";"  ~  ForUpdate?  ~  ")"  ~  Statement
 }
 
-ForInit = {
+ForInit = @{
     ExpressionNoIn
 }
 
-ForVarInit = {
-    VarTok ~ S? ~ VariableDeclarationListNoIn
+ForVarInit = @{
+    VarTok  ~  VariableDeclarationListNoIn
 }
 
-ForTest = {
+ForTest = @{
     Expression
 }
 
-ForUpdate = {
+ForUpdate = @{
     Expression
 }
 
-ContinueStatement = {
+ContinueStatement = @{
     ContinueTok ~ SnoLB? ~ (Identifier ~ EOS | EOSnoLB)
 }
 
-BreakStatement = {
+BreakStatement = @{
     BreakTok ~ SnoLB? ~ (Identifier ~ EOS | EOSnoLB)
 }
 
-ReturnStatement = {
+ReturnStatement = @{
     ReturnTok ~ SnoLB? ~ (EOSnoLB | Expression ~ EOS)
 }
 
-WithStatement = {
-    WithTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ Statement
+WithStatement = @{
+    WithTok  ~  "("  ~  Expression  ~  ")"  ~  Statement
 }
 
-LabelledStatement = {
-    Identifier ~ S? ~ ":" ~ S? ~ Statement
+LabelledStatement = @{
+    Identifier  ~  ":"  ~  Statement
 }
 
-SwitchStatement = {
-    SwitchTok ~ S? ~ "(" ~ S? ~ Expression ~ S? ~ ")" ~ S? ~ "{" ~
-    CaseClause* ~ (DefaultClause ~ CaseClause*)? ~ S? ~ "}"
+SwitchStatement = @{
+    SwitchTok  ~  "("  ~  Expression  ~  ")"  ~  "{" ~
+    CaseClause* ~ (DefaultClause ~ CaseClause*)?  ~  "}"
 }
 
-CaseClause = {
-    S? ~ CaseTok ~ S? ~ Expression ~ S? ~ ":" ~ (S? ~ Statement)*
+CaseClause = @{
+    S? ~ CaseTok  ~  Expression  ~  ":"  ~ ( Statement)*
 }
 
-DefaultClause = {
-    S? ~ DefaultTok ~ S? ~ ":" ~ (S? ~ Statement)*
+DefaultClause = @{
+    S? ~ DefaultTok  ~  ":"  ~ ( Statement)*
 }
 
-ThrowStatement = {
+ThrowStatement = @{
     ThrowTok ~ SnoLB? ~ (EOSnoLB | Expression ~ EOS)
 }
 
-TryStatement = {
-    TryTok ~ S? ~ Block ~ S? ~ (Catch ~ S? ~ Finally? | Finally)
+TryStatement = @{
+    TryTok  ~  Block  ~  (Catch  ~  Finally? | Finally)
 }
 
-Catch = {
-    CatchTok ~ S? ~ "(" ~ S? ~ Identifier ~ S? ~ ")" ~ S? ~ Block
+Catch = @{
+    CatchTok  ~  "("  ~  Identifier  ~  ")"  ~  Block
 }
 
-Finally = {
-    FinallyTok ~ S? ~ Block
+Finally = @{
+    FinallyTok  ~  Block
 }
 
-DebuggerStatement = {
-    DebuggerTok ~ S? ~ EOS
+DebuggerStatement = @{
+    DebuggerTok  ~  EOS
 }
 
 // Expressions
 Expression = {
-    AssignmentExpression ~ (S? ~ "," ~ S? ~ AssignmentExpression)*
+    AssignmentExpression ~ ("," ~ AssignmentExpression)*
 }
 
 ExpressionNoIn = {
-    AssignmentExpressionNoIn ~ (S? ~ "," ~ S? ~ AssignmentExpressionNoIn)*
+    AssignmentExpressionNoIn ~ ("," ~ AssignmentExpressionNoIn)*
 }
 
 AssignmentExpression = {
-    LeftHandSideExpression ~ S? ~ AssignmentOperator ~ S? ~ AssignmentExpression
+    LeftHandSideExpression ~ AssignmentOperator ~ AssignmentExpression
     | ConditionalExpression
 }
 
 AssignmentExpressionNoIn = {
-    LeftHandSideExpression ~ S? ~ AssignmentOperator ~ S? ~ AssignmentExpressionNoIn
+    LeftHandSideExpression ~ AssignmentOperator ~ AssignmentExpressionNoIn
     | ConditionalExpressionNoIn
 }
 
 AssignmentOperator = {
-    "=" ~ !("=")
+    !("==") ~
+    "="
     | "*="
     | "/="
     | "%="
@@ -214,59 +215,59 @@ AssignmentOperator = {
 }
 
 ConditionalExpression = {
-    LogicalOrExpression ~ (S? ~ "?" ~ S? ~ AssignmentExpression ~ S? ~ ":" ~ S? ~ AssignmentExpression)?
+    LogicalOrExpression ~ ("?" ~ AssignmentExpression ~ ":" ~ AssignmentExpression)?
 }
 
 ConditionalExpressionNoIn = {
-    LogicalOrExpressionNoIn ~ (S? ~ "?" ~ S? ~ AssignmentExpressionNoIn ~ S? ~ ":" ~ S? ~ AssignmentExpressionNoIn)?
+    LogicalOrExpressionNoIn ~ ("?" ~ AssignmentExpressionNoIn ~ ":" ~ AssignmentExpressionNoIn)?
 }
 
 LogicalOrExpression = {
-    LogicalAndExpression ~ (S? ~ "||" ~ S? ~ LogicalAndExpression)*
+    LogicalAndExpression  ~ ( "||"  ~  LogicalAndExpression)*
 }
 
 LogicalOrExpressionNoIn = {
-    LogicalAndExpressionNoIn ~ (S? ~ "||" ~ S? ~ LogicalAndExpressionNoIn)*
+    LogicalAndExpressionNoIn  ~ ( "||"  ~  LogicalAndExpressionNoIn)*
 }
 
 LogicalAndExpression = {
-    BitwiseOrExpression ~ (S? ~ "&&" ~ S? ~ BitwiseOrExpression)*
+    BitwiseOrExpression  ~ ( "&&"  ~  BitwiseOrExpression)*
 }
 
 LogicalAndExpressionNoIn = {
-    BitwiseOrExpressionNoIn ~ (S? ~ "&&" ~ S? ~ BitwiseOrExpressionNoIn)*
+    BitwiseOrExpressionNoIn  ~ ( "&&"  ~  BitwiseOrExpressionNoIn)*
 }
 
 BitwiseOrExpression = {
-    BitwiseXOrExpression ~ (S? ~ "|" ~ !("=") ~ S? ~ BitwiseXOrExpression)*
+    BitwiseXOrExpression  ~ ( "|" ~ !("=")  ~  BitwiseXOrExpression)*
 }
 
 BitwiseOrExpressionNoIn = {
-    BitwiseXOrExpressionNoIn ~ (S? ~ "|" ~ !("=") ~ S? ~ BitwiseXOrExpressionNoIn)*
+    BitwiseXOrExpressionNoIn  ~ ( "|" ~ !("=")  ~  BitwiseXOrExpressionNoIn)*
 }
 
 BitwiseXOrExpression = {
-    BitwiseAndExpression ~ (S? ~ "^" ~ !("=") ~ S? ~ BitwiseAndExpression)*
+    BitwiseAndExpression  ~ ( "^" ~ !("=")  ~  BitwiseAndExpression)*
 }
 
 BitwiseXOrExpressionNoIn = {
-    BitwiseAndExpressionNoIn ~ (S? ~ "^" ~ !("=") ~ S? ~ BitwiseAndExpressionNoIn)*
+    BitwiseAndExpressionNoIn  ~ ( "^" ~ !("=")  ~  BitwiseAndExpressionNoIn)*
 }
 
 BitwiseAndExpression = {
-    EqualityExpression ~ (S? ~ "&" ~ !("=") ~ S? ~ EqualityExpression)*
+    EqualityExpression  ~ ( "&" ~ !("=")  ~  EqualityExpression)*
 }
 
 BitwiseAndExpressionNoIn = {
-    EqualityExpressionNoIn ~ (S? ~ "&" ~ !("=") ~ S? ~ EqualityExpressionNoIn)*
+    EqualityExpressionNoIn  ~ ( "&" ~ !("=")  ~  EqualityExpressionNoIn)*
 }
 
 EqualityExpression = {
-    RelationalExpression ~ (S? ~ EqualityOp ~ S? ~ RelationalExpression)*
+    RelationalExpression  ~ ( EqualityOp  ~  RelationalExpression)*
 }
 
 EqualityExpressionNoIn = {
-    RelationalExpressionNoIn ~ (S? ~ EqualityOp ~ S? ~ RelationalExpressionNoIn)*
+    RelationalExpressionNoIn  ~ ( EqualityOp  ~  RelationalExpressionNoIn)*
 }
 
 EqualityOp = {
@@ -277,11 +278,11 @@ EqualityOp = {
 }
 
 RelationalExpression = {
-    ShiftExpression ~ (S? ~ RelationalOp ~ S? ~ ShiftExpression)*
+    ShiftExpression  ~ ( RelationalOp  ~  ShiftExpression)*
 }
 
 RelationalExpressionNoIn = {
-    ShiftExpression ~ (S? ~ RelationalOpNoIn ~ S? ~ ShiftExpression)*
+    ShiftExpression  ~ ( RelationalOpNoIn  ~  ShiftExpression)*
 }
 
 RelationalOp = {
@@ -302,7 +303,7 @@ RelationalOpNoIn = {
 }
 
 ShiftExpression = {
-    AdditiveExpression ~ (S? ~ ShiftOp ~ S? ~ AdditiveExpression)*
+    AdditiveExpression  ~ ( ShiftOp  ~  AdditiveExpression)*
 }
 
 ShiftOp = {
@@ -312,7 +313,7 @@ ShiftOp = {
 }
 
 AdditiveExpression = {
-    MultiplicativeExpression ~ (S? ~ AdditiveOp ~ S? ~ MultiplicativeExpression)*
+    MultiplicativeExpression  ~ ( AdditiveOp  ~  MultiplicativeExpression)*
 }
 
 AdditiveOp = {
@@ -321,7 +322,7 @@ AdditiveOp = {
 }
 
 MultiplicativeExpression = {
-    UnaryExpression ~ (S? ~ MultiplicativeOp ~ S? ~ UnaryExpression)*
+    UnaryExpression  ~ ( MultiplicativeOp  ~  UnaryExpression)*
 }
 
 MultiplicativeOp = {
@@ -342,39 +343,39 @@ UnaryExpression = {
 }
 
 DeleteExpression = {
-    DeleteTok ~ S? ~ UnaryExpression
+    DeleteTok  ~  UnaryExpression
 }
 
 VoidExpression = {
-    VoidTok ~ S? ~ UnaryExpression
+    VoidTok  ~  UnaryExpression
 }
 
 TypeofExpression = {
-    TypeofTok ~ S? ~ UnaryExpression
+    TypeofTok  ~  UnaryExpression
 }
 
 PreIncrementExpression = {
-    "++" ~ S? ~ UnaryExpression
+    "++"  ~  UnaryExpression
 }
 
 PreDecrementExpression = {
-    "--" ~ S? ~ UnaryExpression
+    "--"  ~  UnaryExpression
 }
 
 UnaryPlusExpression = {
-    "+" ~ S? ~ UnaryExpression
+    "+"  ~  UnaryExpression
 }
 
 UnaryMinusExpression = {
-    "-" ~ S? ~ UnaryExpression
+    "-"  ~  UnaryExpression
 }
 
 BitwiseNotExpression = {
-    "~" ~ S? ~ UnaryExpression
+    "~"  ~  UnaryExpression
 }
 
 LogicalNotExpression = {
-    "!" ~ S? ~ UnaryExpression
+    "!"  ~  UnaryExpression
 }
 
 // why isn't ++a++ a valid UnaryExpression?
@@ -399,33 +400,32 @@ LeftHandSideExpression = {
 }
 
 CallExpression = {
-    MemberExpression ~ S? ~ Arguments ~ (S? ~ Arguments | S? ~ BracketAccessor | S? ~ DotAccessor)*
+    MemberExpression ~ Arguments ~ (Arguments | BracketAccessor | DotAccessor)*
 }
 
 BracketAccessor = {
-    "[" ~ S? ~ Expression ~ S? ~ "]"
+    "["  ~  Expression  ~  "]"
 }
 
 DotAccessor = {
-    "." ~ S? ~ IdentifierName
+    "."  ~  IdentifierName
 }
 
 Arguments = {
-    "(" ~ S? ~ ArgumentList? ~ S? ~ ")"
+    "("  ~  ArgumentList?  ~  ")"
 }
 
 ArgumentList = {
-    AssignmentExpression ~ (S? ~ "," ~ S? ~ AssignmentExpression)*
+    AssignmentExpression ~ ("," ~ AssignmentExpression)*
 }
 
 NewExpression = {
     MemberExpression
-    | NewTok ~ S? ~ NewExpression
+    | NewTok  ~  NewExpression
 }
 
 MemberExpression = {
-    ( PrimaryExpression | FunctionExpression | NewTok ~ S? ~ MemberExpression ~ S? ~ Arguments ) ~
-    ( S? ~ "[" ~ S? ~ Expression ~ S? ~ "]" | S? ~ "." ~ S? ~ IdentifierName )*
+    ( PrimaryExpression | FunctionExpression | NewTok  ~  MemberExpression  ~  Arguments ) ~ ( "["  ~  Expression  ~  "]" | "."  ~  IdentifierName )*
 }
 
 PrimaryExpression = {
@@ -434,48 +434,49 @@ PrimaryExpression = {
     | Literal
     | ArrayLiteral
     | ObjectLiteral
-    | "(" ~ S? ~ Expression ~ S? ~ ")"
+    | "("  ~  Expression  ~  ")"
 }
 
 ArrayLiteral = {
-    "[" ~ Elision? ~ S? ~ "]"
-    | "[" ~ ElementList ~ S? ~ "]"
-    | "[" ~ ElementList ~ S? ~ "," ~ Elision? ~ S? ~ "]"
+    "[" ~ Elision? ~ "]"
+    | "[" ~ ElementList ~ "]"
+    | "[" ~ ElementList ~ "," ~ Elision? ~ "]"
 }
 
 ElementList = {
-    Elision? ~ S? ~ AssignmentExpression ~ (S? ~ "," ~ Elision? ~ S? ~ AssignmentExpression)*
+    Elision? ~ AssignmentExpression ~ ("," ~ Elision? ~ AssignmentExpression)*
 }
 
 Elision = {
-    (S? ~ ",") ~ Elision?
+    "," ~ Elision?
 }
 
 ObjectLiteral = {
-    "{" ~ ( S? ~ PropertyNameAndValueList ~ S? ~ ","? )? ~ S? ~ "}"
+    "{" ~ (PropertyNameAndValueList ~ ","? )? ~ "}"
 }
 
 PropertyNameAndValueList = {
-    PropertyAssignment ~ (S? ~ "," ~ S? ~ PropertyAssignment)*
+    PropertyAssignment ~ ("," ~ PropertyAssignment)*
 }
 
 PropertyAssignment = {
-    PropertyName ~ S? ~ ":" ~ S? ~ AssignmentExpression
+    PropertyName ~ ":" ~ AssignmentExpression
     | PropertyGetter
     | PropertySetter
 }
 
 PropertyGetter = {
-    "get" ~ S? ~ PropertyName ~ S? ~ "(" ~ S? ~ ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
+    "get" ~ PropertyName ~ "(" ~ ")" ~ "{" ~ FunctionBody ~ "}"
 }
 
 PropertySetter = {
-    "set" ~ S? ~ PropertyName ~ S? ~ "(" ~ S? ~ PropertySetParameterList ~ S? ~
-    ")" ~ S? ~ "{" ~ S? ~ FunctionBody ~ S? ~ "}"
+    "set" ~ PropertyName  ~ "(" ~ PropertySetParameterList ~ ")" ~ "{" ~ FunctionBody ~ "}"
 }
 
 PropertyName = {
-    IdentifierName | StringLiteral | NumericLiteral
+    IdentifierName
+    | StringLiteral
+    | NumericLiteral
 }
 
 PropertySetParameterList = {
@@ -501,18 +502,18 @@ BooleanLiteral = {
     | FalseTok
 }
 
-NumericLiteral = {
+NumericLiteral = @{
     DecimalLiteral ~ !(IdentifierStart)
     | HexIntegerLiteral ~ !(IdentifierStart)
 }
 
-DecimalLiteral = {
+DecimalLiteral = @{
     DecimalIntegerLiteral ~ "." ~ DecimalDigit* ~ ExponentPart?
     | "." ~ DecimalDigit+ ~ ExponentPart?
     | DecimalIntegerLiteral ~ ExponentPart?
 }
 
-DecimalIntegerLiteral = {
+DecimalIntegerLiteral = @{
     "0"
     | ('1' .. '9') ~ DecimalDigit*
 }
@@ -521,17 +522,17 @@ DecimalDigit = {
     '0' .. '9'
 }
 
-ExponentPart = {
+ExponentPart = @{
     ("e" | "E") ~ SignedInteger
 }
 
-SignedInteger = {
+SignedInteger = @{
     DecimalDigit+
     | "+" ~ DecimalDigit+
     | "-" ~ DecimalDigit+
 }
 
-HexIntegerLiteral = {
+HexIntegerLiteral = @{
     "0x" ~ HexDigit+
     | "0X" ~ HexDigit+
 }
@@ -544,7 +545,7 @@ SQ = {
     "\u{0027}"
 }
 
-StringLiteral = {
+StringLiteral = @{
     DQ ~ DoubleStringCharacter* ~ DQ
     | SQ ~ SingleStringCharacter* ~ SQ
 }
@@ -565,11 +566,11 @@ SingleStringCharacter = {
     | LineContinuation
 }
 
-LineContinuation = {
+LineContinuation = @{
     RS ~ LineTerminatorSequence
 }
 
-EscapeSequence = {
+EscapeSequence = @{
     CharacterEscapeSequence
     | "0" ~ !(DecimalDigit)
     | HexEscapeSequence
@@ -593,7 +594,7 @@ SingleEscapeCharacter = {
     | "v"
 }
 
-NonEscapeCharacter = {
+NonEscapeCharacter = @{
     !(EscapeCharacter | LineTerminator) ~ SourceCharacter
 }
 
@@ -603,40 +604,40 @@ EscapeCharacter = {
     |  ("x" | "u")
 }
 
-HexEscapeSequence = {
+HexEscapeSequence = @{
     "x" ~ HexDigit ~ HexDigit
 }
 
-UnicodeEscapeSequence = {
+UnicodeEscapeSequence = @{
     "u" ~ HexDigit{4}
 
 }
 
-RegularExpressionLiteral = {
+RegularExpressionLiteral = @{
     "/" ~ RegularExpressionBody ~ "/" ~ RegularExpressionFlags
 }
 
-RegularExpressionBody = {
+RegularExpressionBody = @{
     RegularExpressionFirstChar ~ RegularExpressionChar*
 }
 
-RegularExpressionFirstChar = {
+RegularExpressionFirstChar = @{
     !( LineTerminator |  "*" | "\u{005C}" | "[" ) ~ SourceCharacter //double check this
     | RegularExpressionBackslashSequence
     | RegularExpressionClass
 }
 
-RegularExpressionChar = {
+RegularExpressionChar = @{
     !( LineTerminator | "\u{005C}" | "[" ) ~ SourceCharacter
     | RegularExpressionBackslashSequence
     | RegularExpressionClass
 }
 
-RegularExpressionBackslashSequence = {
+RegularExpressionBackslashSequence = @{
     RS ~ !(LineTerminator) ~ SourceCharacter
 }
 
-RegularExpressionClass = {
+RegularExpressionClass = @{
     "[" ~ RegularExpressionClassChar* ~ "]"
 }
 
@@ -645,7 +646,7 @@ RegularExpressionClassChar = {
     | RegularExpressionBackslashSequence
 }
 
-RegularExpressionFlags = {
+RegularExpressionFlags = @{
     IdentifierPart*
 }
 
@@ -706,7 +707,7 @@ MultiLineComment = {
 }
 
 MultiLineCommentNoLB = {
-    "/*" ~ (!("*/") ~ !(LineTerminator) ~ SourceCharacter)* ~ "*/"
+    "/*" ~ (!("*/" | LineTerminator) ~ SourceCharacter)* ~ "*/"
 }
 
 SingleLineComment = {
@@ -714,10 +715,10 @@ SingleLineComment = {
     (!("\u{000A}"
     | "\u{000D}"
     | "\u{2028}"
-    |"\u{2029}") ~ any)*
+    |"\u{2029}") ~ UnicodeLetter)*
 }
 
-S = {
+S = _{
     ( WhiteSpace | LineTerminatorSequence | Comment )+
 }
 
@@ -726,7 +727,7 @@ SnoLB = {
 }
 
 // end of statement
-EOS = {
+EOS = @{
     S? ~ ";"
     | SnoLB? ~ LineTerminatorSequence
     | SnoLB? ~ &("}")
@@ -735,7 +736,7 @@ EOS = {
 
 // end of statement in a "no linebreak here" context
 // EOSnoLB will consume a linebreak, but it won't extend to the next line
-EOSnoLB = {
+EOSnoLB = @{
     SnoLB? ~ ";"
     | SnoLB? ~ LineTerminatorSequence
     | SnoLB? ~ &("}")
@@ -745,7 +746,7 @@ EOSnoLB = {
 EOF = {
     !(SourceCharacter)
 }
-ReservedWord = {
+ReservedWord = @{
     ( Keyword
     | FutureReservedWord
     | "null"
@@ -815,22 +816,22 @@ FutureReservedWord = {
     | "volatile"
 }
 
-Identifier = {
+Identifier = @{
     !(ReservedWord) ~ IdentifierName
 }
 
-IdentifierName = {
+IdentifierName = @{
     IdentifierStart ~ IdentifierPart*
 }
 
-IdentifierStart = {
+IdentifierStart = @{
     UnicodeLetter
     | "$"
     | "_"
     | RS ~ UnicodeEscapeSequence
 }
 
-IdentifierPart = {
+IdentifierPart = @{
     IdentifierStart
     | (
         Mn
@@ -855,2090 +856,2088 @@ HexDigit = {
     | 'A' .. 'F'
 }
 
-FalseTok = {
+FalseTok = @{
     "false" ~ !(IdentifierPart)
 }
 
-TrueTok = {
+TrueTok = @{
     "true" ~ !(IdentifierPart)
 }
 
-NullTok = {
+NullTok = @{
     "null" ~ !(IdentifierPart)
 }
 
-BreakTok = {
+BreakTok = @{
     "break" ~ !(IdentifierPart)
 }
 
-ContinueTok = {
+ContinueTok = @{
     "continue" ~ !(IdentifierPart)
 }
 
-DebuggerTok = {
+DebuggerTok = @{
     "debugger" ~ !(IdentifierPart)
 }
 
-InTok = {
+InTok = @{
     "in" ~ !(IdentifierPart)
 }
 
-InstanceOfTok = {
+InstanceOfTok = @{
     "instanceof" ~ !(IdentifierPart)
 }
 
-DeleteTok = {
+DeleteTok = @{
     "delete" ~ !(IdentifierPart)
 }
 
-FunctionTok = {
+FunctionTok = @{
     "function" ~ !(IdentifierPart)
 }
 
-NewTok = {
+NewTok = @{
     "new" ~ !(IdentifierPart)
 }
 
-ThisTok = {
+ThisTok = @{
     "this" ~ !(IdentifierPart)
 }
 
-TypeofTok = {
+TypeofTok = @{
     "typeof" ~ !(IdentifierPart)
 }
 
-VoidTok = {
+VoidTok = @{
     "void" ~ !(IdentifierPart)
 }
 
-IfTok = {
+IfTok = @{
     "if" ~ !(IdentifierPart)
 }
 
-ElseTok = {
+ElseTok = @{
     "else" ~ !(IdentifierPart)
 }
 
-DoTok = {
+DoTok = @{
     "do" ~ !(IdentifierPart)
 }
 
-WhileTok = {
+WhileTok = @{
     "while" ~ !(IdentifierPart)
 }
 
-ForTok = {
+ForTok = @{
     "for" ~ !(IdentifierPart)
 }
 
-VarTok = {
+VarTok = @{
     "var" ~ !(IdentifierPart)
 }
 
-ReturnTok = {
+ReturnTok = @{
     "return" ~ !(IdentifierPart)
 }
 
-CaseTok = {
+CaseTok = @{
     "case" ~ !(IdentifierPart)
 }
 
-DefaultTok = {
+DefaultTok = @{
     "default" ~ !(IdentifierPart)
 }
 
-SwitchTok = {
+SwitchTok = @{
     "switch" ~ !(IdentifierPart)
 }
 
-ThrowTok = {
+ThrowTok = @{
     "throw" ~ !(IdentifierPart)
 }
 
-CatchTok = {
+CatchTok = @{
     "catch" ~ !(IdentifierPart)
 }
 
-FinallyTok = {
+FinallyTok = @{
     "finally" ~ !(IdentifierPart)
 }
 
-TryTok = {
+TryTok = @{
     "try" ~ !(IdentifierPart)
 }
 
-WithTok = {
+WithTok = @{
     "with" ~ !(IdentifierPart)
 }
 
 
 //Unicode sets
 Ll = {
-    '\u{210A}' .. '\u{210F}' |
-    '\u{2113}' .. '\u{2113}' |
-    '\u{212F}' .. '\u{212F}' |
-    '\u{2134}' .. '\u{213D}' |
-    '\u{2146}' .. '\u{214E}' |
-    '\u{2184}' .. '\u{2184}' |
-    '\u{10428}' .. '\u{1042F}' |
-    '\u{10430}' .. '\u{1043F}' |
-    '\u{10440}' .. '\u{1044F}' |
-    '\u{0061}' .. '\u{006F}' |
-    '\u{0070}' .. '\u{007A}' |
-    '\u{00B5}' .. '\u{00B5}' |
-    '\u{00DF}' .. '\u{00DF}' |
-    '\u{00E0}' .. '\u{00EF}' |
-    '\u{00F0}' .. '\u{00FF}' |
-    '\u{0101}' .. '\u{010F}' |
-    '\u{0111}' .. '\u{011F}' |
-    '\u{0121}' .. '\u{012F}' |
-    '\u{0131}' .. '\u{013E}' |
-    '\u{0140}' .. '\u{014F}' |
-    '\u{0151}' .. '\u{015F}' |
-    '\u{0161}' .. '\u{016F}' |
-    '\u{0171}' .. '\u{017F}' |
-    '\u{0180}' .. '\u{018D}' |
-    '\u{0192}' .. '\u{019E}' |
-    '\u{01A1}' .. '\u{01AD}' |
-    '\u{01B0}' .. '\u{01BF}' |
-    '\u{01C6}' .. '\u{01CE}' |
-    '\u{01D0}' .. '\u{01DF}' |
-    '\u{01E1}' .. '\u{01EF}' |
-    '\u{01F0}' .. '\u{01FF}' |
-    '\u{0201}' .. '\u{020F}' |
-    '\u{0211}' .. '\u{021F}' |
-    '\u{0221}' .. '\u{022F}' |
-    '\u{0231}' .. '\u{023F}' |
-    '\u{0240}' .. '\u{024F}' |
-    '\u{0250}' .. '\u{025F}' |
-    '\u{0260}' .. '\u{026F}' |
-    '\u{0270}' .. '\u{027F}' |
-    '\u{0280}' .. '\u{028F}' |
-    '\u{0290}' .. '\u{029F}' |
-    '\u{02A0}' .. '\u{02AF}' |
-    '\u{0371}' .. '\u{037D}' |
-    '\u{0390}' .. '\u{0390}' |
-    '\u{03AC}' .. '\u{03AF}' |
-    '\u{03B0}' .. '\u{03BF}' |
-    '\u{03C0}' .. '\u{03CE}' |
-    '\u{03D0}' .. '\u{03DF}' |
-    '\u{03E1}' .. '\u{03EF}' |
-    '\u{03F0}' .. '\u{03FC}' |
-    '\u{0430}' .. '\u{043F}' |
-    '\u{0440}' .. '\u{044F}' |
-    '\u{0450}' .. '\u{045F}' |
-    '\u{0461}' .. '\u{046F}' |
-    '\u{0471}' .. '\u{047F}' |
-    '\u{0481}' .. '\u{048F}' |
-    '\u{0491}' .. '\u{049F}' |
-    '\u{04A1}' .. '\u{04AF}' |
-    '\u{04B1}' .. '\u{04BF}' |
-    '\u{04C2}' .. '\u{04CF}' |
-    '\u{04D1}' .. '\u{04DF}' |
-    '\u{04E1}' .. '\u{04EF}' |
-    '\u{04F1}' .. '\u{04FF}' |
-    '\u{0501}' .. '\u{050F}' |
-    '\u{0511}' .. '\u{051F}' |
-    '\u{0521}' .. '\u{052F}' |
-    '\u{0560}' .. '\u{056F}' |
-    '\u{0570}' .. '\u{057F}' |
-    '\u{0580}' .. '\u{0588}' |
-    '\u{10D0}' .. '\u{10DF}' |
-    '\u{10E0}' .. '\u{10EF}' |
-    '\u{10F0}' .. '\u{10FF}' |
-    '\u{13F8}' .. '\u{13FD}' |
-    '\u{1C80}' .. '\u{1C88}' |
-    '\u{1D00}' .. '\u{1D0F}' |
-    '\u{1D10}' .. '\u{1D1F}' |
-    '\u{1D20}' .. '\u{1D2B}' |
-    '\u{1D6B}' .. '\u{1D6F}' |
-    '\u{1D70}' .. '\u{1D7F}' |
-    '\u{1D80}' .. '\u{1D8F}' |
-    '\u{1D90}' .. '\u{1D9A}' |
-    '\u{1E01}' .. '\u{1E0F}' |
-    '\u{1E11}' .. '\u{1E1F}' |
-    '\u{1E21}' .. '\u{1E2F}' |
-    '\u{1E31}' .. '\u{1E3F}' |
-    '\u{1E41}' .. '\u{1E4F}' |
-    '\u{1E51}' .. '\u{1E5F}' |
-    '\u{1E61}' .. '\u{1E6F}' |
-    '\u{1E71}' .. '\u{1E7F}' |
-    '\u{1E81}' .. '\u{1E8F}' |
-    '\u{1E91}' .. '\u{1E9F}' |
-    '\u{1EA1}' .. '\u{1EAF}' |
-    '\u{1EB1}' .. '\u{1EBF}' |
-    '\u{1EC1}' .. '\u{1ECF}' |
-    '\u{1ED1}' .. '\u{1EDF}' |
-    '\u{1EE1}' .. '\u{1EEF}' |
-    '\u{1EF1}' .. '\u{1EFF}' |
-    '\u{1F00}' .. '\u{1F07}' |
-    '\u{1F10}' .. '\u{1F15}' |
-    '\u{1F20}' .. '\u{1F27}' |
-    '\u{1F30}' .. '\u{1F37}' |
-    '\u{1F40}' .. '\u{1F45}' |
-    '\u{1F50}' .. '\u{1F57}' |
-    '\u{1F60}' .. '\u{1F67}' |
-    '\u{1F70}' .. '\u{1F7D}' |
-    '\u{1F80}' .. '\u{1F87}' |
-    '\u{1F90}' .. '\u{1F97}' |
-    '\u{1FA0}' .. '\u{1FA7}' |
-    '\u{1FB0}' .. '\u{1FBE}' |
-    '\u{1FC2}' .. '\u{1FC7}' |
-    '\u{1FD0}' .. '\u{1FD7}' |
-    '\u{1FE0}' .. '\u{1FE7}' |
-    '\u{1FF2}' .. '\u{1FF7}' |
-    '\u{2C30}' .. '\u{2C3F}' |
-    '\u{2C40}' .. '\u{2C4F}' |
-    '\u{2C50}' .. '\u{2C5E}' |
-    '\u{2C61}' .. '\u{2C6C}' |
-    '\u{2C71}' .. '\u{2C7B}' |
-    '\u{2C81}' .. '\u{2C8F}' |
-    '\u{2C91}' .. '\u{2C9F}' |
-    '\u{2CA1}' .. '\u{2CAF}' |
-    '\u{2CB1}' .. '\u{2CBF}' |
-    '\u{2CC1}' .. '\u{2CCF}' |
-    '\u{2CD1}' .. '\u{2CDF}' |
-    '\u{2CE1}' .. '\u{2CEE}' |
-    '\u{2CF3}' .. '\u{2CF3}' |
-    '\u{2D00}' .. '\u{2D0F}' |
-    '\u{2D10}' .. '\u{2D1F}' |
-    '\u{2D20}' .. '\u{2D2D}' |
-    '\u{A641}' .. '\u{A64F}' |
-    '\u{A651}' .. '\u{A65F}' |
-    '\u{A661}' .. '\u{A66D}' |
-    '\u{A681}' .. '\u{A68F}' |
-    '\u{A691}' .. '\u{A69B}' |
-    '\u{A723}' .. '\u{A72F}' |
-    '\u{A730}' .. '\u{A73F}' |
-    '\u{A741}' .. '\u{A74F}' |
-    '\u{A751}' .. '\u{A75F}' |
-    '\u{A761}' .. '\u{A76F}' |
-    '\u{A771}' .. '\u{A77F}' |
-    '\u{A781}' .. '\u{A78E}' |
-    '\u{A791}' .. '\u{A79F}' |
-    '\u{A7A1}' .. '\u{A7AF}' |
-    '\u{A7B5}' .. '\u{A7B9}' |
-    '\u{A7FA}' .. '\u{A7FA}' |
-    '\u{AB30}' .. '\u{AB3F}' |
-    '\u{AB40}' .. '\u{AB4F}' |
-    '\u{AB50}' .. '\u{AB5A}' |
-    '\u{AB60}' .. '\u{AB65}' |
-    '\u{AB70}' .. '\u{AB7F}' |
-    '\u{AB80}' .. '\u{AB8F}' |
-    '\u{AB90}' .. '\u{AB9F}' |
-    '\u{ABA0}' .. '\u{ABAF}' |
-    '\u{ABB0}' .. '\u{ABBF}' |
-    '\u{FB00}' .. '\u{FB06}' |
-    '\u{FB13}' .. '\u{FB17}' |
-    '\u{FF41}' .. '\u{FF4F}' |
-    '\u{FF50}' .. '\u{FF5A}' |
-    '\u{104D8}' .. '\u{104DF}' |
-    '\u{104E0}' .. '\u{104EF}' |
-    '\u{104F0}' .. '\u{104FB}' |
-    '\u{10CC0}' .. '\u{10CCF}' |
-    '\u{10CD0}' .. '\u{10CDF}' |
-    '\u{10CE0}' .. '\u{10CEF}' |
-    '\u{10CF0}' .. '\u{10CF2}' |
-    '\u{118C0}' .. '\u{118CF}' |
-    '\u{118D0}' .. '\u{118DF}' |
-    '\u{16E60}' .. '\u{16E6F}' |
-    '\u{16E70}' .. '\u{16E7F}' |
-    '\u{1D41A}' .. '\u{1D41F}' |
-    '\u{1D420}' .. '\u{1D42F}' |
-    '\u{1D430}' .. '\u{1D433}' |
-    '\u{1D44E}' .. '\u{1D44F}' |
-    '\u{1D450}' .. '\u{1D45F}' |
-    '\u{1D460}' .. '\u{1D467}' |
-    '\u{1D482}' .. '\u{1D48F}' |
-    '\u{1D490}' .. '\u{1D49B}' |
-    '\u{1D4B6}' .. '\u{1D4BF}' |
-    '\u{1D4C0}' .. '\u{1D4CF}' |
-    '\u{1D4EA}' .. '\u{1D4EF}' |
-    '\u{1D4F0}' .. '\u{1D4FF}' |
-    '\u{1D500}' .. '\u{1D503}' |
-    '\u{1D51E}' .. '\u{1D51F}' |
-    '\u{1D520}' .. '\u{1D52F}' |
-    '\u{1D530}' .. '\u{1D537}' |
-    '\u{1D552}' .. '\u{1D55F}' |
-    '\u{1D560}' .. '\u{1D56B}' |
-    '\u{1D586}' .. '\u{1D58F}' |
-    '\u{1D590}' .. '\u{1D59F}' |
-    '\u{1D5BA}' .. '\u{1D5BF}' |
-    '\u{1D5C0}' .. '\u{1D5CF}' |
-    '\u{1D5D0}' .. '\u{1D5D3}' |
-    '\u{1D5EE}' .. '\u{1D5EF}' |
-    '\u{1D5F0}' .. '\u{1D5FF}' |
-    '\u{1D600}' .. '\u{1D607}' |
-    '\u{1D622}' .. '\u{1D62F}' |
-    '\u{1D630}' .. '\u{1D63B}' |
-    '\u{1D656}' .. '\u{1D65F}' |
-    '\u{1D660}' .. '\u{1D66F}' |
-    '\u{1D68A}' .. '\u{1D68F}' |
-    '\u{1D690}' .. '\u{1D69F}' |
-    '\u{1D6A0}' .. '\u{1D6A5}' |
-    '\u{1D6C2}' .. '\u{1D6CF}' |
-    '\u{1D6D0}' .. '\u{1D6DF}' |
-    '\u{1D6E0}' .. '\u{1D6E1}' |
-    '\u{1D6FC}' .. '\u{1D6FF}' |
-    '\u{1D700}' .. '\u{1D70F}' |
-    '\u{1D710}' .. '\u{1D71B}' |
-    '\u{1D736}' .. '\u{1D73F}' |
-    '\u{1D740}' .. '\u{1D74E}' |
-    '\u{1D750}' .. '\u{1D755}' |
-    '\u{1D770}' .. '\u{1D77F}' |
-    '\u{1D780}' .. '\u{1D78F}' |
-    '\u{1D7AA}' .. '\u{1D7AF}' |
-    '\u{1D7B0}' .. '\u{1D7BF}' |
-    '\u{1D7C0}' .. '\u{1D7CB}' |
-    '\u{1E922}' .. '\u{1E92F}' |
-    '\u{1E930}' .. '\u{1E93F}' |
-    '\u{1E940}' .. '\u{1E943}'
+    'ℊ' .. 'ℏ' |
+    'ℓ' .. 'ℓ' |
+    'ℯ' .. 'ℯ' |
+    'ℴ' .. 'ℽ' |
+    'ⅆ' .. 'ⅎ' |
+    'ↄ' .. 'ↄ' |
+    '𐐨' .. '𐐯' |
+    '𐐰' .. '𐐿' |
+    '𐑀' .. '𐑏' |
+    'a' .. 'o' |
+    'p' .. 'z' |
+    'µ' .. 'µ' |
+    'ß' .. 'ß' |
+    'à' .. 'ï' |
+    'ð' .. 'ÿ' |
+    'ā' .. 'ď' |
+    'đ' .. 'ğ' |
+    'ġ' .. 'į' |
+    'ı' .. 'ľ' |
+    'ŀ' .. 'ŏ' |
+    'ő' .. 'ş' |
+    'š' .. 'ů' |
+    'ű' .. 'ſ' |
+    'ƀ' .. 'ƍ' |
+    'ƒ' .. 'ƞ' |
+    'ơ' .. 'ƭ' |
+    'ư' .. 'ƿ' |
+    'ǆ' .. 'ǎ' |
+    'ǐ' .. 'ǟ' |
+    'ǡ' .. 'ǯ' |
+    'ǰ' .. 'ǿ' |
+    'ȁ' .. 'ȏ' |
+    'ȑ' .. 'ȟ' |
+    'ȡ' .. 'ȯ' |
+    'ȱ' .. 'ȿ' |
+    'ɀ' .. 'ɏ' |
+    'ɐ' .. 'ɟ' |
+    'ɠ' .. 'ɯ' |
+    'ɰ' .. 'ɿ' |
+    'ʀ' .. 'ʏ' |
+    'ʐ' .. 'ʟ' |
+    'ʠ' .. 'ʯ' |
+    'ͱ' .. 'ͽ' |
+    'ΐ' .. 'ΐ' |
+    'ά' .. 'ί' |
+    'ΰ' .. 'ο' |
+    'π' .. 'ώ' |
+    'ϐ' .. 'ϟ' |
+    'ϡ' .. 'ϯ' |
+    'ϰ' .. 'ϼ' |
+    'а' .. 'п' |
+    'р' .. 'я' |
+    'ѐ' .. 'џ' |
+    'ѡ' .. 'ѯ' |
+    'ѱ' .. 'ѿ' |
+    'ҁ' .. 'ҏ' |
+    'ґ' .. 'ҟ' |
+    'ҡ' .. 'ү' |
+    'ұ' .. 'ҿ' |
+    'ӂ' .. 'ӏ' |
+    'ӑ' .. 'ӟ' |
+    'ӡ' .. 'ӯ' |
+    'ӱ' .. 'ӿ' |
+    'ԁ' .. 'ԏ' |
+    'ԑ' .. 'ԟ' |
+    'ԡ' .. 'ԯ' |
+    'ՠ' .. 'կ' |
+    'հ' .. 'տ' |
+    'ր' .. 'ֈ' |
+    'ა' .. 'ჟ' |
+    'რ' .. 'ჯ' |
+    'ჰ' .. 'ჿ' |
+    'ᏸ' .. 'ᏽ' |
+    'ᲀ' .. 'ᲈ' |
+    'ᴀ' .. 'ᴏ' |
+    'ᴐ' .. 'ᴟ' |
+    'ᴠ' .. 'ᴫ' |
+    'ᵫ' .. 'ᵯ' |
+    'ᵰ' .. 'ᵿ' |
+    'ᶀ' .. 'ᶏ' |
+    'ᶐ' .. 'ᶚ' |
+    'ḁ' .. 'ḏ' |
+    'ḑ' .. 'ḟ' |
+    'ḡ' .. 'ḯ' |
+    'ḱ' .. 'ḿ' |
+    'ṁ' .. 'ṏ' |
+    'ṑ' .. 'ṟ' |
+    'ṡ' .. 'ṯ' |
+    'ṱ' .. 'ṿ' |
+    'ẁ' .. 'ẏ' |
+    'ẑ' .. 'ẟ' |
+    'ạ' .. 'ắ' |
+    'ằ' .. 'ế' |
+    'ề' .. 'ỏ' |
+    'ố' .. 'ở' |
+    'ỡ' .. 'ữ' |
+    'ự' .. 'ỿ' |
+    'ἀ' .. 'ἇ' |
+    'ἐ' .. 'ἕ' |
+    'ἠ' .. 'ἧ' |
+    'ἰ' .. 'ἷ' |
+    'ὀ' .. 'ὅ' |
+    'ὐ' .. 'ὗ' |
+    'ὠ' .. 'ὧ' |
+    'ὰ' .. 'ώ' |
+    'ᾀ' .. 'ᾇ' |
+    'ᾐ' .. 'ᾗ' |
+    'ᾠ' .. 'ᾧ' |
+    'ᾰ' .. 'ι' |
+    'ῂ' .. 'ῇ' |
+    'ῐ' .. 'ῗ' |
+    'ῠ' .. 'ῧ' |
+    'ῲ' .. 'ῷ' |
+    'ⰰ' .. 'ⰿ' |
+    'ⱀ' .. 'ⱏ' |
+    'ⱐ' .. 'ⱞ' |
+    'ⱡ' .. 'ⱬ' |
+    'ⱱ' .. 'ⱻ' |
+    'ⲁ' .. 'ⲏ' |
+    'ⲑ' .. 'ⲟ' |
+    'ⲡ' .. 'ⲯ' |
+    'ⲱ' .. 'ⲿ' |
+    'ⳁ' .. 'ⳏ' |
+    'ⳑ' .. 'ⳟ' |
+    'ⳡ' .. 'ⳮ' |
+    'ⳳ' .. 'ⳳ' |
+    'ⴀ' .. 'ⴏ' |
+    'ⴐ' .. 'ⴟ' |
+    'ⴠ' .. 'ⴭ' |
+    'ꙁ' .. 'ꙏ' |
+    'ꙑ' .. 'ꙟ' |
+    'ꙡ' .. 'ꙭ' |
+    'ꚁ' .. 'ꚏ' |
+    'ꚑ' .. 'ꚛ' |
+    'ꜣ' .. 'ꜯ' |
+    'ꜰ' .. 'ꜿ' |
+    'ꝁ' .. 'ꝏ' |
+    'ꝑ' .. 'ꝟ' |
+    'ꝡ' .. 'ꝯ' |
+    'ꝱ' .. 'ꝿ' |
+    'ꞁ' .. 'ꞎ' |
+    'ꞑ' .. 'ꞟ' |
+    'ꞡ' .. 'ꞯ' |
+    'ꞵ' .. 'ꞹ' |
+    'ꟺ' .. 'ꟺ' |
+    'ꬰ' .. 'ꬿ' |
+    'ꭀ' .. 'ꭏ' |
+    'ꭐ' .. 'ꭚ' |
+    'ꭠ' .. 'ꭥ' |
+    'ꭰ' .. 'ꭿ' |
+    'ꮀ' .. 'ꮏ' |
+    'ꮐ' .. 'ꮟ' |
+    'ꮠ' .. 'ꮯ' |
+    'ꮰ' .. 'ꮿ' |
+    'ﬀ' .. 'ﬆ' |
+    'ﬓ' .. 'ﬗ' |
+    'ａ' .. 'ｏ' |
+    'ｐ' .. 'ｚ' |
+    '𐓘' .. '𐓟' |
+    '𐓠' .. '𐓯' |
+    '𐓰' .. '𐓻' |
+    '𐳀' .. '𐳏' |
+    '𐳐' .. '𐳟' |
+    '𐳠' .. '𐳯' |
+    '𐳰' .. '𐳲' |
+    '𑣀' .. '𑣏' |
+    '𑣐' .. '𑣟' |
+    '𖹠' .. '𖹯' |
+    '𖹰' .. '𖹿' |
+    '𝐚' .. '𝐟' |
+    '𝐠' .. '𝐯' |
+    '𝐰' .. '𝐳' |
+    '𝑎' .. '𝑏' |
+    '𝑐' .. '𝑟' |
+    '𝑠' .. '𝑧' |
+    '𝒂' .. '𝒏' |
+    '𝒐' .. '𝒛' |
+    '𝒶' .. '𝒿' |
+    '𝓀' .. '𝓏' |
+    '𝓪' .. '𝓯' |
+    '𝓰' .. '𝓿' |
+    '𝔀' .. '𝔃' |
+    '𝔞' .. '𝔟' |
+    '𝔠' .. '𝔯' |
+    '𝔰' .. '𝔷' |
+    '𝕒' .. '𝕟' |
+    '𝕠' .. '𝕫' |
+    '𝖆' .. '𝖏' |
+    '𝖐' .. '𝖟' |
+    '𝖺' .. '𝖿' |
+    '𝗀' .. '𝗏' |
+    '𝗐' .. '𝗓' |
+    '𝗮' .. '𝗯' |
+    '𝗰' .. '𝗿' |
+    '𝘀' .. '𝘇' |
+    '𝘢' .. '𝘯' |
+    '𝘰' .. '𝘻' |
+    '𝙖' .. '𝙟' |
+    '𝙠' .. '𝙯' |
+    '𝚊' .. '𝚏' |
+    '𝚐' .. '𝚟' |
+    '𝚠' .. '𝚥' |
+    '𝛂' .. '𝛏' |
+    '𝛐' .. '𝛟' |
+    '𝛠' .. '𝛡' |
+    '𝛼' .. '𝛿' |
+    '𝜀' .. '𝜏' |
+    '𝜐' .. '𝜛' |
+    '𝜶' .. '𝜿' |
+    '𝝀' .. '𝝎' |
+    '𝝐' .. '𝝕' |
+    '𝝰' .. '𝝿' |
+    '𝞀' .. '𝞏' |
+    '𝞪' .. '𝞯' |
+    '𝞰' .. '𝞿' |
+    '𝟀' .. '𝟋' |
+    '𞤢' .. '𞤯' |
+    '𞤰' .. '𞤿' |
+    '𞥀' .. '𞥃'
 }
 Mn = {
-    '\u{102D}' .. '\u{102F}' |
-    '\u{1030}' .. '\u{103E}' |
-    '\u{1058}' .. '\u{105F}' |
-    '\u{1060}' .. '\u{1060}' |
-    '\u{1071}' .. '\u{1074}' |
-    '\u{1082}' .. '\u{108D}' |
-    '\u{109D}' .. '\u{109D}' |
-    '\u{135D}' .. '\u{135F}' |
-    '\u{1712}' .. '\u{1714}' |
-    '\u{1732}' .. '\u{1734}' |
-    '\u{1752}' .. '\u{1753}' |
-    '\u{1772}' .. '\u{1773}' |
-    '\u{180B}' .. '\u{180D}' |
-    '\u{1885}' .. '\u{1886}' |
-    '\u{1920}' .. '\u{1928}' |
-    '\u{1932}' .. '\u{193B}' |
-    '\u{302A}' .. '\u{302D}' |
-    '\u{3099}' .. '\u{309A}' |
-    '\u{10376}' .. '\u{1037A}' |
-    '\u{11001}' .. '\u{11001}' |
-    '\u{11038}' .. '\u{1103F}' |
-    '\u{11040}' .. '\u{11046}' |
-    '\u{1107F}' .. '\u{1107F}' |
-    '\u{11080}' .. '\u{11081}' |
-    '\u{11100}' .. '\u{11102}' |
-    '\u{11127}' .. '\u{1112F}' |
-    '\u{11130}' .. '\u{11134}' |
-    '\u{11173}' .. '\u{11173}' |
-    '\u{11180}' .. '\u{11181}' |
-    '\u{1122F}' .. '\u{1122F}' |
-    '\u{11230}' .. '\u{1123E}' |
-    '\u{11300}' .. '\u{11301}' |
-    '\u{1133B}' .. '\u{1133C}' |
-    '\u{11340}' .. '\u{11340}' |
-    '\u{11366}' .. '\u{1136C}' |
-    '\u{11370}' .. '\u{11374}' |
-    '\u{11438}' .. '\u{1143F}' |
-    '\u{11442}' .. '\u{11446}' |
-    '\u{1145E}' .. '\u{1145E}' |
-    '\u{11633}' .. '\u{1163F}' |
-    '\u{11640}' .. '\u{11640}' |
-    '\u{1171D}' .. '\u{1171F}' |
-    '\u{11722}' .. '\u{1172B}' |
-    '\u{1182F}' .. '\u{1182F}' |
-    '\u{11830}' .. '\u{1183A}' |
-    '\u{0300}' .. '\u{030F}' |
-    '\u{0310}' .. '\u{031F}' |
-    '\u{0320}' .. '\u{032F}' |
-    '\u{0330}' .. '\u{033F}' |
-    '\u{0340}' .. '\u{034F}' |
-    '\u{0350}' .. '\u{035F}' |
-    '\u{0360}' .. '\u{036F}' |
-    '\u{0483}' .. '\u{0487}' |
-    '\u{0591}' .. '\u{059F}' |
-    '\u{05A0}' .. '\u{05AF}' |
-    '\u{05B0}' .. '\u{05BF}' |
-    '\u{05C1}' .. '\u{05C7}' |
-    '\u{0610}' .. '\u{061A}' |
-    '\u{064B}' .. '\u{064F}' |
-    '\u{0650}' .. '\u{065F}' |
-    '\u{0670}' .. '\u{0670}' |
-    '\u{06D6}' .. '\u{06DF}' |
-    '\u{06E0}' .. '\u{06ED}' |
-    '\u{0711}' .. '\u{0711}' |
-    '\u{0730}' .. '\u{073F}' |
-    '\u{0740}' .. '\u{074A}' |
-    '\u{07A6}' .. '\u{07AF}' |
-    '\u{07B0}' .. '\u{07B0}' |
-    '\u{07EB}' .. '\u{07EF}' |
-    '\u{07F0}' .. '\u{07FD}' |
-    '\u{0816}' .. '\u{081F}' |
-    '\u{0820}' .. '\u{082D}' |
-    '\u{0859}' .. '\u{085B}' |
-    '\u{08D3}' .. '\u{08DF}' |
-    '\u{08E0}' .. '\u{08EF}' |
-    '\u{08F0}' .. '\u{08FF}' |
-    '\u{0900}' .. '\u{0902}' |
-    '\u{093A}' .. '\u{093C}' |
-    '\u{0941}' .. '\u{094D}' |
-    '\u{0951}' .. '\u{0957}' |
-    '\u{0962}' .. '\u{0963}' |
-    '\u{0981}' .. '\u{0981}' |
-    '\u{09BC}' .. '\u{09BC}' |
-    '\u{09C1}' .. '\u{09CD}' |
-    '\u{09E2}' .. '\u{09E3}' |
-    '\u{09FE}' .. '\u{09FE}' |
-    '\u{0A01}' .. '\u{0A02}' |
-    '\u{0A3C}' .. '\u{0A3C}' |
-    '\u{0A41}' .. '\u{0A4D}' |
-    '\u{0A51}' .. '\u{0A51}' |
-    '\u{0A70}' .. '\u{0A75}' |
-    '\u{0A81}' .. '\u{0A82}' |
-    '\u{0ABC}' .. '\u{0ABC}' |
-    '\u{0AC1}' .. '\u{0ACD}' |
-    '\u{0AE2}' .. '\u{0AE3}' |
-    '\u{0AFA}' .. '\u{0AFF}' |
-    '\u{0B01}' .. '\u{0B01}' |
-    '\u{0B3C}' .. '\u{0B3F}' |
-    '\u{0B41}' .. '\u{0B4D}' |
-    '\u{0B56}' .. '\u{0B56}' |
-    '\u{0B62}' .. '\u{0B63}' |
-    '\u{0B82}' .. '\u{0B82}' |
-    '\u{0BC0}' .. '\u{0BCD}' |
-    '\u{0C00}' .. '\u{0C04}' |
-    '\u{0C3E}' .. '\u{0C3F}' |
-    '\u{0C40}' .. '\u{0C4D}' |
-    '\u{0C55}' .. '\u{0C56}' |
-    '\u{0C62}' .. '\u{0C63}' |
-    '\u{0C81}' .. '\u{0C81}' |
-    '\u{0CBC}' .. '\u{0CBF}' |
-    '\u{0CC6}' .. '\u{0CCD}' |
-    '\u{0CE2}' .. '\u{0CE3}' |
-    '\u{0D00}' .. '\u{0D01}' |
-    '\u{0D3B}' .. '\u{0D3C}' |
-    '\u{0D41}' .. '\u{0D4D}' |
-    '\u{0D62}' .. '\u{0D63}' |
-    '\u{0DCA}' .. '\u{0DCA}' |
-    '\u{0DD2}' .. '\u{0DD6}' |
-    '\u{0E31}' .. '\u{0E3A}' |
-    '\u{0E47}' .. '\u{0E4E}' |
-    '\u{0EB1}' .. '\u{0EBC}' |
-    '\u{0EC8}' .. '\u{0ECD}' |
-    '\u{0F18}' .. '\u{0F19}' |
-    '\u{0F35}' .. '\u{0F39}' |
-    '\u{0F71}' .. '\u{0F7E}' |
-    '\u{0F80}' .. '\u{0F8F}' |
-    '\u{0F90}' .. '\u{0F9F}' |
-    '\u{0FA0}' .. '\u{0FAF}' |
-    '\u{0FB0}' .. '\u{0FBC}' |
-    '\u{0FC6}' .. '\u{0FC6}' |
-    '\u{17B4}' .. '\u{17BD}' |
-    '\u{17C6}' .. '\u{17CF}' |
-    '\u{17D0}' .. '\u{17DD}' |
-    '\u{18A9}' .. '\u{18A9}' |
-    '\u{1A17}' .. '\u{1A1B}' |
-    '\u{1A56}' .. '\u{1A5E}' |
-    '\u{1A60}' .. '\u{1A6C}' |
-    '\u{1A73}' .. '\u{1A7F}' |
-    '\u{1AB0}' .. '\u{1ABD}' |
-    '\u{1B00}' .. '\u{1B03}' |
-    '\u{1B34}' .. '\u{1B3C}' |
-    '\u{1B42}' .. '\u{1B42}' |
-    '\u{1B6B}' .. '\u{1B6F}' |
-    '\u{1B70}' .. '\u{1B73}' |
-    '\u{1B80}' .. '\u{1B81}' |
-    '\u{1BA2}' .. '\u{1BAD}' |
-    '\u{1BE6}' .. '\u{1BEF}' |
-    '\u{1BF0}' .. '\u{1BF1}' |
-    '\u{1C2C}' .. '\u{1C2F}' |
-    '\u{1C30}' .. '\u{1C37}' |
-    '\u{1CD0}' .. '\u{1CDF}' |
-    '\u{1CE0}' .. '\u{1CED}' |
-    '\u{1CF4}' .. '\u{1CF9}' |
-    '\u{1DC0}' .. '\u{1DCF}' |
-    '\u{1DD0}' .. '\u{1DDF}' |
-    '\u{1DE0}' .. '\u{1DEF}' |
-    '\u{1DF0}' .. '\u{1DFF}' |
-    '\u{20D0}' .. '\u{20DC}' |
-    '\u{20E1}' .. '\u{20EF}' |
-    '\u{20F0}' .. '\u{20F0}' |
-    '\u{2CEF}' .. '\u{2CEF}' |
-    '\u{2CF0}' .. '\u{2CF1}' |
-    '\u{2D7F}' .. '\u{2D7F}' |
-    '\u{2DE0}' .. '\u{2DEF}' |
-    '\u{2DF0}' .. '\u{2DFF}' |
-    '\u{A66F}' .. '\u{A66F}' |
-    '\u{A674}' .. '\u{A67D}' |
-    '\u{A69E}' .. '\u{A69F}' |
-    '\u{A6F0}' .. '\u{A6F1}' |
-    '\u{A802}' .. '\u{A80B}' |
-    '\u{A825}' .. '\u{A826}' |
-    '\u{A8C4}' .. '\u{A8C5}' |
-    '\u{A8E0}' .. '\u{A8EF}' |
-    '\u{A8F0}' .. '\u{A8FF}' |
-    '\u{A926}' .. '\u{A92D}' |
-    '\u{A947}' .. '\u{A94F}' |
-    '\u{A950}' .. '\u{A951}' |
-    '\u{A980}' .. '\u{A982}' |
-    '\u{A9B3}' .. '\u{A9BC}' |
-    '\u{A9E5}' .. '\u{A9E5}' |
-    '\u{AA29}' .. '\u{AA2E}' |
-    '\u{AA31}' .. '\u{AA36}' |
-    '\u{AA43}' .. '\u{AA4C}' |
-    '\u{AA7C}' .. '\u{AA7C}' |
-    '\u{AAB0}' .. '\u{AABF}' |
-    '\u{AAC1}' .. '\u{AAC1}' |
-    '\u{AAEC}' .. '\u{AAED}' |
-    '\u{AAF6}' .. '\u{AAF6}' |
-    '\u{ABE5}' .. '\u{ABED}' |
-    '\u{FB1E}' .. '\u{FB1E}' |
-    '\u{FE00}' .. '\u{FE0F}' |
-    '\u{FE20}' .. '\u{FE2F}' |
-    '\u{101FD}' .. '\u{101FD}' |
-    '\u{102E0}' .. '\u{102E0}' |
-    '\u{10A01}' .. '\u{10A0F}' |
-    '\u{10A38}' .. '\u{10A3F}' |
-    '\u{10AE5}' .. '\u{10AE6}' |
-    '\u{10D24}' .. '\u{10D27}' |
-    '\u{10F46}' .. '\u{10F4F}' |
-    '\u{10F50}' .. '\u{10F50}' |
-    '\u{110B3}' .. '\u{110BA}' |
-    '\u{111B6}' .. '\u{111BE}' |
-    '\u{111C9}' .. '\u{111CC}' |
-    '\u{112DF}' .. '\u{112DF}' |
-    '\u{112E3}' .. '\u{112EA}' |
-    '\u{114B3}' .. '\u{114BF}' |
-    '\u{114C0}' .. '\u{114C3}' |
-    '\u{115B2}' .. '\u{115BF}' |
-    '\u{115C0}' .. '\u{115C0}' |
-    '\u{115DC}' .. '\u{115DD}' |
-    '\u{116AB}' .. '\u{116AD}' |
-    '\u{116B0}' .. '\u{116B7}' |
-    '\u{11A01}' .. '\u{11A0A}' |
-    '\u{11A33}' .. '\u{11A3E}' |
-    '\u{11A47}' .. '\u{11A47}' |
-    '\u{11A51}' .. '\u{11A5B}' |
-    '\u{11A8A}' .. '\u{11A8F}' |
-    '\u{11A90}' .. '\u{11A99}' |
-    '\u{11C30}' .. '\u{11C3F}' |
-    '\u{11C92}' .. '\u{11C9F}' |
-    '\u{11CA0}' .. '\u{11CAF}' |
-    '\u{11CB0}' .. '\u{11CB6}' |
-    '\u{11D31}' .. '\u{11D3F}' |
-    '\u{11D40}' .. '\u{11D47}' |
-    '\u{11D90}' .. '\u{11D97}' |
-    '\u{11EF3}' .. '\u{11EF4}' |
-    '\u{16AF0}' .. '\u{16AF4}' |
-    '\u{16B30}' .. '\u{16B36}' |
-    '\u{16F8F}' .. '\u{16F8F}' |
-    '\u{16F90}' .. '\u{16F92}' |
-    '\u{1BC9D}' .. '\u{1BC9E}' |
-    '\u{1D167}' .. '\u{1D169}' |
-    '\u{1D17B}' .. '\u{1D17F}' |
-    '\u{1D180}' .. '\u{1D18B}' |
-    '\u{1D1AA}' .. '\u{1D1AD}' |
-    '\u{1D242}' .. '\u{1D244}' |
-    '\u{1DA00}' .. '\u{1DA0F}' |
-    '\u{1DA10}' .. '\u{1DA1F}' |
-    '\u{1DA20}' .. '\u{1DA2F}' |
-    '\u{1DA30}' .. '\u{1DA3F}' |
-    '\u{1DA40}' .. '\u{1DA4F}' |
-    '\u{1DA50}' .. '\u{1DA5F}' |
-    '\u{1DA60}' .. '\u{1DA6C}' |
-    '\u{1DA75}' .. '\u{1DA75}' |
-    '\u{1DA84}' .. '\u{1DA84}' |
-    '\u{1DA9B}' .. '\u{1DA9F}' |
-    '\u{1DAA1}' .. '\u{1DAAF}' |
-    '\u{1E000}' .. '\u{1E00F}' |
-    '\u{1E010}' .. '\u{1E01F}' |
-    '\u{1E020}' .. '\u{1E02A}' |
-    '\u{1E8D0}' .. '\u{1E8D6}' |
-    '\u{1E944}' .. '\u{1E94A}' |
-    '\u{E0100}' .. '\u{E010F}' |
-    '\u{E0110}' .. '\u{E011F}' |
-    '\u{E0120}' .. '\u{E012F}' |
-    '\u{E0130}' .. '\u{E013F}' |
-    '\u{E0140}' .. '\u{E014F}' |
-    '\u{E0150}' .. '\u{E015F}' |
-    '\u{E0160}' .. '\u{E016F}' |
-    '\u{E0170}' .. '\u{E017F}' |
-    '\u{E0180}' .. '\u{E018F}' |
-    '\u{E0190}' .. '\u{E019F}' |
-    '\u{E01A0}' .. '\u{E01AF}' |
-    '\u{E01B0}' .. '\u{E01BF}' |
-    '\u{E01C0}' .. '\u{E01CF}' |
-    '\u{E01D0}' .. '\u{E01DF}' |
-    '\u{E01E0}' .. '\u{E01EF}'
+    'ိ' .. 'ု' |
+    'ူ' .. 'ှ' |
+    'ၘ' .. 'ၟ' |
+    'ၠ' .. 'ၠ' |
+    'ၱ' .. 'ၴ' |
+    'ႂ' .. 'ႍ' |
+    'ႝ' .. 'ႝ' |
+    '፝' .. '፟' |
+    'ᜒ' .. '᜔' |
+    'ᜲ' .. '᜴' |
+    'ᝒ' .. 'ᝓ' |
+    'ᝲ' .. 'ᝳ' |
+    '᠋' .. '᠍' |
+    'ᢅ' .. 'ᢆ' |
+    'ᤠ' .. 'ᤨ' |
+    'ᤲ' .. '᤻' |
+    '〪' .. '〭' |
+    '゙' .. '゚' |
+    '𐍶' .. '𐍺' |
+    '𑀁' .. '𑀁' |
+    '𑀸' .. '𑀿' |
+    '𑁀' .. '𑁆' |
+    '𑁿' .. '𑁿' |
+    '𑂀' .. '𑂁' |
+    '𑄀' .. '𑄂' |
+    '𑄧' .. '𑄯' |
+    '𑄰' .. '𑄴' |
+    '𑅳' .. '𑅳' |
+    '𑆀' .. '𑆁' |
+    '𑈯' .. '𑈯' |
+    '𑈰' .. '𑈾' |
+    '𑌀' .. '𑌁' |
+    '𑌻' .. '𑌼' |
+    '𑍀' .. '𑍀' |
+    '𑍦' .. '𑍬' |
+    '𑍰' .. '𑍴' |
+    '𑐸' .. '𑐿' |
+    '𑑂' .. '𑑆' |
+    '𑑞' .. '𑑞' |
+    '𑘳' .. '𑘿' |
+    '𑙀' .. '𑙀' |
+    '𑜝' .. '𑜟' |
+    '𑜢' .. '𑜫' |
+    '𑠯' .. '𑠯' |
+    '𑠰' .. '𑠺' |
+    '̀' .. '̏' |
+    '̐' .. '̟' |
+    '̠' .. '̯' |
+    '̰' .. '̿' |
+    '̀' .. '͏' |
+    '͐' .. '͟' |
+    '͠' .. 'ͯ' |
+    '҃' .. '҇' |
+    '֑' .. '֟' |
+    '֠' .. '֯' |
+    'ְ' .. 'ֿ' |
+    'ׁ' .. 'ׇ' |
+    'ؐ' .. 'ؚ' |
+    'ً' .. 'ُ' |
+    'ِ' .. 'ٟ' |
+    'ٰ' .. 'ٰ' |
+    'ۖ' .. '۟' |
+    '۠' .. 'ۭ' |
+    'ܑ' .. 'ܑ' |
+    'ܰ' .. 'ܿ' |
+    '݀' .. '݊' |
+    'ަ' .. 'ޯ' |
+    'ް' .. 'ް' |
+    '߫' .. '߯' |
+    '߰' .. '߽' |
+    'ࠖ' .. 'ࠟ' |
+    'ࠠ' .. '࠭' |
+    '࡙' .. '࡛' |
+    '࣓' .. 'ࣟ' |
+    '࣠' .. '࣯' |
+    'ࣰ' .. 'ࣿ' |
+    'ऀ' .. 'ं' |
+    'ऺ' .. '़' |
+    'ु' .. '्' |
+    '॑' .. 'ॗ' |
+    'ॢ' .. 'ॣ' |
+    'ঁ' .. 'ঁ' |
+    '়' .. '়' |
+    'ু' .. '্' |
+    'ৢ' .. 'ৣ' |
+    '৾' .. '৾' |
+    'ਁ' .. 'ਂ' |
+    '਼' .. '਼' |
+    'ੁ' .. '੍' |
+    'ੑ' .. 'ੑ' |
+    'ੰ' .. 'ੵ' |
+    'ઁ' .. 'ં' |
+    '઼' .. '઼' |
+    'ુ' .. '્' |
+    'ૢ' .. 'ૣ' |
+    'ૺ' .. '૿' |
+    'ଁ' .. 'ଁ' |
+    '଼' .. 'ି' |
+    'ୁ' .. '୍' |
+    'ୖ' .. 'ୖ' |
+    'ୢ' .. 'ୣ' |
+    'ஂ' .. 'ஂ' |
+    'ீ' .. '்' |
+    'ఀ' .. 'ఄ' |
+    'ా' .. 'ి' |
+    'ీ' .. '్' |
+    'ౕ' .. 'ౖ' |
+    'ౢ' .. 'ౣ' |
+    'ಁ' .. 'ಁ' |
+    '಼' .. 'ಿ' |
+    'ೆ' .. '್' |
+    'ೢ' .. 'ೣ' |
+    'ഀ' .. 'ഁ' |
+    '഻' .. '഼' |
+    'ു' .. '്' |
+    'ൢ' .. 'ൣ' |
+    '්' .. '්' |
+    'ි' .. 'ූ' |
+    'ั' .. 'ฺ' |
+    '็' .. '๎' |
+    'ັ' .. 'ຼ' |
+    '່' .. 'ໍ' |
+    '༘' .. '༙' |
+    '༵' .. '༹' |
+    'ཱ' .. 'ཾ' |
+    'ྀ' .. 'ྏ' |
+    'ྐ' .. 'ྟ' |
+    'ྠ' .. 'ྯ' |
+    'ྰ' .. 'ྼ' |
+    '࿆' .. '࿆' |
+    '឴' .. 'ួ' |
+    'ំ' .. '៏' |
+    '័' .. '៝' |
+    'ᢩ' .. 'ᢩ' |
+    'ᨗ' .. 'ᨛ' |
+    'ᩖ' .. 'ᩞ' |
+    '᩠' .. 'ᩬ' |
+    'ᩳ' .. '᩿' |
+    '᪰' .. '᪽' |
+    'ᬀ' .. 'ᬃ' |
+    '᬴' .. 'ᬼ' |
+    'ᭂ' .. 'ᭂ' |
+    '᭫' .. '᭯' |
+    '᭰' .. '᭳' |
+    'ᮀ' .. 'ᮁ' |
+    'ᮢ' .. 'ᮭ' |
+    '᯦' .. 'ᯯ' |
+    'ᯰ' .. 'ᯱ' |
+    'ᰬ' .. 'ᰯ' |
+    'ᰰ' .. '᰷' |
+    '᳐' .. '᳟' |
+    '᳠' .. '᳭' |
+    '᳴' .. '᳹' |
+    '᷀' .. '᷏' |
+    '᷐' .. 'ᷟ' |
+    'ᷠ' .. 'ᷯ' |
+    'ᷰ' .. '᷿' |
+    '⃐' .. '⃜' |
+    '⃡' .. '⃯' |
+    '⃰' .. '⃰' |
+    '⳯' .. '⳯' |
+    '⳰' .. '⳱' |
+    '⵿' .. '⵿' |
+    'ⷠ' .. 'ⷯ' |
+    'ⷰ' .. 'ⷿ' |
+    '꙯' .. '꙯' |
+    'ꙴ' .. '꙽' |
+    'ꚞ' .. 'ꚟ' |
+    '꛰' .. '꛱' |
+    'ꠂ' .. 'ꠋ' |
+    'ꠥ' .. 'ꠦ' |
+    '꣄' .. 'ꣅ' |
+    '꣠' .. '꣯' |
+    '꣰' .. 'ꣿ' |
+    'ꤦ' .. '꤭' |
+    'ꥇ' .. 'ꥏ' |
+    'ꥐ' .. 'ꥑ' |
+    'ꦀ' .. 'ꦂ' |
+    '꦳' .. 'ꦼ' |
+    'ꧥ' .. 'ꧥ' |
+    'ꨩ' .. 'ꨮ' |
+    'ꨱ' .. 'ꨶ' |
+    'ꩃ' .. 'ꩌ' |
+    'ꩼ' .. 'ꩼ' |
+    'ꪰ' .. '꪿' |
+    '꫁' .. '꫁' |
+    'ꫬ' .. 'ꫭ' |
+    '꫶' .. '꫶' |
+    'ꯥ' .. '꯭' |
+    'ﬞ' .. 'ﬞ' |
+    '︀' .. '️' |
+    '︠' .. '︯' |
+    '𐇽' .. '𐇽' |
+    '𐋠' .. '𐋠' |
+    '𐨁' .. '𐨏' |
+    '𐨸' .. '𐨿' |
+    '𐫥' .. '𐫦' |
+    '𐴤' .. '𐴧' |
+    '𐽆' .. '𐽏' |
+    '𐽐' .. '𐽐' |
+    '𑂳' .. '𑂺' |
+    '𑆶' .. '𑆾' |
+    '𑇉' .. '𑇌' |
+    '𑋟' .. '𑋟' |
+    '𑋣' .. '𑋪' |
+    '𑒳' .. '𑒿' |
+    '𑓀' .. '𑓃' |
+    '𑖲' .. '𑖿' |
+    '𑗀' .. '𑗀' |
+    '𑗜' .. '𑗝' |
+    '𑚫' .. '𑚭' |
+    '𑚰' .. '𑚷' |
+    '𑨁' .. '𑨊' |
+    '𑨳' .. '𑨾' |
+    '𑩇' .. '𑩇' |
+    '𑩑' .. '𑩛' |
+    '𑪊' .. '𑪏' |
+    '𑪐' .. '𑪙' |
+    '𑰰' .. '𑰿' |
+    '𑲒' .. '𑲟' |
+    '𑲠' .. '𑲯' |
+    '𑲰' .. '𑲶' |
+    '𑴱' .. '𑴿' |
+    '𑵀' .. '𑵇' |
+    '𑶐' .. '𑶗' |
+    '𑻳' .. '𑻴' |
+    '𖫰' .. '𖫴' |
+    '𖬰' .. '𖬶' |
+    '𖾏' .. '𖾏' |
+    '𖾐' .. '𖾒' |
+    '𛲝' .. '𛲞' |
+    '𝅧' .. '𝅩' |
+    '𝅻' .. '𝅿' |
+    '𝆀' .. '𝆋' |
+    '𝆪' .. '𝆭' |
+    '𝉂' .. '𝉄' |
+    '𝨀' .. '𝨏' |
+    '𝨐' .. '𝨟' |
+    '𝨠' .. '𝨯' |
+    '𝨰' .. '𝨿' |
+    '𝩀' .. '𝩏' |
+    '𝩐' .. '𝩟' |
+    '𝩠' .. '𝩬' |
+    '𝩵' .. '𝩵' |
+    '𝪄' .. '𝪄' |
+    '𝪛' .. '𝪟' |
+    '𝪡' .. '𝪯' |
+    '𞀀' .. '𞀏' |
+    '𞀐' .. '𞀟' |
+    '𞀠' .. '𞀪' |
+    '𞣐' .. '𞣖' |
+    '𞥄' .. '𞥊' |
+    '󠄀' .. '󠄏' |
+    '󠄐' .. '󠄟' |
+    '󠄠' .. '󠄯' |
+    '󠄰' .. '󠄿' |
+    '󠅀' .. '󠅏' |
+    '󠅐' .. '󠅟' |
+    '󠅠' .. '󠅯' |
+    '󠅰' .. '󠅿' |
+    '󠆀' .. '󠆏' |
+    '󠆐' .. '󠆟' |
+    '󠆠' .. '󠆯' |
+    '󠆰' .. '󠆿' |
+    '󠇀' .. '󠇏' |
+    '󠇐' .. '󠇟' |
+    '󠇠' .. '󠇯'
 }
 Mc = {
-    '\u{102B}' .. '\u{102C}' |
-    '\u{1031}' .. '\u{103C}' |
-    '\u{1056}' .. '\u{1057}' |
-    '\u{1062}' .. '\u{106D}' |
-    '\u{1083}' .. '\u{108F}' |
-    '\u{109A}' .. '\u{109C}' |
-    '\u{1923}' .. '\u{192B}' |
-    '\u{1930}' .. '\u{1938}' |
-    '\u{302E}' .. '\u{302F}' |
-    '\u{11000}' .. '\u{11002}' |
-    '\u{11082}' .. '\u{11082}' |
-    '\u{1112C}' .. '\u{1112C}' |
-    '\u{11145}' .. '\u{11146}' |
-    '\u{11182}' .. '\u{11182}' |
-    '\u{1122C}' .. '\u{1122E}' |
-    '\u{11232}' .. '\u{11235}' |
-    '\u{11302}' .. '\u{11303}' |
-    '\u{1133E}' .. '\u{1133F}' |
-    '\u{11341}' .. '\u{1134D}' |
-    '\u{11357}' .. '\u{11357}' |
-    '\u{11362}' .. '\u{11363}' |
-    '\u{11435}' .. '\u{11437}' |
-    '\u{11440}' .. '\u{11445}' |
-    '\u{11630}' .. '\u{1163E}' |
-    '\u{11720}' .. '\u{11726}' |
-    '\u{1182C}' .. '\u{1182E}' |
-    '\u{11838}' .. '\u{11838}' |
-    '\u{0903}' .. '\u{0903}' |
-    '\u{093B}' .. '\u{093F}' |
-    '\u{0940}' .. '\u{094F}' |
-    '\u{0982}' .. '\u{0983}' |
-    '\u{09BE}' .. '\u{09BF}' |
-    '\u{09C0}' .. '\u{09CC}' |
-    '\u{09D7}' .. '\u{09D7}' |
-    '\u{0A03}' .. '\u{0A03}' |
-    '\u{0A3E}' .. '\u{0A3F}' |
-    '\u{0A40}' .. '\u{0A40}' |
-    '\u{0A83}' .. '\u{0A83}' |
-    '\u{0ABE}' .. '\u{0ABF}' |
-    '\u{0AC0}' .. '\u{0ACC}' |
-    '\u{0B02}' .. '\u{0B03}' |
-    '\u{0B3E}' .. '\u{0B3E}' |
-    '\u{0B40}' .. '\u{0B4C}' |
-    '\u{0B57}' .. '\u{0B57}' |
-    '\u{0BBE}' .. '\u{0BBF}' |
-    '\u{0BC1}' .. '\u{0BCC}' |
-    '\u{0BD7}' .. '\u{0BD7}' |
-    '\u{0C01}' .. '\u{0C03}' |
-    '\u{0C41}' .. '\u{0C44}' |
-    '\u{0C82}' .. '\u{0C83}' |
-    '\u{0CBE}' .. '\u{0CBE}' |
-    '\u{0CC0}' .. '\u{0CCB}' |
-    '\u{0CD5}' .. '\u{0CD6}' |
-    '\u{0D02}' .. '\u{0D03}' |
-    '\u{0D3E}' .. '\u{0D3F}' |
-    '\u{0D40}' .. '\u{0D4C}' |
-    '\u{0D57}' .. '\u{0D57}' |
-    '\u{0D82}' .. '\u{0D83}' |
-    '\u{0DCF}' .. '\u{0DCF}' |
-    '\u{0DD0}' .. '\u{0DDF}' |
-    '\u{0DF2}' .. '\u{0DF3}' |
-    '\u{0F3E}' .. '\u{0F3F}' |
-    '\u{0F7F}' .. '\u{0F7F}' |
-    '\u{17B6}' .. '\u{17BF}' |
-    '\u{17C0}' .. '\u{17C8}' |
-    '\u{1A19}' .. '\u{1A1A}' |
-    '\u{1A55}' .. '\u{1A57}' |
-    '\u{1A61}' .. '\u{1A6F}' |
-    '\u{1A70}' .. '\u{1A72}' |
-    '\u{1B04}' .. '\u{1B04}' |
-    '\u{1B35}' .. '\u{1B3F}' |
-    '\u{1B40}' .. '\u{1B44}' |
-    '\u{1B82}' .. '\u{1B82}' |
-    '\u{1BA1}' .. '\u{1BAA}' |
-    '\u{1BE7}' .. '\u{1BEE}' |
-    '\u{1BF2}' .. '\u{1BF3}' |
-    '\u{1C24}' .. '\u{1C2B}' |
-    '\u{1C34}' .. '\u{1C35}' |
-    '\u{1CE1}' .. '\u{1CE1}' |
-    '\u{1CF2}' .. '\u{1CF7}' |
-    '\u{A823}' .. '\u{A827}' |
-    '\u{A880}' .. '\u{A881}' |
-    '\u{A8B4}' .. '\u{A8BF}' |
-    '\u{A8C0}' .. '\u{A8C3}' |
-    '\u{A952}' .. '\u{A953}' |
-    '\u{A983}' .. '\u{A983}' |
-    '\u{A9B4}' .. '\u{A9BF}' |
-    '\u{A9C0}' .. '\u{A9C0}' |
-    '\u{AA2F}' .. '\u{AA2F}' |
-    '\u{AA30}' .. '\u{AA34}' |
-    '\u{AA4D}' .. '\u{AA4D}' |
-    '\u{AA7B}' .. '\u{AA7D}' |
-    '\u{AAEB}' .. '\u{AAEF}' |
-    '\u{AAF5}' .. '\u{AAF5}' |
-    '\u{ABE3}' .. '\u{ABEC}' |
-    '\u{110B0}' .. '\u{110B8}' |
-    '\u{111B3}' .. '\u{111BF}' |
-    '\u{111C0}' .. '\u{111C0}' |
-    '\u{112E0}' .. '\u{112E2}' |
-    '\u{114B0}' .. '\u{114BE}' |
-    '\u{114C1}' .. '\u{114C1}' |
-    '\u{115AF}' .. '\u{115AF}' |
-    '\u{115B0}' .. '\u{115BE}' |
-    '\u{116AC}' .. '\u{116AF}' |
-    '\u{116B6}' .. '\u{116B6}' |
-    '\u{11A39}' .. '\u{11A39}' |
-    '\u{11A57}' .. '\u{11A58}' |
-    '\u{11A97}' .. '\u{11A97}' |
-    '\u{11C2F}' .. '\u{11C2F}' |
-    '\u{11C3E}' .. '\u{11C3E}' |
-    '\u{11CA9}' .. '\u{11CA9}' |
-    '\u{11CB1}' .. '\u{11CB4}' |
-    '\u{11D8A}' .. '\u{11D8E}' |
-    '\u{11D93}' .. '\u{11D96}' |
-    '\u{11EF5}' .. '\u{11EF6}' |
-    '\u{16F51}' .. '\u{16F5F}' |
-    '\u{16F60}' .. '\u{16F6F}' |
-    '\u{16F70}' .. '\u{16F7E}' |
-    '\u{1D165}' .. '\u{1D16F}' |
-    '\u{1D170}' .. '\u{1D172}'
+    'ါ' .. 'ာ' |
+    'ေ' .. 'ြ' |
+    'ၖ' .. 'ၗ' |
+    'ၢ' .. 'ၭ' |
+    'ႃ' .. 'ႏ' |
+    'ႚ' .. 'ႜ' |
+    'ᤣ' .. 'ᤫ' |
+    'ᤰ' .. 'ᤸ' |
+    '〮' .. '〯' |
+    '𑀀' .. '𑀂' |
+    '𑂂' .. '𑂂' |
+    '𑄬' .. '𑄬' |
+    '𑅅' .. '𑅆' |
+    '𑆂' .. '𑆂' |
+    '𑈬' .. '𑈮' |
+    '𑈲' .. '𑈵' |
+    '𑌂' .. '𑌃' |
+    '𑌾' .. '𑌿' |
+    '𑍁' .. '𑍍' |
+    '𑍗' .. '𑍗' |
+    '𑍢' .. '𑍣' |
+    '𑐵' .. '𑐷' |
+    '𑑀' .. '𑑅' |
+    '𑘰' .. '𑘾' |
+    '𑜠' .. '𑜦' |
+    '𑠬' .. '𑠮' |
+    '𑠸' .. '𑠸' |
+    'ः' .. 'ः' |
+    'ऻ' .. 'ि' |
+    'ी' .. 'ॏ' |
+    'ং' .. 'ঃ' |
+    'া' .. 'ি' |
+    'ী' .. 'ৌ' |
+    'ৗ' .. 'ৗ' |
+    'ਃ' .. 'ਃ' |
+    'ਾ' .. 'ਿ' |
+    'ੀ' .. 'ੀ' |
+    'ઃ' .. 'ઃ' |
+    'ા' .. 'િ' |
+    'ી' .. 'ૌ' |
+    'ଂ' .. 'ଃ' |
+    'ା' .. 'ା' |
+    'ୀ' .. 'ୌ' |
+    'ୗ' .. 'ୗ' |
+    'ா' .. 'ி' |
+    'ு' .. 'ௌ' |
+    'ௗ' .. 'ௗ' |
+    'ఁ' .. 'ః' |
+    'ు' .. 'ౄ' |
+    'ಂ' .. 'ಃ' |
+    'ಾ' .. 'ಾ' |
+    'ೀ' .. 'ೋ' |
+    'ೕ' .. 'ೖ' |
+    'ം' .. 'ഃ' |
+    'ാ' .. 'ി' |
+    'ീ' .. 'ൌ' |
+    'ൗ' .. 'ൗ' |
+    'ං' .. 'ඃ' |
+    'ා' .. 'ා' |
+    'ැ' .. 'ෟ' |
+    'ෲ' .. 'ෳ' |
+    '༾' .. '༿' |
+    'ཿ' .. 'ཿ' |
+    'ា' .. 'ឿ' |
+    'ៀ' .. 'ៈ' |
+    'ᨙ' .. 'ᨚ' |
+    'ᩕ' .. 'ᩗ' |
+    'ᩡ' .. 'ᩯ' |
+    'ᩰ' .. 'ᩲ' |
+    'ᬄ' .. 'ᬄ' |
+    'ᬵ' .. 'ᬿ' |
+    'ᭀ' .. '᭄' |
+    'ᮂ' .. 'ᮂ' |
+    'ᮡ' .. '᮪' |
+    'ᯧ' .. 'ᯮ' |
+    '᯲' .. '᯳' |
+    'ᰤ' .. 'ᰫ' |
+    'ᰴ' .. 'ᰵ' |
+    '᳡' .. '᳡' |
+    'ᳲ' .. '᳷' |
+    'ꠣ' .. 'ꠧ' |
+    'ꢀ' .. 'ꢁ' |
+    'ꢴ' .. 'ꢿ' |
+    'ꣀ' .. 'ꣃ' |
+    'ꥒ' .. '꥓' |
+    'ꦃ' .. 'ꦃ' |
+    'ꦴ' .. 'ꦿ' |
+    '꧀' .. '꧀' |
+    'ꨯ' .. 'ꨯ' |
+    'ꨰ' .. 'ꨴ' |
+    'ꩍ' .. 'ꩍ' |
+    'ꩻ' .. 'ꩽ' |
+    'ꫫ' .. 'ꫯ' |
+    'ꫵ' .. 'ꫵ' |
+    'ꯣ' .. '꯬' |
+    '𑂰' .. '𑂸' |
+    '𑆳' .. '𑆿' |
+    '𑇀' .. '𑇀' |
+    '𑋠' .. '𑋢' |
+    '𑒰' .. '𑒾' |
+    '𑓁' .. '𑓁' |
+    '𑖯' .. '𑖯' |
+    '𑖰' .. '𑖾' |
+    '𑚬' .. '𑚯' |
+    '𑚶' .. '𑚶' |
+    '𑨹' .. '𑨹' |
+    '𑩗' .. '𑩘' |
+    '𑪗' .. '𑪗' |
+    '𑰯' .. '𑰯' |
+    '𑰾' .. '𑰾' |
+    '𑲩' .. '𑲩' |
+    '𑲱' .. '𑲴' |
+    '𑶊' .. '𑶎' |
+    '𑶓' .. '𑶖' |
+    '𑻵' .. '𑻶' |
+    '𖽑' .. '𖽟' |
+    '𖽠' .. '𖽯' |
+    '𖽰' .. '𖽾' |
+    '𝅥' .. '𝅯' |
+    '𝅰' .. '𝅲'
 }
 Lu = {
-    '\u{2102}' .. '\u{210D}' |
-    '\u{2110}' .. '\u{211D}' |
-    '\u{2124}' .. '\u{212D}' |
-    '\u{2130}' .. '\u{213F}' |
-    '\u{2145}' .. '\u{2145}' |
-    '\u{2183}' .. '\u{2183}' |
-    '\u{10400}' .. '\u{1040F}' |
-    '\u{10410}' .. '\u{1041F}' |
-    '\u{10420}' .. '\u{10427}' |
-    '\u{0041}' .. '\u{004F}' |
-    '\u{0050}' .. '\u{005A}' |
-    '\u{00C0}' .. '\u{00CF}' |
-    '\u{00D0}' .. '\u{00DE}' |
-    '\u{0100}' .. '\u{010E}' |
-    '\u{0110}' .. '\u{011E}' |
-    '\u{0120}' .. '\u{012E}' |
-    '\u{0130}' .. '\u{013F}' |
-    '\u{0141}' .. '\u{014E}' |
-    '\u{0150}' .. '\u{015E}' |
-    '\u{0160}' .. '\u{016E}' |
-    '\u{0170}' .. '\u{017D}' |
-    '\u{0181}' .. '\u{018F}' |
-    '\u{0190}' .. '\u{019F}' |
-    '\u{01A0}' .. '\u{01AF}' |
-    '\u{01B1}' .. '\u{01BC}' |
-    '\u{01C4}' .. '\u{01CF}' |
-    '\u{01D1}' .. '\u{01DE}' |
-    '\u{01E0}' .. '\u{01EE}' |
-    '\u{01F1}' .. '\u{01FE}' |
-    '\u{0200}' .. '\u{020E}' |
-    '\u{0210}' .. '\u{021E}' |
-    '\u{0220}' .. '\u{022E}' |
-    '\u{0230}' .. '\u{023E}' |
-    '\u{0241}' .. '\u{024E}' |
-    '\u{0370}' .. '\u{037F}' |
-    '\u{0386}' .. '\u{038F}' |
-    '\u{0391}' .. '\u{039F}' |
-    '\u{03A0}' .. '\u{03AB}' |
-    '\u{03CF}' .. '\u{03CF}' |
-    '\u{03D2}' .. '\u{03DE}' |
-    '\u{03E0}' .. '\u{03EE}' |
-    '\u{03F4}' .. '\u{03FF}' |
-    '\u{0400}' .. '\u{040F}' |
-    '\u{0410}' .. '\u{041F}' |
-    '\u{0420}' .. '\u{042F}' |
-    '\u{0460}' .. '\u{046E}' |
-    '\u{0470}' .. '\u{047E}' |
-    '\u{0480}' .. '\u{048E}' |
-    '\u{0490}' .. '\u{049E}' |
-    '\u{04A0}' .. '\u{04AE}' |
-    '\u{04B0}' .. '\u{04BE}' |
-    '\u{04C0}' .. '\u{04CD}' |
-    '\u{04D0}' .. '\u{04DE}' |
-    '\u{04E0}' .. '\u{04EE}' |
-    '\u{04F0}' .. '\u{04FE}' |
-    '\u{0500}' .. '\u{050E}' |
-    '\u{0510}' .. '\u{051E}' |
-    '\u{0520}' .. '\u{052E}' |
-    '\u{0531}' .. '\u{053F}' |
-    '\u{0540}' .. '\u{054F}' |
-    '\u{0550}' .. '\u{0556}' |
-    '\u{10A0}' .. '\u{10AF}' |
-    '\u{10B0}' .. '\u{10BF}' |
-    '\u{10C0}' .. '\u{10CD}' |
-    '\u{13A0}' .. '\u{13AF}' |
-    '\u{13B0}' .. '\u{13BF}' |
-    '\u{13C0}' .. '\u{13CF}' |
-    '\u{13D0}' .. '\u{13DF}' |
-    '\u{13E0}' .. '\u{13EF}' |
-    '\u{13F0}' .. '\u{13F5}' |
-    '\u{1C90}' .. '\u{1C9F}' |
-    '\u{1CA0}' .. '\u{1CAF}' |
-    '\u{1CB0}' .. '\u{1CBF}' |
-    '\u{1E00}' .. '\u{1E0E}' |
-    '\u{1E10}' .. '\u{1E1E}' |
-    '\u{1E20}' .. '\u{1E2E}' |
-    '\u{1E30}' .. '\u{1E3E}' |
-    '\u{1E40}' .. '\u{1E4E}' |
-    '\u{1E50}' .. '\u{1E5E}' |
-    '\u{1E60}' .. '\u{1E6E}' |
-    '\u{1E70}' .. '\u{1E7E}' |
-    '\u{1E80}' .. '\u{1E8E}' |
-    '\u{1E90}' .. '\u{1E9E}' |
-    '\u{1EA0}' .. '\u{1EAE}' |
-    '\u{1EB0}' .. '\u{1EBE}' |
-    '\u{1EC0}' .. '\u{1ECE}' |
-    '\u{1ED0}' .. '\u{1EDE}' |
-    '\u{1EE0}' .. '\u{1EEE}' |
-    '\u{1EF0}' .. '\u{1EFE}' |
-    '\u{1F08}' .. '\u{1F0F}' |
-    '\u{1F18}' .. '\u{1F1D}' |
-    '\u{1F28}' .. '\u{1F2F}' |
-    '\u{1F38}' .. '\u{1F3F}' |
-    '\u{1F48}' .. '\u{1F4D}' |
-    '\u{1F59}' .. '\u{1F5F}' |
-    '\u{1F68}' .. '\u{1F6F}' |
-    '\u{1FB8}' .. '\u{1FBB}' |
-    '\u{1FC8}' .. '\u{1FCB}' |
-    '\u{1FD8}' .. '\u{1FDB}' |
-    '\u{1FE8}' .. '\u{1FEC}' |
-    '\u{1FF8}' .. '\u{1FFB}' |
-    '\u{2C00}' .. '\u{2C0F}' |
-    '\u{2C10}' .. '\u{2C1F}' |
-    '\u{2C20}' .. '\u{2C2E}' |
-    '\u{2C60}' .. '\u{2C6F}' |
-    '\u{2C70}' .. '\u{2C7F}' |
-    '\u{2C80}' .. '\u{2C8E}' |
-    '\u{2C90}' .. '\u{2C9E}' |
-    '\u{2CA0}' .. '\u{2CAE}' |
-    '\u{2CB0}' .. '\u{2CBE}' |
-    '\u{2CC0}' .. '\u{2CCE}' |
-    '\u{2CD0}' .. '\u{2CDE}' |
-    '\u{2CE0}' .. '\u{2CED}' |
-    '\u{2CF2}' .. '\u{2CF2}' |
-    '\u{A640}' .. '\u{A64E}' |
-    '\u{A650}' .. '\u{A65E}' |
-    '\u{A660}' .. '\u{A66C}' |
-    '\u{A680}' .. '\u{A68E}' |
-    '\u{A690}' .. '\u{A69A}' |
-    '\u{A722}' .. '\u{A72E}' |
-    '\u{A732}' .. '\u{A73E}' |
-    '\u{A740}' .. '\u{A74E}' |
-    '\u{A750}' .. '\u{A75E}' |
-    '\u{A760}' .. '\u{A76E}' |
-    '\u{A779}' .. '\u{A77E}' |
-    '\u{A780}' .. '\u{A78D}' |
-    '\u{A790}' .. '\u{A79E}' |
-    '\u{A7A0}' .. '\u{A7AE}' |
-    '\u{A7B0}' .. '\u{A7B8}' |
-    '\u{FF21}' .. '\u{FF2F}' |
-    '\u{FF30}' .. '\u{FF3A}' |
-    '\u{104B0}' .. '\u{104BF}' |
-    '\u{104C0}' .. '\u{104CF}' |
-    '\u{104D0}' .. '\u{104D3}' |
-    '\u{10C80}' .. '\u{10C8F}' |
-    '\u{10C90}' .. '\u{10C9F}' |
-    '\u{10CA0}' .. '\u{10CAF}' |
-    '\u{10CB0}' .. '\u{10CB2}' |
-    '\u{118A0}' .. '\u{118AF}' |
-    '\u{118B0}' .. '\u{118BF}' |
-    '\u{16E40}' .. '\u{16E4F}' |
-    '\u{16E50}' .. '\u{16E5F}' |
-    '\u{1D400}' .. '\u{1D40F}' |
-    '\u{1D410}' .. '\u{1D419}' |
-    '\u{1D434}' .. '\u{1D43F}' |
-    '\u{1D440}' .. '\u{1D44D}' |
-    '\u{1D468}' .. '\u{1D46F}' |
-    '\u{1D470}' .. '\u{1D47F}' |
-    '\u{1D480}' .. '\u{1D481}' |
-    '\u{1D49C}' .. '\u{1D49F}' |
-    '\u{1D4A2}' .. '\u{1D4AF}' |
-    '\u{1D4B0}' .. '\u{1D4B5}' |
-    '\u{1D4D0}' .. '\u{1D4DF}' |
-    '\u{1D4E0}' .. '\u{1D4E9}' |
-    '\u{1D504}' .. '\u{1D50F}' |
-    '\u{1D510}' .. '\u{1D51C}' |
-    '\u{1D538}' .. '\u{1D53E}' |
-    '\u{1D540}' .. '\u{1D54F}' |
-    '\u{1D550}' .. '\u{1D550}' |
-    '\u{1D56C}' .. '\u{1D56F}' |
-    '\u{1D570}' .. '\u{1D57F}' |
-    '\u{1D580}' .. '\u{1D585}' |
-    '\u{1D5A0}' .. '\u{1D5AF}' |
-    '\u{1D5B0}' .. '\u{1D5B9}' |
-    '\u{1D5D4}' .. '\u{1D5DF}' |
-    '\u{1D5E0}' .. '\u{1D5ED}' |
-    '\u{1D608}' .. '\u{1D60F}' |
-    '\u{1D610}' .. '\u{1D61F}' |
-    '\u{1D620}' .. '\u{1D621}' |
-    '\u{1D63C}' .. '\u{1D63F}' |
-    '\u{1D640}' .. '\u{1D64F}' |
-    '\u{1D650}' .. '\u{1D655}' |
-    '\u{1D670}' .. '\u{1D67F}' |
-    '\u{1D680}' .. '\u{1D689}' |
-    '\u{1D6A8}' .. '\u{1D6AF}' |
-    '\u{1D6B0}' .. '\u{1D6BF}' |
-    '\u{1D6C0}' .. '\u{1D6C0}' |
-    '\u{1D6E2}' .. '\u{1D6EF}' |
-    '\u{1D6F0}' .. '\u{1D6FA}' |
-    '\u{1D71C}' .. '\u{1D71F}' |
-    '\u{1D720}' .. '\u{1D72F}' |
-    '\u{1D730}' .. '\u{1D734}' |
-    '\u{1D756}' .. '\u{1D75F}' |
-    '\u{1D760}' .. '\u{1D76E}' |
-    '\u{1D790}' .. '\u{1D79F}' |
-    '\u{1D7A0}' .. '\u{1D7A8}' |
-    '\u{1D7CA}' .. '\u{1D7CA}' |
-    '\u{1E900}' .. '\u{1E90F}' |
-    '\u{1E910}' .. '\u{1E91F}' |
-    '\u{1E920}' .. '\u{1E921}'
+    'ℂ' .. 'ℍ' |
+    'ℐ' .. 'ℝ' |
+    'ℤ' .. 'ℭ' |
+    'ℰ' .. 'ℿ' |
+    'ⅅ' .. 'ⅅ' |
+    'Ↄ' .. 'Ↄ' |
+    '𐐀' .. '𐐏' |
+    '𐐐' .. '𐐟' |
+    '𐐠' .. '𐐧' |
+    'A' .. 'O' |
+    'P' .. 'Z' |
+    'À' .. 'Ï' |
+    'Ð' .. 'Þ' |
+    'Ā' .. 'Ď' |
+    'Đ' .. 'Ğ' |
+    'Ġ' .. 'Į' |
+    'İ' .. 'Ŀ' |
+    'Ł' .. 'Ŏ' |
+    'Ő' .. 'Ş' |
+    'Š' .. 'Ů' |
+    'Ű' .. 'Ž' |
+    'Ɓ' .. 'Ə' |
+    'Ɛ' .. 'Ɵ' |
+    'Ơ' .. 'Ư' |
+    'Ʊ' .. 'Ƽ' |
+    'Ǆ' .. 'Ǐ' |
+    'Ǒ' .. 'Ǟ' |
+    'Ǡ' .. 'Ǯ' |
+    'Ǳ' .. 'Ǿ' |
+    'Ȁ' .. 'Ȏ' |
+    'Ȑ' .. 'Ȟ' |
+    'Ƞ' .. 'Ȯ' |
+    'Ȱ' .. 'Ⱦ' |
+    'Ɂ' .. 'Ɏ' |
+    'Ͱ' .. 'Ϳ' |
+    'Ά' .. 'Ώ' |
+    'Α' .. 'Ο' |
+    'Π' .. 'Ϋ' |
+    'Ϗ' .. 'Ϗ' |
+    'ϒ' .. 'Ϟ' |
+    'Ϡ' .. 'Ϯ' |
+    'ϴ' .. 'Ͽ' |
+    'Ѐ' .. 'Џ' |
+    'А' .. 'П' |
+    'Р' .. 'Я' |
+    'Ѡ' .. 'Ѯ' |
+    'Ѱ' .. 'Ѿ' |
+    'Ҁ' .. 'Ҏ' |
+    'Ґ' .. 'Ҟ' |
+    'Ҡ' .. 'Ү' |
+    'Ұ' .. 'Ҿ' |
+    'Ӏ' .. 'Ӎ' |
+    'Ӑ' .. 'Ӟ' |
+    'Ӡ' .. 'Ӯ' |
+    'Ӱ' .. 'Ӿ' |
+    'Ԁ' .. 'Ԏ' |
+    'Ԑ' .. 'Ԟ' |
+    'Ԡ' .. 'Ԯ' |
+    'Ա' .. 'Կ' |
+    'Հ' .. 'Տ' |
+    'Ր' .. 'Ֆ' |
+    'Ⴀ' .. 'Ⴏ' |
+    'Ⴐ' .. 'Ⴟ' |
+    'Ⴠ' .. 'Ⴭ' |
+    'Ꭰ' .. 'Ꭿ' |
+    'Ꮀ' .. 'Ꮏ' |
+    'Ꮐ' .. 'Ꮟ' |
+    'Ꮠ' .. 'Ꮯ' |
+    'Ꮰ' .. 'Ꮿ' |
+    'Ᏸ' .. 'Ᏽ' |
+    'Ა' .. 'Ჟ' |
+    'Რ' .. 'Ჯ' |
+    'Ჰ' .. 'Ჿ' |
+    'Ḁ' .. 'Ḏ' |
+    'Ḑ' .. 'Ḟ' |
+    'Ḡ' .. 'Ḯ' |
+    'Ḱ' .. 'Ḿ' |
+    'Ṁ' .. 'Ṏ' |
+    'Ṑ' .. 'Ṟ' |
+    'Ṡ' .. 'Ṯ' |
+    'Ṱ' .. 'Ṿ' |
+    'Ẁ' .. 'Ẏ' |
+    'Ẑ' .. 'ẞ' |
+    'Ạ' .. 'Ắ' |
+    'Ằ' .. 'Ế' |
+    'Ề' .. 'Ỏ' |
+    'Ố' .. 'Ở' |
+    'Ỡ' .. 'Ữ' |
+    'Ự' .. 'Ỿ' |
+    'Ἀ' .. 'Ἇ' |
+    'Ἐ' .. 'Ἕ' |
+    'Ἠ' .. 'Ἧ' |
+    'Ἰ' .. 'Ἷ' |
+    'Ὀ' .. 'Ὅ' |
+    'Ὑ' .. 'Ὗ' |
+    'Ὠ' .. 'Ὧ' |
+    'Ᾰ' .. 'Ά' |
+    'Ὲ' .. 'Ή' |
+    'Ῐ' .. 'Ί' |
+    'Ῠ' .. 'Ῥ' |
+    'Ὸ' .. 'Ώ' |
+    'Ⰰ' .. 'Ⰿ' |
+    'Ⱀ' .. 'Ⱏ' |
+    'Ⱐ' .. 'Ⱞ' |
+    'Ⱡ' .. 'Ɐ' |
+    'Ɒ' .. 'Ɀ' |
+    'Ⲁ' .. 'Ⲏ' |
+    'Ⲑ' .. 'Ⲟ' |
+    'Ⲡ' .. 'Ⲯ' |
+    'Ⲱ' .. 'Ⲿ' |
+    'Ⳁ' .. 'Ⳏ' |
+    'Ⳑ' .. 'Ⳟ' |
+    'Ⳡ' .. 'Ⳮ' |
+    'Ⳳ' .. 'Ⳳ' |
+    'Ꙁ' .. 'Ꙏ' |
+    'Ꙑ' .. 'Ꙟ' |
+    'Ꙡ' .. 'Ꙭ' |
+    'Ꚁ' .. 'Ꚏ' |
+    'Ꚑ' .. 'Ꚛ' |
+    'Ꜣ' .. 'Ꜯ' |
+    'Ꜳ' .. 'Ꜿ' |
+    'Ꝁ' .. 'Ꝏ' |
+    'Ꝑ' .. 'Ꝟ' |
+    'Ꝡ' .. 'Ꝯ' |
+    'Ꝺ' .. 'Ꝿ' |
+    'Ꞁ' .. 'Ɥ' |
+    'Ꞑ' .. 'Ꞟ' |
+    'Ꞡ' .. 'Ɪ' |
+    'Ʞ' .. 'Ꞹ' |
+    'Ａ' .. 'Ｏ' |
+    'Ｐ' .. 'Ｚ' |
+    '𐒰' .. '𐒿' |
+    '𐓀' .. '𐓏' |
+    '𐓐' .. '𐓓' |
+    '𐲀' .. '𐲏' |
+    '𐲐' .. '𐲟' |
+    '𐲠' .. '𐲯' |
+    '𐲰' .. '𐲲' |
+    '𑢠' .. '𑢯' |
+    '𑢰' .. '𑢿' |
+    '𖹀' .. '𖹏' |
+    '𖹐' .. '𖹟' |
+    '𝐀' .. '𝐏' |
+    '𝐐' .. '𝐙' |
+    '𝐴' .. '𝐿' |
+    '𝑀' .. '𝑍' |
+    '𝑨' .. '𝑯' |
+    '𝑰' .. '𝑿' |
+    '𝒀' .. '𝒁' |
+    '𝒜' .. '𝒟' |
+    '𝒢' .. '𝒯' |
+    '𝒰' .. '𝒵' |
+    '𝓐' .. '𝓟' |
+    '𝓠' .. '𝓩' |
+    '𝔄' .. '𝔏' |
+    '𝔐' .. '𝔜' |
+    '𝔸' .. '𝔾' |
+    '𝕀' .. '𝕏' |
+    '𝕐' .. '𝕐' |
+    '𝕬' .. '𝕯' |
+    '𝕰' .. '𝕿' |
+    '𝖀' .. '𝖅' |
+    '𝖠' .. '𝖯' |
+    '𝖰' .. '𝖹' |
+    '𝗔' .. '𝗟' |
+    '𝗠' .. '𝗭' |
+    '𝘈' .. '𝘏' |
+    '𝘐' .. '𝘟' |
+    '𝘠' .. '𝘡' |
+    '𝘼' .. '𝘿' |
+    '𝙀' .. '𝙏' |
+    '𝙐' .. '𝙕' |
+    '𝙰' .. '𝙿' |
+    '𝚀' .. '𝚉' |
+    '𝚨' .. '𝚯' |
+    '𝚰' .. '𝚿' |
+    '𝛀' .. '𝛀' |
+    '𝛢' .. '𝛯' |
+    '𝛰' .. '𝛺' |
+    '𝜜' .. '𝜟' |
+    '𝜠' .. '𝜯' |
+    '𝜰' .. '𝜴' |
+    '𝝖' .. '𝝟' |
+    '𝝠' .. '𝝮' |
+    '𝞐' .. '𝞟' |
+    '𝞠' .. '𝞨' |
+    '𝟊' .. '𝟊' |
+    '𞤀' .. '𞤏' |
+    '𞤐' .. '𞤟' |
+    '𞤠' .. '𞤡'
 }
 Lt = {
-    '\u{01C5}' .. '\u{01CB}' |
-    '\u{01F2}' .. '\u{01F2}' |
-    '\u{1F88}' .. '\u{1F8F}' |
-    '\u{1F98}' .. '\u{1F9F}' |
-    '\u{1FA8}' .. '\u{1FAF}' |
-    '\u{1FBC}' .. '\u{1FBC}' |
-    '\u{1FCC}' .. '\u{1FCC}' |
-    '\u{1FFC}' .. '\u{1FFC}'
+    'ǅ' .. 'ǋ' |
+    'ǲ' .. 'ǲ' |
+    'ᾈ' .. 'ᾏ' |
+    'ᾘ' .. 'ᾟ' |
+    'ᾨ' .. 'ᾯ' |
+    'ᾼ' .. 'ᾼ' |
+    'ῌ' .. 'ῌ' |
+    'ῼ' .. 'ῼ'
 }
 Lm = {
-    '\u{1843}' .. '\u{1843}' |
-    '\u{2071}' .. '\u{207F}' |
-    '\u{2090}' .. '\u{209C}' |
-    '\u{3005}' .. '\u{3005}' |
-    '\u{3031}' .. '\u{303B}' |
-    '\u{309D}' .. '\u{309E}' |
-    '\u{02B0}' .. '\u{02BF}' |
-    '\u{02C0}' .. '\u{02CF}' |
-    '\u{02D0}' .. '\u{02D1}' |
-    '\u{02E0}' .. '\u{02EE}' |
-    '\u{0374}' .. '\u{037A}' |
-    '\u{0559}' .. '\u{0559}' |
-    '\u{0640}' .. '\u{0640}' |
-    '\u{06E5}' .. '\u{06E6}' |
-    '\u{07F4}' .. '\u{07FA}' |
-    '\u{081A}' .. '\u{081A}' |
-    '\u{0824}' .. '\u{0828}' |
-    '\u{0971}' .. '\u{0971}' |
-    '\u{0E46}' .. '\u{0E46}' |
-    '\u{0EC6}' .. '\u{0EC6}' |
-    '\u{10FC}' .. '\u{10FC}' |
-    '\u{17D7}' .. '\u{17D7}' |
-    '\u{1AA7}' .. '\u{1AA7}' |
-    '\u{1C78}' .. '\u{1C7D}' |
-    '\u{1D2C}' .. '\u{1D2F}' |
-    '\u{1D30}' .. '\u{1D3F}' |
-    '\u{1D40}' .. '\u{1D4F}' |
-    '\u{1D50}' .. '\u{1D5F}' |
-    '\u{1D60}' .. '\u{1D6A}' |
-    '\u{1D78}' .. '\u{1D78}' |
-    '\u{1D9B}' .. '\u{1D9F}' |
-    '\u{1DA0}' .. '\u{1DAF}' |
-    '\u{1DB0}' .. '\u{1DBF}' |
-    '\u{2C7C}' .. '\u{2C7D}' |
-    '\u{2D6F}' .. '\u{2D6F}' |
-    '\u{2E2F}' .. '\u{2E2F}' |
-    '\u{30FC}' .. '\u{30FE}' |
-    '\u{A015}' .. '\u{A015}' |
-    '\u{A4F8}' .. '\u{A4FD}' |
-    '\u{A60C}' .. '\u{A60C}' |
-    '\u{A67F}' .. '\u{A67F}' |
-    '\u{A69C}' .. '\u{A69D}' |
-    '\u{A717}' .. '\u{A71F}' |
-    '\u{A770}' .. '\u{A770}' |
-    '\u{A788}' .. '\u{A788}' |
-    '\u{A7F8}' .. '\u{A7F9}' |
-    '\u{A9CF}' .. '\u{A9CF}' |
-    '\u{A9E6}' .. '\u{A9E6}' |
-    '\u{AA70}' .. '\u{AA70}' |
-    '\u{AADD}' .. '\u{AADD}' |
-    '\u{AAF3}' .. '\u{AAF4}' |
-    '\u{AB5C}' .. '\u{AB5F}' |
-    '\u{FF70}' .. '\u{FF70}' |
-    '\u{FF9E}' .. '\u{FF9F}' |
-    '\u{16B40}' .. '\u{16B43}' |
-    '\u{16F93}' .. '\u{16F9F}' |
-    '\u{16FE0}' .. '\u{16FE1}'
+    'ᡃ' .. 'ᡃ' |
+    'ⁱ' .. 'ⁿ' |
+    'ₐ' .. 'ₜ' |
+    '々' .. '々' |
+    '〱' .. '〻' |
+    'ゝ' .. 'ゞ' |
+    'ʰ' .. 'ʿ' |
+    'ˀ' .. 'ˏ' |
+    'ː' .. 'ˑ' |
+    'ˠ' .. 'ˮ' |
+    'ʹ' .. 'ͺ' |
+    'ՙ' .. 'ՙ' |
+    'ـ' .. 'ـ' |
+    'ۥ' .. 'ۦ' |
+    'ߴ' .. 'ߺ' |
+    'ࠚ' .. 'ࠚ' |
+    'ࠤ' .. 'ࠨ' |
+    'ॱ' .. 'ॱ' |
+    'ๆ' .. 'ๆ' |
+    'ໆ' .. 'ໆ' |
+    'ჼ' .. 'ჼ' |
+    'ៗ' .. 'ៗ' |
+    'ᪧ' .. 'ᪧ' |
+    'ᱸ' .. 'ᱽ' |
+    'ᴬ' .. 'ᴯ' |
+    'ᴰ' .. 'ᴿ' |
+    'ᵀ' .. 'ᵏ' |
+    'ᵐ' .. 'ᵟ' |
+    'ᵠ' .. 'ᵪ' |
+    'ᵸ' .. 'ᵸ' |
+    'ᶛ' .. 'ᶟ' |
+    'ᶠ' .. 'ᶯ' |
+    'ᶰ' .. 'ᶿ' |
+    'ⱼ' .. 'ⱽ' |
+    'ⵯ' .. 'ⵯ' |
+    'ⸯ' .. 'ⸯ' |
+    'ー' .. 'ヾ' |
+    'ꀕ' .. 'ꀕ' |
+    'ꓸ' .. 'ꓽ' |
+    'ꘌ' .. 'ꘌ' |
+    'ꙿ' .. 'ꙿ' |
+    'ꚜ' .. 'ꚝ' |
+    'ꜗ' .. 'ꜟ' |
+    'ꝰ' .. 'ꝰ' |
+    'ꞈ' .. 'ꞈ' |
+    'ꟸ' .. 'ꟹ' |
+    'ꧏ' .. 'ꧏ' |
+    'ꧦ' .. 'ꧦ' |
+    'ꩰ' .. 'ꩰ' |
+    'ꫝ' .. 'ꫝ' |
+    'ꫳ' .. 'ꫴ' |
+    'ꭜ' .. 'ꭟ' |
+    'ｰ' .. 'ｰ' |
+    'ﾞ' .. 'ﾟ' |
+    '𖭀' .. '𖭃' |
+    '𖾓' .. '𖾟' |
+    '𖿠' .. '𖿡'
 }
 Lo = {
-    '\u{1000}' .. '\u{100F}' |
-    '\u{1010}' .. '\u{101F}' |
-    '\u{1020}' .. '\u{102A}' |
-    '\u{103F}' .. '\u{103F}' |
-    '\u{1050}' .. '\u{105D}' |
-    '\u{1061}' .. '\u{106F}' |
-    '\u{1070}' .. '\u{107F}' |
-    '\u{1080}' .. '\u{108E}' |
-    '\u{1100}' .. '\u{110F}' |
-    '\u{1110}' .. '\u{111F}' |
-    '\u{1120}' .. '\u{112F}' |
-    '\u{1130}' .. '\u{113F}' |
-    '\u{1140}' .. '\u{114F}' |
-    '\u{1150}' .. '\u{115F}' |
-    '\u{1160}' .. '\u{116F}' |
-    '\u{1170}' .. '\u{117F}' |
-    '\u{1180}' .. '\u{118F}' |
-    '\u{1190}' .. '\u{119F}' |
-    '\u{1200}' .. '\u{120F}' |
-    '\u{1210}' .. '\u{121F}' |
-    '\u{1220}' .. '\u{122F}' |
-    '\u{1230}' .. '\u{123F}' |
-    '\u{1240}' .. '\u{124D}' |
-    '\u{1250}' .. '\u{125D}' |
-    '\u{1260}' .. '\u{126F}' |
-    '\u{1270}' .. '\u{127F}' |
-    '\u{1280}' .. '\u{128D}' |
-    '\u{1290}' .. '\u{129F}' |
-    '\u{1300}' .. '\u{130F}' |
-    '\u{1310}' .. '\u{131F}' |
-    '\u{1320}' .. '\u{132F}' |
-    '\u{1330}' .. '\u{133F}' |
-    '\u{1340}' .. '\u{134F}' |
-    '\u{1350}' .. '\u{135A}' |
-    '\u{1380}' .. '\u{138F}' |
-    '\u{1401}' .. '\u{140F}' |
-    '\u{1410}' .. '\u{141F}' |
-    '\u{1420}' .. '\u{142F}' |
-    '\u{1430}' .. '\u{143F}' |
-    '\u{1440}' .. '\u{144F}' |
-    '\u{1450}' .. '\u{145F}' |
-    '\u{1460}' .. '\u{146F}' |
-    '\u{1470}' .. '\u{147F}' |
-    '\u{1480}' .. '\u{148F}' |
-    '\u{1490}' .. '\u{149F}' |
-    '\u{1500}' .. '\u{150F}' |
-    '\u{1510}' .. '\u{151F}' |
-    '\u{1520}' .. '\u{152F}' |
-    '\u{1530}' .. '\u{153F}' |
-    '\u{1540}' .. '\u{154F}' |
-    '\u{1550}' .. '\u{155F}' |
-    '\u{1560}' .. '\u{156F}' |
-    '\u{1570}' .. '\u{157F}' |
-    '\u{1580}' .. '\u{158F}' |
-    '\u{1590}' .. '\u{159F}' |
-    '\u{1600}' .. '\u{160F}' |
-    '\u{1610}' .. '\u{161F}' |
-    '\u{1620}' .. '\u{162F}' |
-    '\u{1630}' .. '\u{163F}' |
-    '\u{1640}' .. '\u{164F}' |
-    '\u{1650}' .. '\u{165F}' |
-    '\u{1660}' .. '\u{166F}' |
-    '\u{1670}' .. '\u{167F}' |
-    '\u{1681}' .. '\u{168F}' |
-    '\u{1690}' .. '\u{169A}' |
-    '\u{1700}' .. '\u{170F}' |
-    '\u{1710}' .. '\u{1711}' |
-    '\u{1720}' .. '\u{172F}' |
-    '\u{1730}' .. '\u{1731}' |
-    '\u{1740}' .. '\u{174F}' |
-    '\u{1750}' .. '\u{1751}' |
-    '\u{1760}' .. '\u{176F}' |
-    '\u{1770}' .. '\u{1770}' |
-    '\u{1780}' .. '\u{178F}' |
-    '\u{1790}' .. '\u{179F}' |
-    '\u{1820}' .. '\u{182F}' |
-    '\u{1830}' .. '\u{183F}' |
-    '\u{1840}' .. '\u{184F}' |
-    '\u{1850}' .. '\u{185F}' |
-    '\u{1860}' .. '\u{186F}' |
-    '\u{1870}' .. '\u{1878}' |
-    '\u{1880}' .. '\u{188F}' |
-    '\u{1890}' .. '\u{189F}' |
-    '\u{1900}' .. '\u{190F}' |
-    '\u{1910}' .. '\u{191E}' |
-    '\u{1950}' .. '\u{195F}' |
-    '\u{1960}' .. '\u{196D}' |
-    '\u{1970}' .. '\u{1974}' |
-    '\u{1980}' .. '\u{198F}' |
-    '\u{1990}' .. '\u{199F}' |
-    '\u{2135}' .. '\u{2138}' |
-    '\u{3006}' .. '\u{3006}' |
-    '\u{303C}' .. '\u{303C}' |
-    '\u{3041}' .. '\u{304F}' |
-    '\u{3050}' .. '\u{305F}' |
-    '\u{3060}' .. '\u{306F}' |
-    '\u{3070}' .. '\u{307F}' |
-    '\u{3080}' .. '\u{308F}' |
-    '\u{3090}' .. '\u{309F}' |
-    '\u{3105}' .. '\u{310F}' |
-    '\u{3110}' .. '\u{311F}' |
-    '\u{3120}' .. '\u{312F}' |
-    '\u{3131}' .. '\u{313F}' |
-    '\u{3140}' .. '\u{314F}' |
-    '\u{3150}' .. '\u{315F}' |
-    '\u{3160}' .. '\u{316F}' |
-    '\u{3170}' .. '\u{317F}' |
-    '\u{3180}' .. '\u{318E}' |
-    '\u{3400}' .. '\u{3400}' |
-    '\u{10000}' .. '\u{1000F}' |
-    '\u{10010}' .. '\u{1001F}' |
-    '\u{10020}' .. '\u{1002F}' |
-    '\u{10030}' .. '\u{1003F}' |
-    '\u{10040}' .. '\u{1004D}' |
-    '\u{10050}' .. '\u{1005D}' |
-    '\u{10080}' .. '\u{1008F}' |
-    '\u{10090}' .. '\u{1009F}' |
-    '\u{10280}' .. '\u{1028F}' |
-    '\u{10290}' .. '\u{1029C}' |
-    '\u{10300}' .. '\u{1030F}' |
-    '\u{10310}' .. '\u{1031F}' |
-    '\u{1032D}' .. '\u{1032F}' |
-    '\u{10330}' .. '\u{1033F}' |
-    '\u{10340}' .. '\u{10349}' |
-    '\u{10350}' .. '\u{1035F}' |
-    '\u{10360}' .. '\u{1036F}' |
-    '\u{10370}' .. '\u{10375}' |
-    '\u{10380}' .. '\u{1038F}' |
-    '\u{10390}' .. '\u{1039D}' |
-    '\u{10450}' .. '\u{1045F}' |
-    '\u{10460}' .. '\u{1046F}' |
-    '\u{10470}' .. '\u{1047F}' |
-    '\u{10480}' .. '\u{1048F}' |
-    '\u{10490}' .. '\u{1049D}' |
-    '\u{10500}' .. '\u{1050F}' |
-    '\u{10510}' .. '\u{1051F}' |
-    '\u{10520}' .. '\u{10527}' |
-    '\u{10530}' .. '\u{1053F}' |
-    '\u{10540}' .. '\u{1054F}' |
-    '\u{10550}' .. '\u{1055F}' |
-    '\u{10560}' .. '\u{10563}' |
-    '\u{10600}' .. '\u{1060F}' |
-    '\u{10610}' .. '\u{1061F}' |
-    '\u{10620}' .. '\u{1062F}' |
-    '\u{10630}' .. '\u{1063F}' |
-    '\u{10640}' .. '\u{1064F}' |
-    '\u{10650}' .. '\u{1065F}' |
-    '\u{10660}' .. '\u{1066F}' |
-    '\u{10670}' .. '\u{1067F}' |
-    '\u{10680}' .. '\u{1068F}' |
-    '\u{10690}' .. '\u{1069F}' |
-    '\u{10700}' .. '\u{1070F}' |
-    '\u{10710}' .. '\u{1071F}' |
-    '\u{10720}' .. '\u{1072F}' |
-    '\u{10730}' .. '\u{10736}' |
-    '\u{10740}' .. '\u{1074F}' |
-    '\u{10750}' .. '\u{10755}' |
-    '\u{10760}' .. '\u{10767}' |
-    '\u{10800}' .. '\u{1080F}' |
-    '\u{10810}' .. '\u{1081F}' |
-    '\u{10820}' .. '\u{1082F}' |
-    '\u{10830}' .. '\u{1083F}' |
-    '\u{10840}' .. '\u{1084F}' |
-    '\u{10850}' .. '\u{10855}' |
-    '\u{10860}' .. '\u{1086F}' |
-    '\u{10870}' .. '\u{10876}' |
-    '\u{10880}' .. '\u{1088F}' |
-    '\u{10890}' .. '\u{1089E}' |
-    '\u{10900}' .. '\u{1090F}' |
-    '\u{10910}' .. '\u{10915}' |
-    '\u{10920}' .. '\u{1092F}' |
-    '\u{10930}' .. '\u{10939}' |
-    '\u{10980}' .. '\u{1098F}' |
-    '\u{10990}' .. '\u{1099F}' |
-    '\u{11003}' .. '\u{1100F}' |
-    '\u{11010}' .. '\u{1101F}' |
-    '\u{11020}' .. '\u{1102F}' |
-    '\u{11030}' .. '\u{11037}' |
-    '\u{11083}' .. '\u{1108F}' |
-    '\u{11090}' .. '\u{1109F}' |
-    '\u{11103}' .. '\u{1110F}' |
-    '\u{11110}' .. '\u{1111F}' |
-    '\u{11120}' .. '\u{11126}' |
-    '\u{11144}' .. '\u{11144}' |
-    '\u{11150}' .. '\u{1115F}' |
-    '\u{11160}' .. '\u{1116F}' |
-    '\u{11170}' .. '\u{11176}' |
-    '\u{11183}' .. '\u{1118F}' |
-    '\u{11190}' .. '\u{1119F}' |
-    '\u{11200}' .. '\u{1120F}' |
-    '\u{11210}' .. '\u{1121F}' |
-    '\u{11220}' .. '\u{1122B}' |
-    '\u{11280}' .. '\u{1128F}' |
-    '\u{11290}' .. '\u{1129F}' |
-    '\u{11305}' .. '\u{1130F}' |
-    '\u{11310}' .. '\u{1131F}' |
-    '\u{11320}' .. '\u{1132F}' |
-    '\u{11330}' .. '\u{1133D}' |
-    '\u{11350}' .. '\u{1135F}' |
-    '\u{11360}' .. '\u{11361}' |
-    '\u{11400}' .. '\u{1140F}' |
-    '\u{11410}' .. '\u{1141F}' |
-    '\u{11420}' .. '\u{1142F}' |
-    '\u{11430}' .. '\u{11434}' |
-    '\u{11447}' .. '\u{1144A}' |
-    '\u{11480}' .. '\u{1148F}' |
-    '\u{11490}' .. '\u{1149F}' |
-    '\u{11580}' .. '\u{1158F}' |
-    '\u{11590}' .. '\u{1159F}' |
-    '\u{11600}' .. '\u{1160F}' |
-    '\u{11610}' .. '\u{1161F}' |
-    '\u{11620}' .. '\u{1162F}' |
-    '\u{11644}' .. '\u{11644}' |
-    '\u{11680}' .. '\u{1168F}' |
-    '\u{11690}' .. '\u{1169F}' |
-    '\u{11700}' .. '\u{1170F}' |
-    '\u{11710}' .. '\u{1171A}' |
-    '\u{11800}' .. '\u{1180F}' |
-    '\u{11810}' .. '\u{1181F}' |
-    '\u{11820}' .. '\u{1182B}' |
-    '\u{12000}' .. '\u{1200F}' |
-    '\u{12010}' .. '\u{1201F}' |
-    '\u{12020}' .. '\u{1202F}' |
-    '\u{12030}' .. '\u{1203F}' |
-    '\u{12040}' .. '\u{1204F}' |
-    '\u{12050}' .. '\u{1205F}' |
-    '\u{12060}' .. '\u{1206F}' |
-    '\u{12070}' .. '\u{1207F}' |
-    '\u{12080}' .. '\u{1208F}' |
-    '\u{12090}' .. '\u{1209F}' |
-    '\u{12100}' .. '\u{1210F}' |
-    '\u{12110}' .. '\u{1211F}' |
-    '\u{12120}' .. '\u{1212F}' |
-    '\u{12130}' .. '\u{1213F}' |
-    '\u{12140}' .. '\u{1214F}' |
-    '\u{12150}' .. '\u{1215F}' |
-    '\u{12160}' .. '\u{1216F}' |
-    '\u{12170}' .. '\u{1217F}' |
-    '\u{12180}' .. '\u{1218F}' |
-    '\u{12190}' .. '\u{1219F}' |
-    '\u{12200}' .. '\u{1220F}' |
-    '\u{12210}' .. '\u{1221F}' |
-    '\u{12220}' .. '\u{1222F}' |
-    '\u{12230}' .. '\u{1223F}' |
-    '\u{12240}' .. '\u{1224F}' |
-    '\u{12250}' .. '\u{1225F}' |
-    '\u{12260}' .. '\u{1226F}' |
-    '\u{12270}' .. '\u{1227F}' |
-    '\u{12280}' .. '\u{1228F}' |
-    '\u{12290}' .. '\u{1229F}' |
-    '\u{12300}' .. '\u{1230F}' |
-    '\u{12310}' .. '\u{1231F}' |
-    '\u{12320}' .. '\u{1232F}' |
-    '\u{12330}' .. '\u{1233F}' |
-    '\u{12340}' .. '\u{1234F}' |
-    '\u{12350}' .. '\u{1235F}' |
-    '\u{12360}' .. '\u{1236F}' |
-    '\u{12370}' .. '\u{1237F}' |
-    '\u{12380}' .. '\u{1238F}' |
-    '\u{12390}' .. '\u{12399}' |
-    '\u{12480}' .. '\u{1248F}' |
-    '\u{12490}' .. '\u{1249F}' |
-    '\u{12500}' .. '\u{1250F}' |
-    '\u{12510}' .. '\u{1251F}' |
-    '\u{12520}' .. '\u{1252F}' |
-    '\u{12530}' .. '\u{1253F}' |
-    '\u{12540}' .. '\u{12543}' |
-    '\u{13000}' .. '\u{1300F}' |
-    '\u{13010}' .. '\u{1301F}' |
-    '\u{13020}' .. '\u{1302F}' |
-    '\u{13030}' .. '\u{1303F}' |
-    '\u{13040}' .. '\u{1304F}' |
-    '\u{13050}' .. '\u{1305F}' |
-    '\u{13060}' .. '\u{1306F}' |
-    '\u{13070}' .. '\u{1307F}' |
-    '\u{13080}' .. '\u{1308F}' |
-    '\u{13090}' .. '\u{1309F}' |
-    '\u{13100}' .. '\u{1310F}' |
-    '\u{13110}' .. '\u{1311F}' |
-    '\u{13120}' .. '\u{1312F}' |
-    '\u{13130}' .. '\u{1313F}' |
-    '\u{13140}' .. '\u{1314F}' |
-    '\u{13150}' .. '\u{1315F}' |
-    '\u{13160}' .. '\u{1316F}' |
-    '\u{13170}' .. '\u{1317F}' |
-    '\u{13180}' .. '\u{1318F}' |
-    '\u{13190}' .. '\u{1319F}' |
-    '\u{13200}' .. '\u{1320F}' |
-    '\u{13210}' .. '\u{1321F}' |
-    '\u{13220}' .. '\u{1322F}' |
-    '\u{13230}' .. '\u{1323F}' |
-    '\u{13240}' .. '\u{1324F}' |
-    '\u{13250}' .. '\u{1325F}' |
-    '\u{13260}' .. '\u{1326F}' |
-    '\u{13270}' .. '\u{1327F}' |
-    '\u{13280}' .. '\u{1328F}' |
-    '\u{13290}' .. '\u{1329F}' |
-    '\u{13300}' .. '\u{1330F}' |
-    '\u{13310}' .. '\u{1331F}' |
-    '\u{13320}' .. '\u{1332F}' |
-    '\u{13330}' .. '\u{1333F}' |
-    '\u{13340}' .. '\u{1334F}' |
-    '\u{13350}' .. '\u{1335F}' |
-    '\u{13360}' .. '\u{1336F}' |
-    '\u{13370}' .. '\u{1337F}' |
-    '\u{13380}' .. '\u{1338F}' |
-    '\u{13390}' .. '\u{1339F}' |
-    '\u{13400}' .. '\u{1340F}' |
-    '\u{13410}' .. '\u{1341F}' |
-    '\u{13420}' .. '\u{1342E}' |
-    '\u{14400}' .. '\u{1440F}' |
-    '\u{14410}' .. '\u{1441F}' |
-    '\u{14420}' .. '\u{1442F}' |
-    '\u{14430}' .. '\u{1443F}' |
-    '\u{14440}' .. '\u{1444F}' |
-    '\u{14450}' .. '\u{1445F}' |
-    '\u{14460}' .. '\u{1446F}' |
-    '\u{14470}' .. '\u{1447F}' |
-    '\u{14480}' .. '\u{1448F}' |
-    '\u{14490}' .. '\u{1449F}' |
-    '\u{14500}' .. '\u{1450F}' |
-    '\u{14510}' .. '\u{1451F}' |
-    '\u{14520}' .. '\u{1452F}' |
-    '\u{14530}' .. '\u{1453F}' |
-    '\u{14540}' .. '\u{1454F}' |
-    '\u{14550}' .. '\u{1455F}' |
-    '\u{14560}' .. '\u{1456F}' |
-    '\u{14570}' .. '\u{1457F}' |
-    '\u{14580}' .. '\u{1458F}' |
-    '\u{14590}' .. '\u{1459F}' |
-    '\u{14600}' .. '\u{1460F}' |
-    '\u{14610}' .. '\u{1461F}' |
-    '\u{14620}' .. '\u{1462F}' |
-    '\u{14630}' .. '\u{1463F}' |
-    '\u{14640}' .. '\u{14646}' |
-    '\u{16800}' .. '\u{1680F}' |
-    '\u{16810}' .. '\u{1681F}' |
-    '\u{16820}' .. '\u{1682F}' |
-    '\u{16830}' .. '\u{1683F}' |
-    '\u{16840}' .. '\u{1684F}' |
-    '\u{16850}' .. '\u{1685F}' |
-    '\u{16860}' .. '\u{1686F}' |
-    '\u{16870}' .. '\u{1687F}' |
-    '\u{16880}' .. '\u{1688F}' |
-    '\u{16890}' .. '\u{1689F}' |
-    '\u{16900}' .. '\u{1690F}' |
-    '\u{16910}' .. '\u{1691F}' |
-    '\u{16920}' .. '\u{1692F}' |
-    '\u{16930}' .. '\u{1693F}' |
-    '\u{16940}' .. '\u{1694F}' |
-    '\u{16950}' .. '\u{1695F}' |
-    '\u{16960}' .. '\u{1696F}' |
-    '\u{16970}' .. '\u{1697F}' |
-    '\u{16980}' .. '\u{1698F}' |
-    '\u{16990}' .. '\u{1699F}' |
-    '\u{00AA}' .. '\u{00AA}' |
-    '\u{00BA}' .. '\u{00BA}' |
-    '\u{01BB}' .. '\u{01BB}' |
-    '\u{01C0}' .. '\u{01C3}' |
-    '\u{0294}' .. '\u{0294}' |
-    '\u{05D0}' .. '\u{05DF}' |
-    '\u{05E0}' .. '\u{05EF}' |
-    '\u{05F0}' .. '\u{05F2}' |
-    '\u{0620}' .. '\u{062F}' |
-    '\u{0630}' .. '\u{063F}' |
-    '\u{0641}' .. '\u{064A}' |
-    '\u{066E}' .. '\u{066F}' |
-    '\u{0671}' .. '\u{067F}' |
-    '\u{0680}' .. '\u{068F}' |
-    '\u{0690}' .. '\u{069F}' |
-    '\u{06A0}' .. '\u{06AF}' |
-    '\u{06B0}' .. '\u{06BF}' |
-    '\u{06C0}' .. '\u{06CF}' |
-    '\u{06D0}' .. '\u{06D5}' |
-    '\u{06EE}' .. '\u{06EF}' |
-    '\u{06FA}' .. '\u{06FF}' |
-    '\u{0710}' .. '\u{071F}' |
-    '\u{0720}' .. '\u{072F}' |
-    '\u{074D}' .. '\u{074F}' |
-    '\u{0750}' .. '\u{075F}' |
-    '\u{0760}' .. '\u{076F}' |
-    '\u{0770}' .. '\u{077F}' |
-    '\u{0780}' .. '\u{078F}' |
-    '\u{0790}' .. '\u{079F}' |
-    '\u{07A0}' .. '\u{07A5}' |
-    '\u{07B1}' .. '\u{07B1}' |
-    '\u{07CA}' .. '\u{07CF}' |
-    '\u{07D0}' .. '\u{07DF}' |
-    '\u{07E0}' .. '\u{07EA}' |
-    '\u{0800}' .. '\u{080F}' |
-    '\u{0810}' .. '\u{0815}' |
-    '\u{0840}' .. '\u{084F}' |
-    '\u{0850}' .. '\u{0858}' |
-    '\u{0860}' .. '\u{086A}' |
-    '\u{08A0}' .. '\u{08AF}' |
-    '\u{08B0}' .. '\u{08BD}' |
-    '\u{0904}' .. '\u{090F}' |
-    '\u{0910}' .. '\u{091F}' |
-    '\u{0920}' .. '\u{092F}' |
-    '\u{0930}' .. '\u{093D}' |
-    '\u{0950}' .. '\u{095F}' |
-    '\u{0960}' .. '\u{0961}' |
-    '\u{0972}' .. '\u{097F}' |
-    '\u{0980}' .. '\u{098F}' |
-    '\u{0990}' .. '\u{099F}' |
-    '\u{09A0}' .. '\u{09AF}' |
-    '\u{09B0}' .. '\u{09BD}' |
-    '\u{09CE}' .. '\u{09CE}' |
-    '\u{09DC}' .. '\u{09DF}' |
-    '\u{09E0}' .. '\u{09E1}' |
-    '\u{09F0}' .. '\u{09FC}' |
-    '\u{0A05}' .. '\u{0A0F}' |
-    '\u{0A10}' .. '\u{0A1F}' |
-    '\u{0A20}' .. '\u{0A2F}' |
-    '\u{0A30}' .. '\u{0A39}' |
-    '\u{0A59}' .. '\u{0A5E}' |
-    '\u{0A72}' .. '\u{0A74}' |
-    '\u{0A85}' .. '\u{0A8F}' |
-    '\u{0A90}' .. '\u{0A9F}' |
-    '\u{0AA0}' .. '\u{0AAF}' |
-    '\u{0AB0}' .. '\u{0ABD}' |
-    '\u{0AD0}' .. '\u{0AD0}' |
-    '\u{0AE0}' .. '\u{0AE1}' |
-    '\u{0AF9}' .. '\u{0AF9}' |
-    '\u{0B05}' .. '\u{0B0F}' |
-    '\u{0B10}' .. '\u{0B1F}' |
-    '\u{0B20}' .. '\u{0B2F}' |
-    '\u{0B30}' .. '\u{0B3D}' |
-    '\u{0B5C}' .. '\u{0B5F}' |
-    '\u{0B60}' .. '\u{0B61}' |
-    '\u{0B71}' .. '\u{0B71}' |
-    '\u{0B83}' .. '\u{0B8F}' |
-    '\u{0B90}' .. '\u{0B9F}' |
-    '\u{0BA3}' .. '\u{0BAF}' |
-    '\u{0BB0}' .. '\u{0BB9}' |
-    '\u{0BD0}' .. '\u{0BD0}' |
-    '\u{0C05}' .. '\u{0C0F}' |
-    '\u{0C10}' .. '\u{0C1F}' |
-    '\u{0C20}' .. '\u{0C2F}' |
-    '\u{0C30}' .. '\u{0C3D}' |
-    '\u{0C58}' .. '\u{0C5A}' |
-    '\u{0C60}' .. '\u{0C61}' |
-    '\u{0C80}' .. '\u{0C8F}' |
-    '\u{0C90}' .. '\u{0C9F}' |
-    '\u{0CA0}' .. '\u{0CAF}' |
-    '\u{0CB0}' .. '\u{0CBD}' |
-    '\u{0CDE}' .. '\u{0CDE}' |
-    '\u{0CE0}' .. '\u{0CE1}' |
-    '\u{0CF1}' .. '\u{0CF2}' |
-    '\u{0D05}' .. '\u{0D0F}' |
-    '\u{0D10}' .. '\u{0D1F}' |
-    '\u{0D20}' .. '\u{0D2F}' |
-    '\u{0D30}' .. '\u{0D3D}' |
-    '\u{0D4E}' .. '\u{0D4E}' |
-    '\u{0D54}' .. '\u{0D5F}' |
-    '\u{0D60}' .. '\u{0D61}' |
-    '\u{0D7A}' .. '\u{0D7F}' |
-    '\u{0D85}' .. '\u{0D8F}' |
-    '\u{0D90}' .. '\u{0D9F}' |
-    '\u{0DA0}' .. '\u{0DAF}' |
-    '\u{0DB0}' .. '\u{0DBD}' |
-    '\u{0DC0}' .. '\u{0DC6}' |
-    '\u{0E01}' .. '\u{0E0F}' |
-    '\u{0E10}' .. '\u{0E1F}' |
-    '\u{0E20}' .. '\u{0E2F}' |
-    '\u{0E30}' .. '\u{0E33}' |
-    '\u{0E40}' .. '\u{0E45}' |
-    '\u{0E81}' .. '\u{0E8D}' |
-    '\u{0E94}' .. '\u{0E9F}' |
-    '\u{0EA1}' .. '\u{0EAF}' |
-    '\u{0EB0}' .. '\u{0EBD}' |
-    '\u{0EC0}' .. '\u{0EC4}' |
-    '\u{0EDC}' .. '\u{0EDF}' |
-    '\u{0F00}' .. '\u{0F00}' |
-    '\u{0F40}' .. '\u{0F4F}' |
-    '\u{0F50}' .. '\u{0F5F}' |
-    '\u{0F60}' .. '\u{0F6C}' |
-    '\u{0F88}' .. '\u{0F8C}' |
-    '\u{11A0}' .. '\u{11AF}' |
-    '\u{11B0}' .. '\u{11BF}' |
-    '\u{11C0}' .. '\u{11CF}' |
-    '\u{11D0}' .. '\u{11DF}' |
-    '\u{11E0}' .. '\u{11EF}' |
-    '\u{11F0}' .. '\u{11FF}' |
-    '\u{12A0}' .. '\u{12AF}' |
-    '\u{12B0}' .. '\u{12BE}' |
-    '\u{12C0}' .. '\u{12CF}' |
-    '\u{12D0}' .. '\u{12DF}' |
-    '\u{12E0}' .. '\u{12EF}' |
-    '\u{12F0}' .. '\u{12FF}' |
-    '\u{14A0}' .. '\u{14AF}' |
-    '\u{14B0}' .. '\u{14BF}' |
-    '\u{14C0}' .. '\u{14CF}' |
-    '\u{14D0}' .. '\u{14DF}' |
-    '\u{14E0}' .. '\u{14EF}' |
-    '\u{14F0}' .. '\u{14FF}' |
-    '\u{15A0}' .. '\u{15AF}' |
-    '\u{15B0}' .. '\u{15BF}' |
-    '\u{15C0}' .. '\u{15CF}' |
-    '\u{15D0}' .. '\u{15DF}' |
-    '\u{15E0}' .. '\u{15EF}' |
-    '\u{15F0}' .. '\u{15FF}' |
-    '\u{16A0}' .. '\u{16AF}' |
-    '\u{16B0}' .. '\u{16BF}' |
-    '\u{16C0}' .. '\u{16CF}' |
-    '\u{16D0}' .. '\u{16DF}' |
-    '\u{16E0}' .. '\u{16EA}' |
-    '\u{16F1}' .. '\u{16F8}' |
-    '\u{17A0}' .. '\u{17AF}' |
-    '\u{17B0}' .. '\u{17B3}' |
-    '\u{17DC}' .. '\u{17DC}' |
-    '\u{18A0}' .. '\u{18AA}' |
-    '\u{18B0}' .. '\u{18BF}' |
-    '\u{18C0}' .. '\u{18CF}' |
-    '\u{18D0}' .. '\u{18DF}' |
-    '\u{18E0}' .. '\u{18EF}' |
-    '\u{18F0}' .. '\u{18F5}' |
-    '\u{19A0}' .. '\u{19AB}' |
-    '\u{19B0}' .. '\u{19BF}' |
-    '\u{19C0}' .. '\u{19C9}' |
-    '\u{1A00}' .. '\u{1A0F}' |
-    '\u{1A10}' .. '\u{1A16}' |
-    '\u{1A20}' .. '\u{1A2F}' |
-    '\u{1A30}' .. '\u{1A3F}' |
-    '\u{1A40}' .. '\u{1A4F}' |
-    '\u{1A50}' .. '\u{1A54}' |
-    '\u{1B05}' .. '\u{1B0F}' |
-    '\u{1B10}' .. '\u{1B1F}' |
-    '\u{1B20}' .. '\u{1B2F}' |
-    '\u{1B30}' .. '\u{1B33}' |
-    '\u{1B45}' .. '\u{1B4B}' |
-    '\u{1B83}' .. '\u{1B8F}' |
-    '\u{1B90}' .. '\u{1B9F}' |
-    '\u{1BA0}' .. '\u{1BAF}' |
-    '\u{1BBA}' .. '\u{1BBF}' |
-    '\u{1BC0}' .. '\u{1BCF}' |
-    '\u{1BD0}' .. '\u{1BDF}' |
-    '\u{1BE0}' .. '\u{1BE5}' |
-    '\u{1C00}' .. '\u{1C0F}' |
-    '\u{1C10}' .. '\u{1C1F}' |
-    '\u{1C20}' .. '\u{1C23}' |
-    '\u{1C4D}' .. '\u{1C4F}' |
-    '\u{1C5A}' .. '\u{1C5F}' |
-    '\u{1C60}' .. '\u{1C6F}' |
-    '\u{1C70}' .. '\u{1C77}' |
-    '\u{1CE9}' .. '\u{1CEF}' |
-    '\u{1CF0}' .. '\u{1CF6}' |
-    '\u{2D30}' .. '\u{2D3F}' |
-    '\u{2D40}' .. '\u{2D4F}' |
-    '\u{2D50}' .. '\u{2D5F}' |
-    '\u{2D60}' .. '\u{2D67}' |
-    '\u{2D80}' .. '\u{2D8F}' |
-    '\u{2D90}' .. '\u{2D96}' |
-    '\u{2DA0}' .. '\u{2DAE}' |
-    '\u{2DB0}' .. '\u{2DBE}' |
-    '\u{2DC0}' .. '\u{2DCE}' |
-    '\u{2DD0}' .. '\u{2DDE}' |
-    '\u{30A1}' .. '\u{30AF}' |
-    '\u{30B0}' .. '\u{30BF}' |
-    '\u{30C0}' .. '\u{30CF}' |
-    '\u{30D0}' .. '\u{30DF}' |
-    '\u{30E0}' .. '\u{30EF}' |
-    '\u{30F0}' .. '\u{30FF}' |
-    '\u{31A0}' .. '\u{31AF}' |
-    '\u{31B0}' .. '\u{31BA}' |
-    '\u{31F0}' .. '\u{31FF}' |
-    '\u{4DB5}' .. '\u{4DB5}' |
-    '\u{4E00}' .. '\u{4E00}' |
-    '\u{9FEF}' .. '\u{9FEF}' |
-    '\u{A000}' .. '\u{A00F}' |
-    '\u{A010}' .. '\u{A01F}' |
-    '\u{A020}' .. '\u{A02F}' |
-    '\u{A030}' .. '\u{A03F}' |
-    '\u{A040}' .. '\u{A04F}' |
-    '\u{A050}' .. '\u{A05F}' |
-    '\u{A060}' .. '\u{A06F}' |
-    '\u{A070}' .. '\u{A07F}' |
-    '\u{A080}' .. '\u{A08F}' |
-    '\u{A090}' .. '\u{A09F}' |
-    '\u{A0A0}' .. '\u{A0AF}' |
-    '\u{A0B0}' .. '\u{A0BF}' |
-    '\u{A0C0}' .. '\u{A0CF}' |
-    '\u{A0D0}' .. '\u{A0DF}' |
-    '\u{A0E0}' .. '\u{A0EF}' |
-    '\u{A0F0}' .. '\u{A0FF}' |
-    '\u{A100}' .. '\u{A10F}' |
-    '\u{A110}' .. '\u{A11F}' |
-    '\u{A120}' .. '\u{A12F}' |
-    '\u{A130}' .. '\u{A13F}' |
-    '\u{A140}' .. '\u{A14F}' |
-    '\u{A150}' .. '\u{A15F}' |
-    '\u{A160}' .. '\u{A16F}' |
-    '\u{A170}' .. '\u{A17F}' |
-    '\u{A180}' .. '\u{A18F}' |
-    '\u{A190}' .. '\u{A19F}' |
-    '\u{A1A0}' .. '\u{A1AF}' |
-    '\u{A1B0}' .. '\u{A1BF}' |
-    '\u{A1C0}' .. '\u{A1CF}' |
-    '\u{A1D0}' .. '\u{A1DF}' |
-    '\u{A1E0}' .. '\u{A1EF}' |
-    '\u{A1F0}' .. '\u{A1FF}' |
-    '\u{A200}' .. '\u{A20F}' |
-    '\u{A210}' .. '\u{A21F}' |
-    '\u{A220}' .. '\u{A22F}' |
-    '\u{A230}' .. '\u{A23F}' |
-    '\u{A240}' .. '\u{A24F}' |
-    '\u{A250}' .. '\u{A25F}' |
-    '\u{A260}' .. '\u{A26F}' |
-    '\u{A270}' .. '\u{A27F}' |
-    '\u{A280}' .. '\u{A28F}' |
-    '\u{A290}' .. '\u{A29F}' |
-    '\u{A2A0}' .. '\u{A2AF}' |
-    '\u{A2B0}' .. '\u{A2BF}' |
-    '\u{A2C0}' .. '\u{A2CF}' |
-    '\u{A2D0}' .. '\u{A2DF}' |
-    '\u{A2E0}' .. '\u{A2EF}' |
-    '\u{A2F0}' .. '\u{A2FF}' |
-    '\u{A300}' .. '\u{A30F}' |
-    '\u{A310}' .. '\u{A31F}' |
-    '\u{A320}' .. '\u{A32F}' |
-    '\u{A330}' .. '\u{A33F}' |
-    '\u{A340}' .. '\u{A34F}' |
-    '\u{A350}' .. '\u{A35F}' |
-    '\u{A360}' .. '\u{A36F}' |
-    '\u{A370}' .. '\u{A37F}' |
-    '\u{A380}' .. '\u{A38F}' |
-    '\u{A390}' .. '\u{A39F}' |
-    '\u{A3A0}' .. '\u{A3AF}' |
-    '\u{A3B0}' .. '\u{A3BF}' |
-    '\u{A3C0}' .. '\u{A3CF}' |
-    '\u{A3D0}' .. '\u{A3DF}' |
-    '\u{A3E0}' .. '\u{A3EF}' |
-    '\u{A3F0}' .. '\u{A3FF}' |
-    '\u{A400}' .. '\u{A40F}' |
-    '\u{A410}' .. '\u{A41F}' |
-    '\u{A420}' .. '\u{A42F}' |
-    '\u{A430}' .. '\u{A43F}' |
-    '\u{A440}' .. '\u{A44F}' |
-    '\u{A450}' .. '\u{A45F}' |
-    '\u{A460}' .. '\u{A46F}' |
-    '\u{A470}' .. '\u{A47F}' |
-    '\u{A480}' .. '\u{A48C}' |
-    '\u{A4D0}' .. '\u{A4DF}' |
-    '\u{A4E0}' .. '\u{A4EF}' |
-    '\u{A4F0}' .. '\u{A4F7}' |
-    '\u{A500}' .. '\u{A50F}' |
-    '\u{A510}' .. '\u{A51F}' |
-    '\u{A520}' .. '\u{A52F}' |
-    '\u{A530}' .. '\u{A53F}' |
-    '\u{A540}' .. '\u{A54F}' |
-    '\u{A550}' .. '\u{A55F}' |
-    '\u{A560}' .. '\u{A56F}' |
-    '\u{A570}' .. '\u{A57F}' |
-    '\u{A580}' .. '\u{A58F}' |
-    '\u{A590}' .. '\u{A59F}' |
-    '\u{A5A0}' .. '\u{A5AF}' |
-    '\u{A5B0}' .. '\u{A5BF}' |
-    '\u{A5C0}' .. '\u{A5CF}' |
-    '\u{A5D0}' .. '\u{A5DF}' |
-    '\u{A5E0}' .. '\u{A5EF}' |
-    '\u{A5F0}' .. '\u{A5FF}' |
-    '\u{A600}' .. '\u{A60B}' |
-    '\u{A610}' .. '\u{A61F}' |
-    '\u{A62A}' .. '\u{A62B}' |
-    '\u{A66E}' .. '\u{A66E}' |
-    '\u{A6A0}' .. '\u{A6AF}' |
-    '\u{A6B0}' .. '\u{A6BF}' |
-    '\u{A6C0}' .. '\u{A6CF}' |
-    '\u{A6D0}' .. '\u{A6DF}' |
-    '\u{A6E0}' .. '\u{A6E5}' |
-    '\u{A78F}' .. '\u{A78F}' |
-    '\u{A7F7}' .. '\u{A7FF}' |
-    '\u{A800}' .. '\u{A80F}' |
-    '\u{A810}' .. '\u{A81F}' |
-    '\u{A820}' .. '\u{A822}' |
-    '\u{A840}' .. '\u{A84F}' |
-    '\u{A850}' .. '\u{A85F}' |
-    '\u{A860}' .. '\u{A86F}' |
-    '\u{A870}' .. '\u{A873}' |
-    '\u{A882}' .. '\u{A88F}' |
-    '\u{A890}' .. '\u{A89F}' |
-    '\u{A8A0}' .. '\u{A8AF}' |
-    '\u{A8B0}' .. '\u{A8B3}' |
-    '\u{A8F2}' .. '\u{A8FE}' |
-    '\u{A90A}' .. '\u{A90F}' |
-    '\u{A910}' .. '\u{A91F}' |
-    '\u{A920}' .. '\u{A925}' |
-    '\u{A930}' .. '\u{A93F}' |
-    '\u{A940}' .. '\u{A946}' |
-    '\u{A960}' .. '\u{A96F}' |
-    '\u{A970}' .. '\u{A97C}' |
-    '\u{A984}' .. '\u{A98F}' |
-    '\u{A990}' .. '\u{A99F}' |
-    '\u{A9A0}' .. '\u{A9AF}' |
-    '\u{A9B0}' .. '\u{A9B2}' |
-    '\u{A9E0}' .. '\u{A9EF}' |
-    '\u{A9FA}' .. '\u{A9FE}' |
-    '\u{AA00}' .. '\u{AA0F}' |
-    '\u{AA10}' .. '\u{AA1F}' |
-    '\u{AA20}' .. '\u{AA28}' |
-    '\u{AA40}' .. '\u{AA4B}' |
-    '\u{AA60}' .. '\u{AA6F}' |
-    '\u{AA71}' .. '\u{AA7F}' |
-    '\u{AA80}' .. '\u{AA8F}' |
-    '\u{AA90}' .. '\u{AA9F}' |
-    '\u{AAA0}' .. '\u{AAAF}' |
-    '\u{AAB1}' .. '\u{AABD}' |
-    '\u{AAC0}' .. '\u{AAC2}' |
-    '\u{AADB}' .. '\u{AADC}' |
-    '\u{AAE0}' .. '\u{AAEA}' |
-    '\u{AAF2}' .. '\u{AAF2}' |
-    '\u{AB01}' .. '\u{AB0E}' |
-    '\u{AB11}' .. '\u{AB16}' |
-    '\u{AB20}' .. '\u{AB2E}' |
-    '\u{ABC0}' .. '\u{ABCF}' |
-    '\u{ABD0}' .. '\u{ABDF}' |
-    '\u{ABE0}' .. '\u{ABE2}' |
-    '\u{AC00}' .. '\u{AC00}' |
-    '\u{D7A3}' .. '\u{D7A3}' |
-    '\u{D7B0}' .. '\u{D7BF}' |
-    '\u{D7C0}' .. '\u{D7CF}' |
-    '\u{D7D0}' .. '\u{D7DF}' |
-    '\u{D7E0}' .. '\u{D7EF}' |
-    '\u{D7F0}' .. '\u{D7FB}' |
-    '\u{F900}' .. '\u{F90F}' |
-    '\u{F910}' .. '\u{F91F}' |
-    '\u{F920}' .. '\u{F92F}' |
-    '\u{F930}' .. '\u{F93F}' |
-    '\u{F940}' .. '\u{F94F}' |
-    '\u{F950}' .. '\u{F95F}' |
-    '\u{F960}' .. '\u{F96F}' |
-    '\u{F970}' .. '\u{F97F}' |
-    '\u{F980}' .. '\u{F98F}' |
-    '\u{F990}' .. '\u{F99F}' |
-    '\u{F9A0}' .. '\u{F9AF}' |
-    '\u{F9B0}' .. '\u{F9BF}' |
-    '\u{F9C0}' .. '\u{F9CF}' |
-    '\u{F9D0}' .. '\u{F9DF}' |
-    '\u{F9E0}' .. '\u{F9EF}' |
-    '\u{F9F0}' .. '\u{F9FF}' |
-    '\u{FA00}' .. '\u{FA0F}' |
-    '\u{FA10}' .. '\u{FA1F}' |
-    '\u{FA20}' .. '\u{FA2F}' |
-    '\u{FA30}' .. '\u{FA3F}' |
-    '\u{FA40}' .. '\u{FA4F}' |
-    '\u{FA50}' .. '\u{FA5F}' |
-    '\u{FA60}' .. '\u{FA6D}' |
-    '\u{FA70}' .. '\u{FA7F}' |
-    '\u{FA80}' .. '\u{FA8F}' |
-    '\u{FA90}' .. '\u{FA9F}' |
-    '\u{FAA0}' .. '\u{FAAF}' |
-    '\u{FAB0}' .. '\u{FABF}' |
-    '\u{FAC0}' .. '\u{FACF}' |
-    '\u{FAD0}' .. '\u{FAD9}' |
-    '\u{FB1D}' .. '\u{FB1F}' |
-    '\u{FB20}' .. '\u{FB2F}' |
-    '\u{FB30}' .. '\u{FB3E}' |
-    '\u{FB40}' .. '\u{FB4F}' |
-    '\u{FB50}' .. '\u{FB5F}' |
-    '\u{FB60}' .. '\u{FB6F}' |
-    '\u{FB70}' .. '\u{FB7F}' |
-    '\u{FB80}' .. '\u{FB8F}' |
-    '\u{FB90}' .. '\u{FB9F}' |
-    '\u{FBA0}' .. '\u{FBAF}' |
-    '\u{FBB0}' .. '\u{FBB1}' |
-    '\u{FBD3}' .. '\u{FBDF}' |
-    '\u{FBE0}' .. '\u{FBEF}' |
-    '\u{FBF0}' .. '\u{FBFF}' |
-    '\u{FC00}' .. '\u{FC0F}' |
-    '\u{FC10}' .. '\u{FC1F}' |
-    '\u{FC20}' .. '\u{FC2F}' |
-    '\u{FC30}' .. '\u{FC3F}' |
-    '\u{FC40}' .. '\u{FC4F}' |
-    '\u{FC50}' .. '\u{FC5F}' |
-    '\u{FC60}' .. '\u{FC6F}' |
-    '\u{FC70}' .. '\u{FC7F}' |
-    '\u{FC80}' .. '\u{FC8F}' |
-    '\u{FC90}' .. '\u{FC9F}' |
-    '\u{FCA0}' .. '\u{FCAF}' |
-    '\u{FCB0}' .. '\u{FCBF}' |
-    '\u{FCC0}' .. '\u{FCCF}' |
-    '\u{FCD0}' .. '\u{FCDF}' |
-    '\u{FCE0}' .. '\u{FCEF}' |
-    '\u{FCF0}' .. '\u{FCFF}' |
-    '\u{FD00}' .. '\u{FD0F}' |
-    '\u{FD10}' .. '\u{FD1F}' |
-    '\u{FD20}' .. '\u{FD2F}' |
-    '\u{FD30}' .. '\u{FD3D}' |
-    '\u{FD50}' .. '\u{FD5F}' |
-    '\u{FD60}' .. '\u{FD6F}' |
-    '\u{FD70}' .. '\u{FD7F}' |
-    '\u{FD80}' .. '\u{FD8F}' |
-    '\u{FD92}' .. '\u{FD9F}' |
-    '\u{FDA0}' .. '\u{FDAF}' |
-    '\u{FDB0}' .. '\u{FDBF}' |
-    '\u{FDC0}' .. '\u{FDC7}' |
-    '\u{FDF0}' .. '\u{FDFB}' |
-    '\u{FE70}' .. '\u{FE7F}' |
-    '\u{FE80}' .. '\u{FE8F}' |
-    '\u{FE90}' .. '\u{FE9F}' |
-    '\u{FEA0}' .. '\u{FEAF}' |
-    '\u{FEB0}' .. '\u{FEBF}' |
-    '\u{FEC0}' .. '\u{FECF}' |
-    '\u{FED0}' .. '\u{FEDF}' |
-    '\u{FEE0}' .. '\u{FEEF}' |
-    '\u{FEF0}' .. '\u{FEFC}' |
-    '\u{FF66}' .. '\u{FF6F}' |
-    '\u{FF71}' .. '\u{FF7F}' |
-    '\u{FF80}' .. '\u{FF8F}' |
-    '\u{FF90}' .. '\u{FF9D}' |
-    '\u{FFA0}' .. '\u{FFAF}' |
-    '\u{FFB0}' .. '\u{FFBE}' |
-    '\u{FFC2}' .. '\u{FFCF}' |
-    '\u{FFD2}' .. '\u{FFDC}' |
-    '\u{100A0}' .. '\u{100AF}' |
-    '\u{100B0}' .. '\u{100BF}' |
-    '\u{100C0}' .. '\u{100CF}' |
-    '\u{100D0}' .. '\u{100DF}' |
-    '\u{100E0}' .. '\u{100EF}' |
-    '\u{100F0}' .. '\u{100FA}' |
-    '\u{102A0}' .. '\u{102AF}' |
-    '\u{102B0}' .. '\u{102BF}' |
-    '\u{102C0}' .. '\u{102CF}' |
-    '\u{102D0}' .. '\u{102D0}' |
-    '\u{103A0}' .. '\u{103AF}' |
-    '\u{103B0}' .. '\u{103BF}' |
-    '\u{103C0}' .. '\u{103CF}' |
-    '\u{106A0}' .. '\u{106AF}' |
-    '\u{106B0}' .. '\u{106BF}' |
-    '\u{106C0}' .. '\u{106CF}' |
-    '\u{106D0}' .. '\u{106DF}' |
-    '\u{106E0}' .. '\u{106EF}' |
-    '\u{106F0}' .. '\u{106FF}' |
-    '\u{108E0}' .. '\u{108EF}' |
-    '\u{108F0}' .. '\u{108F5}' |
-    '\u{109A0}' .. '\u{109AF}' |
-    '\u{109B0}' .. '\u{109BF}' |
-    '\u{10A00}' .. '\u{10A00}' |
-    '\u{10A10}' .. '\u{10A1F}' |
-    '\u{10A20}' .. '\u{10A2F}' |
-    '\u{10A30}' .. '\u{10A35}' |
-    '\u{10A60}' .. '\u{10A6F}' |
-    '\u{10A70}' .. '\u{10A7C}' |
-    '\u{10A80}' .. '\u{10A8F}' |
-    '\u{10A90}' .. '\u{10A9C}' |
-    '\u{10AC0}' .. '\u{10ACF}' |
-    '\u{10AD0}' .. '\u{10ADF}' |
-    '\u{10AE0}' .. '\u{10AE4}' |
-    '\u{10B00}' .. '\u{10B0F}' |
-    '\u{10B10}' .. '\u{10B1F}' |
-    '\u{10B20}' .. '\u{10B2F}' |
-    '\u{10B30}' .. '\u{10B35}' |
-    '\u{10B40}' .. '\u{10B4F}' |
-    '\u{10B50}' .. '\u{10B55}' |
-    '\u{10B60}' .. '\u{10B6F}' |
-    '\u{10B70}' .. '\u{10B72}' |
-    '\u{10B80}' .. '\u{10B8F}' |
-    '\u{10B90}' .. '\u{10B91}' |
-    '\u{10C00}' .. '\u{10C0F}' |
-    '\u{10C10}' .. '\u{10C1F}' |
-    '\u{10C20}' .. '\u{10C2F}' |
-    '\u{10C30}' .. '\u{10C3F}' |
-    '\u{10C40}' .. '\u{10C48}' |
-    '\u{10D00}' .. '\u{10D0F}' |
-    '\u{10D10}' .. '\u{10D1F}' |
-    '\u{10D20}' .. '\u{10D23}' |
-    '\u{10F00}' .. '\u{10F0F}' |
-    '\u{10F10}' .. '\u{10F1C}' |
-    '\u{10F27}' .. '\u{10F27}' |
-    '\u{10F30}' .. '\u{10F3F}' |
-    '\u{10F40}' .. '\u{10F45}' |
-    '\u{110A0}' .. '\u{110AF}' |
-    '\u{110D0}' .. '\u{110DF}' |
-    '\u{110E0}' .. '\u{110E8}' |
-    '\u{111A0}' .. '\u{111AF}' |
-    '\u{111B0}' .. '\u{111B2}' |
-    '\u{111C1}' .. '\u{111C4}' |
-    '\u{111DA}' .. '\u{111DC}' |
-    '\u{112A0}' .. '\u{112A8}' |
-    '\u{112B0}' .. '\u{112BF}' |
-    '\u{112C0}' .. '\u{112CF}' |
-    '\u{112D0}' .. '\u{112DE}' |
-    '\u{114A0}' .. '\u{114AF}' |
-    '\u{114C4}' .. '\u{114C7}' |
-    '\u{115A0}' .. '\u{115AE}' |
-    '\u{115D8}' .. '\u{115DB}' |
-    '\u{116A0}' .. '\u{116AA}' |
-    '\u{118FF}' .. '\u{118FF}' |
-    '\u{11A00}' .. '\u{11A0F}' |
-    '\u{11A10}' .. '\u{11A1F}' |
-    '\u{11A20}' .. '\u{11A2F}' |
-    '\u{11A30}' .. '\u{11A3A}' |
-    '\u{11A50}' .. '\u{11A5F}' |
-    '\u{11A60}' .. '\u{11A6F}' |
-    '\u{11A70}' .. '\u{11A7F}' |
-    '\u{11A80}' .. '\u{11A89}' |
-    '\u{11A9D}' .. '\u{11A9D}' |
-    '\u{11AC0}' .. '\u{11ACF}' |
-    '\u{11AD0}' .. '\u{11ADF}' |
-    '\u{11AE0}' .. '\u{11AEF}' |
-    '\u{11AF0}' .. '\u{11AF8}' |
-    '\u{11C00}' .. '\u{11C0F}' |
-    '\u{11C10}' .. '\u{11C1F}' |
-    '\u{11C20}' .. '\u{11C2E}' |
-    '\u{11C40}' .. '\u{11C40}' |
-    '\u{11C72}' .. '\u{11C7F}' |
-    '\u{11C80}' .. '\u{11C8F}' |
-    '\u{11D00}' .. '\u{11D0F}' |
-    '\u{11D10}' .. '\u{11D1F}' |
-    '\u{11D20}' .. '\u{11D2F}' |
-    '\u{11D30}' .. '\u{11D30}' |
-    '\u{11D46}' .. '\u{11D46}' |
-    '\u{11D60}' .. '\u{11D6F}' |
-    '\u{11D70}' .. '\u{11D7F}' |
-    '\u{11D80}' .. '\u{11D89}' |
-    '\u{11D98}' .. '\u{11D98}' |
-    '\u{11EE0}' .. '\u{11EEF}' |
-    '\u{11EF0}' .. '\u{11EF2}' |
-    '\u{120A0}' .. '\u{120AF}' |
-    '\u{120B0}' .. '\u{120BF}' |
-    '\u{120C0}' .. '\u{120CF}' |
-    '\u{120D0}' .. '\u{120DF}' |
-    '\u{120E0}' .. '\u{120EF}' |
-    '\u{120F0}' .. '\u{120FF}' |
-    '\u{121A0}' .. '\u{121AF}' |
-    '\u{121B0}' .. '\u{121BF}' |
-    '\u{121C0}' .. '\u{121CF}' |
-    '\u{121D0}' .. '\u{121DF}' |
-    '\u{121E0}' .. '\u{121EF}' |
-    '\u{121F0}' .. '\u{121FF}' |
-    '\u{122A0}' .. '\u{122AF}' |
-    '\u{122B0}' .. '\u{122BF}' |
-    '\u{122C0}' .. '\u{122CF}' |
-    '\u{122D0}' .. '\u{122DF}' |
-    '\u{122E0}' .. '\u{122EF}' |
-    '\u{122F0}' .. '\u{122FF}' |
-    '\u{124A0}' .. '\u{124AF}' |
-    '\u{124B0}' .. '\u{124BF}' |
-    '\u{124C0}' .. '\u{124CF}' |
-    '\u{124D0}' .. '\u{124DF}' |
-    '\u{124E0}' .. '\u{124EF}' |
-    '\u{124F0}' .. '\u{124FF}' |
-    '\u{130A0}' .. '\u{130AF}' |
-    '\u{130B0}' .. '\u{130BF}' |
-    '\u{130C0}' .. '\u{130CF}' |
-    '\u{130D0}' .. '\u{130DF}' |
-    '\u{130E0}' .. '\u{130EF}' |
-    '\u{130F0}' .. '\u{130FF}' |
-    '\u{131A0}' .. '\u{131AF}' |
-    '\u{131B0}' .. '\u{131BF}' |
-    '\u{131C0}' .. '\u{131CF}' |
-    '\u{131D0}' .. '\u{131DF}' |
-    '\u{131E0}' .. '\u{131EF}' |
-    '\u{131F0}' .. '\u{131FF}' |
-    '\u{132A0}' .. '\u{132AF}' |
-    '\u{132B0}' .. '\u{132BF}' |
-    '\u{132C0}' .. '\u{132CF}' |
-    '\u{132D0}' .. '\u{132DF}' |
-    '\u{132E0}' .. '\u{132EF}' |
-    '\u{132F0}' .. '\u{132FF}' |
-    '\u{133A0}' .. '\u{133AF}' |
-    '\u{133B0}' .. '\u{133BF}' |
-    '\u{133C0}' .. '\u{133CF}' |
-    '\u{133D0}' .. '\u{133DF}' |
-    '\u{133E0}' .. '\u{133EF}' |
-    '\u{133F0}' .. '\u{133FF}' |
-    '\u{144A0}' .. '\u{144AF}' |
-    '\u{144B0}' .. '\u{144BF}' |
-    '\u{144C0}' .. '\u{144CF}' |
-    '\u{144D0}' .. '\u{144DF}' |
-    '\u{144E0}' .. '\u{144EF}' |
-    '\u{144F0}' .. '\u{144FF}' |
-    '\u{145A0}' .. '\u{145AF}' |
-    '\u{145B0}' .. '\u{145BF}' |
-    '\u{145C0}' .. '\u{145CF}' |
-    '\u{145D0}' .. '\u{145DF}' |
-    '\u{145E0}' .. '\u{145EF}' |
-    '\u{145F0}' .. '\u{145FF}' |
-    '\u{168A0}' .. '\u{168AF}' |
-    '\u{168B0}' .. '\u{168BF}' |
-    '\u{168C0}' .. '\u{168CF}' |
-    '\u{168D0}' .. '\u{168DF}' |
-    '\u{168E0}' .. '\u{168EF}' |
-    '\u{168F0}' .. '\u{168FF}' |
-    '\u{169A0}' .. '\u{169AF}' |
-    '\u{169B0}' .. '\u{169BF}' |
-    '\u{169C0}' .. '\u{169CF}' |
-    '\u{169D0}' .. '\u{169DF}'
+    'က' .. 'ဏ' |
+    'တ' .. 'ဟ' |
+    'ဠ' .. 'ဪ' |
+    'ဿ' .. 'ဿ' |
+    'ၐ' .. 'ၝ' |
+    'ၡ' .. 'ၯ' |
+    'ၰ' .. 'ၿ' |
+    'ႀ' .. 'ႎ' |
+    'ᄀ' .. 'ᄏ' |
+    'ᄐ' .. 'ᄟ' |
+    'ᄠ' .. 'ᄯ' |
+    'ᄰ' .. 'ᄿ' |
+    'ᅀ' .. 'ᅏ' |
+    'ᅐ' .. 'ᅟ' |
+    'ᅠ' .. 'ᅯ' |
+    'ᅰ' .. 'ᅿ' |
+    'ᆀ' .. 'ᆏ' |
+    'ᆐ' .. 'ᆟ' |
+    'ሀ' .. 'ሏ' |
+    'ሐ' .. 'ሟ' |
+    'ሠ' .. 'ሯ' |
+    'ሰ' .. 'ሿ' |
+    'ቀ' .. 'ቍ' |
+    'ቐ' .. 'ቝ' |
+    'በ' .. 'ቯ' |
+    'ተ' .. 'ቿ' |
+    'ኀ' .. 'ኍ' |
+    'ነ' .. 'ኟ' |
+    'ጀ' .. 'ጏ' |
+    'ጐ' .. 'ጟ' |
+    'ጠ' .. 'ጯ' |
+    'ጰ' .. 'ጿ' |
+    'ፀ' .. 'ፏ' |
+    'ፐ' .. 'ፚ' |
+    'ᎀ' .. 'ᎏ' |
+    'ᐁ' .. 'ᐏ' |
+    'ᐐ' .. 'ᐟ' |
+    'ᐠ' .. 'ᐯ' |
+    'ᐰ' .. 'ᐿ' |
+    'ᑀ' .. 'ᑏ' |
+    'ᑐ' .. 'ᑟ' |
+    'ᑠ' .. 'ᑯ' |
+    'ᑰ' .. 'ᑿ' |
+    'ᒀ' .. 'ᒏ' |
+    'ᒐ' .. 'ᒟ' |
+    'ᔀ' .. 'ᔏ' |
+    'ᔐ' .. 'ᔟ' |
+    'ᔠ' .. 'ᔯ' |
+    'ᔰ' .. 'ᔿ' |
+    'ᕀ' .. 'ᕏ' |
+    'ᕐ' .. 'ᕟ' |
+    'ᕠ' .. 'ᕯ' |
+    'ᕰ' .. 'ᕿ' |
+    'ᖀ' .. 'ᖏ' |
+    'ᖐ' .. 'ᖟ' |
+    'ᘀ' .. 'ᘏ' |
+    'ᘐ' .. 'ᘟ' |
+    'ᘠ' .. 'ᘯ' |
+    'ᘰ' .. 'ᘿ' |
+    'ᙀ' .. 'ᙏ' |
+    'ᙐ' .. 'ᙟ' |
+    'ᙠ' .. 'ᙯ' |
+    'ᙰ' .. 'ᙿ' |
+    'ᚁ' .. 'ᚏ' |
+    'ᚐ' .. 'ᚚ' |
+    'ᜀ' .. 'ᜏ' |
+    'ᜐ' .. 'ᜑ' |
+    'ᜠ' .. 'ᜯ' |
+    'ᜰ' .. 'ᜱ' |
+    'ᝀ' .. 'ᝏ' |
+    'ᝐ' .. 'ᝑ' |
+    'ᝠ' .. 'ᝯ' |
+    'ᝰ' .. 'ᝰ' |
+    'ក' .. 'ត' |
+    'ថ' .. 'ស' |
+    'ᠠ' .. 'ᠯ' |
+    'ᠰ' .. 'ᠿ' |
+    'ᡀ' .. 'ᡏ' |
+    'ᡐ' .. 'ᡟ' |
+    'ᡠ' .. 'ᡯ' |
+    'ᡰ' .. 'ᡸ' |
+    'ᢀ' .. 'ᢏ' |
+    'ᢐ' .. 'ᢟ' |
+    'ᤀ' .. 'ᤏ' |
+    'ᤐ' .. 'ᤞ' |
+    'ᥐ' .. 'ᥟ' |
+    'ᥠ' .. 'ᥭ' |
+    'ᥰ' .. 'ᥴ' |
+    'ᦀ' .. 'ᦏ' |
+    'ᦐ' .. 'ᦟ' |
+    'ℵ' .. 'ℸ' |
+    '〆' .. '〆' |
+    '〼' .. '〼' |
+    'ぁ' .. 'く' |
+    'ぐ' .. 'た' |
+    'だ' .. 'は' |
+    'ば' .. 'み' |
+    'む' .. 'わ' |
+    'ゐ' .. 'ゟ' |
+    'ㄅ' .. 'ㄏ' |
+    'ㄐ' .. 'ㄟ' |
+    'ㄠ' .. 'ㄯ' |
+    'ㄱ' .. 'ㄿ' |
+    'ㅀ' .. 'ㅏ' |
+    'ㅐ' .. 'ㅟ' |
+    'ㅠ' .. 'ㅯ' |
+    'ㅰ' .. 'ㅿ' |
+    'ㆀ' .. 'ㆎ' |
+    '㐀' .. '㐀' |
+    '𐀀' .. '𐀏' |
+    '𐀐' .. '𐀟' |
+    '𐀠' .. '𐀯' |
+    '𐀰' .. '𐀿' |
+    '𐁀' .. '𐁍' |
+    '𐁐' .. '𐁝' |
+    '𐂀' .. '𐂏' |
+    '𐂐' .. '𐂟' |
+    '𐊀' .. '𐊏' |
+    '𐊐' .. '𐊜' |
+    '𐌀' .. '𐌏' |
+    '𐌐' .. '𐌟' |
+    '𐌭' .. '𐌯' |
+    '𐌰' .. '𐌿' |
+    '𐍀' .. '𐍉' |
+    '𐍐' .. '𐍟' |
+    '𐍠' .. '𐍯' |
+    '𐍰' .. '𐍵' |
+    '𐎀' .. '𐎏' |
+    '𐎐' .. '𐎝' |
+    '𐑐' .. '𐑟' |
+    '𐑠' .. '𐑯' |
+    '𐑰' .. '𐑿' |
+    '𐒀' .. '𐒏' |
+    '𐒐' .. '𐒝' |
+    '𐔀' .. '𐔏' |
+    '𐔐' .. '𐔟' |
+    '𐔠' .. '𐔧' |
+    '𐔰' .. '𐔿' |
+    '𐕀' .. '𐕏' |
+    '𐕐' .. '𐕟' |
+    '𐕠' .. '𐕣' |
+    '𐘀' .. '𐘏' |
+    '𐘐' .. '𐘟' |
+    '𐘠' .. '𐘯' |
+    '𐘰' .. '𐘿' |
+    '𐙀' .. '𐙏' |
+    '𐙐' .. '𐙟' |
+    '𐙠' .. '𐙯' |
+    '𐙰' .. '𐙿' |
+    '𐚀' .. '𐚏' |
+    '𐚐' .. '𐚟' |
+    '𐜀' .. '𐜏' |
+    '𐜐' .. '𐜟' |
+    '𐜠' .. '𐜯' |
+    '𐜰' .. '𐜶' |
+    '𐝀' .. '𐝏' |
+    '𐝐' .. '𐝕' |
+    '𐝠' .. '𐝧' |
+    '𐠀' .. '𐠏' |
+    '𐠐' .. '𐠟' |
+    '𐠠' .. '𐠯' |
+    '𐠰' .. '𐠿' |
+    '𐡀' .. '𐡏' |
+    '𐡐' .. '𐡕' |
+    '𐡠' .. '𐡯' |
+    '𐡰' .. '𐡶' |
+    '𐢀' .. '𐢏' |
+    '𐢐' .. '𐢞' |
+    '𐤀' .. '𐤏' |
+    '𐤐' .. '𐤕' |
+    '𐤠' .. '𐤯' |
+    '𐤰' .. '𐤹' |
+    '𐦀' .. '𐦏' |
+    '𐦐' .. '𐦟' |
+    '𑀃' .. '𑀏' |
+    '𑀐' .. '𑀟' |
+    '𑀠' .. '𑀯' |
+    '𑀰' .. '𑀷' |
+    '𑂃' .. '𑂏' |
+    '𑂐' .. '𑂟' |
+    '𑄃' .. '𑄏' |
+    '𑄐' .. '𑄟' |
+    '𑄠' .. '𑄦' |
+    '𑅄' .. '𑅄' |
+    '𑅐' .. '𑅟' |
+    '𑅠' .. '𑅯' |
+    '𑅰' .. '𑅶' |
+    '𑆃' .. '𑆏' |
+    '𑆐' .. '𑆟' |
+    '𑈀' .. '𑈏' |
+    '𑈐' .. '𑈟' |
+    '𑈠' .. '𑈫' |
+    '𑊀' .. '𑊏' |
+    '𑊐' .. '𑊟' |
+    '𑌅' .. '𑌏' |
+    '𑌐' .. '𑌟' |
+    '𑌠' .. '𑌯' |
+    '𑌰' .. '𑌽' |
+    '𑍐' .. '𑍟' |
+    '𑍠' .. '𑍡' |
+    '𑐀' .. '𑐏' |
+    '𑐐' .. '𑐟' |
+    '𑐠' .. '𑐯' |
+    '𑐰' .. '𑐴' |
+    '𑑇' .. '𑑊' |
+    '𑒀' .. '𑒏' |
+    '𑒐' .. '𑒟' |
+    '𑖀' .. '𑖏' |
+    '𑖐' .. '𑖟' |
+    '𑘀' .. '𑘏' |
+    '𑘐' .. '𑘟' |
+    '𑘠' .. '𑘯' |
+    '𑙄' .. '𑙄' |
+    '𑚀' .. '𑚏' |
+    '𑚐' .. '𑚟' |
+    '𑜀' .. '𑜏' |
+    '𑜐' .. '𑜚' |
+    '𑠀' .. '𑠏' |
+    '𑠐' .. '𑠟' |
+    '𑠠' .. '𑠫' |
+    '𒀀' .. '𒀏' |
+    '𒀐' .. '𒀟' |
+    '𒀠' .. '𒀯' |
+    '𒀰' .. '𒀿' |
+    '𒁀' .. '𒁏' |
+    '𒁐' .. '𒁟' |
+    '𒁠' .. '𒁯' |
+    '𒁰' .. '𒁿' |
+    '𒂀' .. '𒂏' |
+    '𒂐' .. '𒂟' |
+    '𒄀' .. '𒄏' |
+    '𒄐' .. '𒄟' |
+    '𒄠' .. '𒄯' |
+    '𒄰' .. '𒄿' |
+    '𒅀' .. '𒅏' |
+    '𒅐' .. '𒅟' |
+    '𒅠' .. '𒅯' |
+    '𒅰' .. '𒅿' |
+    '𒆀' .. '𒆏' |
+    '𒆐' .. '𒆟' |
+    '𒈀' .. '𒈏' |
+    '𒈐' .. '𒈟' |
+    '𒈠' .. '𒈯' |
+    '𒈰' .. '𒈿' |
+    '𒉀' .. '𒉏' |
+    '𒉐' .. '𒉟' |
+    '𒉠' .. '𒉯' |
+    '𒉰' .. '𒉿' |
+    '𒊀' .. '𒊏' |
+    '𒊐' .. '𒊟' |
+    '𒌀' .. '𒌏' |
+    '𒌐' .. '𒌟' |
+    '𒌠' .. '𒌯' |
+    '𒌰' .. '𒌿' |
+    '𒍀' .. '𒍏' |
+    '𒍐' .. '𒍟' |
+    '𒍠' .. '𒍯' |
+    '𒍰' .. '𒍿' |
+    '𒎀' .. '𒎏' |
+    '𒎐' .. '𒎙' |
+    '𒒀' .. '𒒏' |
+    '𒒐' .. '𒒟' |
+    '𒔀' .. '𒔏' |
+    '𒔐' .. '𒔟' |
+    '𒔠' .. '𒔯' |
+    '𒔰' .. '𒔿' |
+    '𒕀' .. '𒕃' |
+    '𓀀' .. '𓀏' |
+    '𓀐' .. '𓀟' |
+    '𓀠' .. '𓀯' |
+    '𓀰' .. '𓀿' |
+    '𓁀' .. '𓁏' |
+    '𓁐' .. '𓁟' |
+    '𓁠' .. '𓁯' |
+    '𓁰' .. '𓁿' |
+    '𓂀' .. '𓂏' |
+    '𓂐' .. '𓂟' |
+    '𓄀' .. '𓄏' |
+    '𓄐' .. '𓄟' |
+    '𓄠' .. '𓄯' |
+    '𓄰' .. '𓄿' |
+    '𓅀' .. '𓅏' |
+    '𓅐' .. '𓅟' |
+    '𓅠' .. '𓅯' |
+    '𓅰' .. '𓅿' |
+    '𓆀' .. '𓆏' |
+    '𓆐' .. '𓆟' |
+    '𓈀' .. '𓈏' |
+    '𓈐' .. '𓈟' |
+    '𓈠' .. '𓈯' |
+    '𓈰' .. '𓈿' |
+    '𓉀' .. '𓉏' |
+    '𓉐' .. '𓉟' |
+    '𓉠' .. '𓉯' |
+    '𓉰' .. '𓉿' |
+    '𓊀' .. '𓊏' |
+    '𓊐' .. '𓊟' |
+    '𓌀' .. '𓌏' |
+    '𓌐' .. '𓌟' |
+    '𓌠' .. '𓌯' |
+    '𓌰' .. '𓌿' |
+    '𓍀' .. '𓍏' |
+    '𓍐' .. '𓍟' |
+    '𓍠' .. '𓍯' |
+    '𓍰' .. '𓍿' |
+    '𓎀' .. '𓎏' |
+    '𓎐' .. '𓎟' |
+    '𓐀' .. '𓐏' |
+    '𓐐' .. '𓐟' |
+    '𓐠' .. '𓐮' |
+    '𔐀' .. '𔐏' |
+    '𔐐' .. '𔐟' |
+    '𔐠' .. '𔐯' |
+    '𔐰' .. '𔐿' |
+    '𔑀' .. '𔑏' |
+    '𔑐' .. '𔑟' |
+    '𔑠' .. '𔑯' |
+    '𔑰' .. '𔑿' |
+    '𔒀' .. '𔒏' |
+    '𔒐' .. '𔒟' |
+    '𔔀' .. '𔔏' |
+    '𔔐' .. '𔔟' |
+    '𔔠' .. '𔔯' |
+    '𔔰' .. '𔔿' |
+    '𔕀' .. '𔕏' |
+    '𔕐' .. '𔕟' |
+    '𔕠' .. '𔕯' |
+    '𔕰' .. '𔕿' |
+    '𔖀' .. '𔖏' |
+    '𔖐' .. '𔖟' |
+    '𔘀' .. '𔘏' |
+    '𔘐' .. '𔘟' |
+    '𔘠' .. '𔘯' |
+    '𔘰' .. '𔘿' |
+    '𔙀' .. '𔙆' |
+    '𖠀' .. '𖠏' |
+    '𖠐' .. '𖠟' |
+    '𖠠' .. '𖠯' |
+    '𖠰' .. '𖠿' |
+    '𖡀' .. '𖡏' |
+    '𖡐' .. '𖡟' |
+    '𖡠' .. '𖡯' |
+    '𖡰' .. '𖡿' |
+    '𖢀' .. '𖢏' |
+    '𖢐' .. '𖢟' |
+    '𖤀' .. '𖤏' |
+    '𖤐' .. '𖤟' |
+    '𖤠' .. '𖤯' |
+    '𖤰' .. '𖤿' |
+    '𖥀' .. '𖥏' |
+    '𖥐' .. '𖥟' |
+    '𖥠' .. '𖥯' |
+    '𖥰' .. '𖥿' |
+    '𖦀' .. '𖦏' |
+    '𖦐' .. '𖦟' |
+    'ª' .. 'ª' |
+    'º' .. 'º' |
+    'ƻ' .. 'ƻ' |
+    'ǀ' .. 'ǃ' |
+    'ʔ' .. 'ʔ' |
+    'א' .. 'ן' |
+    'נ' .. 'ׯ' |
+    'װ' .. 'ײ' |
+    'ؠ' .. 'د' |
+    'ذ' .. 'ؿ' |
+    'ف' .. 'ي' |
+    'ٮ' .. 'ٯ' |
+    'ٱ' .. 'ٿ' |
+    'ڀ' .. 'ڏ' |
+    'ڐ' .. 'ڟ' |
+    'ڠ' .. 'گ' |
+    'ڰ' .. 'ڿ' |
+    'ۀ' .. 'ۏ' |
+    'ې' .. 'ە' |
+    'ۮ' .. 'ۯ' |
+    'ۺ' .. 'ۿ' |
+    'ܐ' .. 'ܟ' |
+    'ܠ' .. 'ܯ' |
+    'ݍ' .. 'ݏ' |
+    'ݐ' .. 'ݟ' |
+    'ݠ' .. 'ݯ' |
+    'ݰ' .. 'ݿ' |
+    'ހ' .. 'ޏ' |
+    'ސ' .. 'ޟ' |
+    'ޠ' .. 'ޥ' |
+    'ޱ' .. 'ޱ' |
+    'ߊ' .. 'ߏ' |
+    'ߐ' .. 'ߟ' |
+    'ߠ' .. 'ߪ' |
+    'ࠀ' .. 'ࠏ' |
+    'ࠐ' .. 'ࠕ' |
+    'ࡀ' .. 'ࡏ' |
+    'ࡐ' .. 'ࡘ' |
+    'ࡠ' .. 'ࡪ' |
+    'ࢠ' .. 'ࢯ' |
+    'ࢰ' .. 'ࢽ' |
+    'ऄ' .. 'ए' |
+    'ऐ' .. 'ट' |
+    'ठ' .. 'य' |
+    'र' .. 'ऽ' |
+    'ॐ' .. 'य़' |
+    'ॠ' .. 'ॡ' |
+    'ॲ' .. 'ॿ' |
+    'ঀ' .. 'এ' |
+    'ঐ' .. 'ট' |
+    'ঠ' .. 'য' |
+    'র' .. 'ঽ' |
+    'ৎ' .. 'ৎ' |
+    'ড়' .. 'য়' |
+    'ৠ' .. 'ৡ' |
+    'ৰ' .. 'ৼ' |
+    'ਅ' .. 'ਏ' |
+    'ਐ' .. 'ਟ' |
+    'ਠ' .. 'ਯ' |
+    'ਰ' .. 'ਹ' |
+    'ਖ਼' .. 'ਫ਼' |
+    'ੲ' .. 'ੴ' |
+    'અ' .. 'એ' |
+    'ઐ' .. 'ટ' |
+    'ઠ' .. 'ય' |
+    'ર' .. 'ઽ' |
+    'ૐ' .. 'ૐ' |
+    'ૠ' .. 'ૡ' |
+    'ૹ' .. 'ૹ' |
+    'ଅ' .. 'ଏ' |
+    'ଐ' .. 'ଟ' |
+    'ଠ' .. 'ଯ' |
+    'ର' .. 'ଽ' |
+    'ଡ଼' .. 'ୟ' |
+    'ୠ' .. 'ୡ' |
+    'ୱ' .. 'ୱ' |
+    'ஃ' .. 'ஏ' |
+    'ஐ' .. 'ட' |
+    'ண' .. 'ய' |
+    'ர' .. 'ஹ' |
+    'ௐ' .. 'ௐ' |
+    'అ' .. 'ఏ' |
+    'ఐ' .. 'ట' |
+    'ఠ' .. 'య' |
+    'ర' .. 'ఽ' |
+    'ౘ' .. 'ౚ' |
+    'ౠ' .. 'ౡ' |
+    'ಀ' .. 'ಏ' |
+    'ಐ' .. 'ಟ' |
+    'ಠ' .. 'ಯ' |
+    'ರ' .. 'ಽ' |
+    'ೞ' .. 'ೞ' |
+    'ೠ' .. 'ೡ' |
+    'ೱ' .. 'ೲ' |
+    'അ' .. 'ഏ' |
+    'ഐ' .. 'ട' |
+    'ഠ' .. 'യ' |
+    'ര' .. 'ഽ' |
+    'ൎ' .. 'ൎ' |
+    'ൔ' .. 'ൟ' |
+    'ൠ' .. 'ൡ' |
+    'ൺ' .. 'ൿ' |
+    'අ' .. 'ඏ' |
+    'ඐ' .. 'ඟ' |
+    'ච' .. 'ද' |
+    'ධ' .. 'ල' |
+    'ව' .. 'ෆ' |
+    'ก' .. 'ฏ' |
+    'ฐ' .. 'ฟ' |
+    'ภ' .. 'ฯ' |
+    'ะ' .. 'ำ' |
+    'เ' .. 'ๅ' |
+    'ກ' .. 'ຍ' |
+    'ດ' .. 'ຟ' |
+    'ມ' .. 'ຯ' |
+    'ະ' .. 'ຽ' |
+    'ເ' .. 'ໄ' |
+    'ໜ' .. 'ໟ' |
+    'ༀ' .. 'ༀ' |
+    'ཀ' .. 'ཏ' |
+    'ཐ' .. 'ཟ' |
+    'འ' .. 'ཬ' |
+    'ྈ' .. 'ྌ' |
+    'ᆠ' .. 'ᆯ' |
+    'ᆰ' .. 'ᆿ' |
+    'ᇀ' .. 'ᇏ' |
+    'ᇐ' .. 'ᇟ' |
+    'ᇠ' .. 'ᇯ' |
+    'ᇰ' .. 'ᇿ' |
+    'አ' .. 'ኯ' |
+    'ኰ' .. 'ኾ' |
+    'ዀ' .. 'ዏ' |
+    'ዐ' .. 'ዟ' |
+    'ዠ' .. 'ዯ' |
+    'ደ' .. 'ዿ' |
+    'ᒠ' .. 'ᒯ' |
+    'ᒰ' .. 'ᒿ' |
+    'ᓀ' .. 'ᓏ' |
+    'ᓐ' .. 'ᓟ' |
+    'ᓠ' .. 'ᓯ' |
+    'ᓰ' .. 'ᓿ' |
+    'ᖠ' .. 'ᖯ' |
+    'ᖰ' .. 'ᖿ' |
+    'ᗀ' .. 'ᗏ' |
+    'ᗐ' .. 'ᗟ' |
+    'ᗠ' .. 'ᗯ' |
+    'ᗰ' .. 'ᗿ' |
+    'ᚠ' .. 'ᚯ' |
+    'ᚰ' .. 'ᚿ' |
+    'ᛀ' .. 'ᛏ' |
+    'ᛐ' .. 'ᛟ' |
+    'ᛠ' .. 'ᛪ' |
+    'ᛱ' .. 'ᛸ' |
+    'ហ' .. 'ឯ' |
+    'ឰ' .. 'ឳ' |
+    'ៜ' .. 'ៜ' |
+    'ᢠ' .. 'ᢪ' |
+    'ᢰ' .. 'ᢿ' |
+    'ᣀ' .. 'ᣏ' |
+    'ᣐ' .. 'ᣟ' |
+    'ᣠ' .. 'ᣯ' |
+    'ᣰ' .. 'ᣵ' |
+    'ᦠ' .. 'ᦫ' |
+    'ᦰ' .. 'ᦿ' |
+    'ᧀ' .. 'ᧉ' |
+    'ᨀ' .. 'ᨏ' |
+    'ᨐ' .. 'ᨖ' |
+    'ᨠ' .. 'ᨯ' |
+    'ᨰ' .. 'ᨿ' |
+    'ᩀ' .. 'ᩏ' |
+    'ᩐ' .. 'ᩔ' |
+    'ᬅ' .. 'ᬏ' |
+    'ᬐ' .. 'ᬟ' |
+    'ᬠ' .. 'ᬯ' |
+    'ᬰ' .. 'ᬳ' |
+    'ᭅ' .. 'ᭋ' |
+    'ᮃ' .. 'ᮏ' |
+    'ᮐ' .. 'ᮟ' |
+    'ᮠ' .. 'ᮯ' |
+    'ᮺ' .. 'ᮿ' |
+    'ᯀ' .. 'ᯏ' |
+    'ᯐ' .. 'ᯟ' |
+    'ᯠ' .. 'ᯥ' |
+    'ᰀ' .. 'ᰏ' |
+    'ᰐ' .. 'ᰟ' |
+    'ᰠ' .. 'ᰣ' |
+    'ᱍ' .. 'ᱏ' |
+    'ᱚ' .. 'ᱟ' |
+    'ᱠ' .. 'ᱯ' |
+    'ᱰ' .. 'ᱷ' |
+    'ᳩ' .. 'ᳯ' |
+    'ᳰ' .. 'ᳶ' |
+    'ⴰ' .. 'ⴿ' |
+    'ⵀ' .. 'ⵏ' |
+    'ⵐ' .. 'ⵟ' |
+    'ⵠ' .. 'ⵧ' |
+    'ⶀ' .. 'ⶏ' |
+    'ⶐ' .. 'ⶖ' |
+    'ⶠ' .. 'ⶮ' |
+    'ⶰ' .. 'ⶾ' |
+    'ⷀ' .. 'ⷎ' |
+    'ⷐ' .. 'ⷞ' |
+    'ァ' .. 'ク' |
+    'グ' .. 'タ' |
+    'ダ' .. 'ハ' |
+    'バ' .. 'ミ' |
+    'ム' .. 'ワ' |
+    'ヰ' .. 'ヿ' |
+    'ㆠ' .. 'ㆯ' |
+    'ㆰ' .. 'ㆺ' |
+    'ㇰ' .. 'ㇿ' |
+    '䶵' .. '䶵' |
+    '一' .. '一' |
+    '鿯' .. '鿯' |
+    'ꀀ' .. 'ꀏ' |
+    'ꀐ' .. 'ꀟ' |
+    'ꀠ' .. 'ꀯ' |
+    'ꀰ' .. 'ꀿ' |
+    'ꁀ' .. 'ꁏ' |
+    'ꁐ' .. 'ꁟ' |
+    'ꁠ' .. 'ꁯ' |
+    'ꁰ' .. 'ꁿ' |
+    'ꂀ' .. 'ꂏ' |
+    'ꂐ' .. 'ꂟ' |
+    'ꂠ' .. 'ꂯ' |
+    'ꂰ' .. 'ꂿ' |
+    'ꃀ' .. 'ꃏ' |
+    'ꃐ' .. 'ꃟ' |
+    'ꃠ' .. 'ꃯ' |
+    'ꃰ' .. 'ꃿ' |
+    'ꄀ' .. 'ꄏ' |
+    'ꄐ' .. 'ꄟ' |
+    'ꄠ' .. 'ꄯ' |
+    'ꄰ' .. 'ꄿ' |
+    'ꅀ' .. 'ꅏ' |
+    'ꅐ' .. 'ꅟ' |
+    'ꅠ' .. 'ꅯ' |
+    'ꅰ' .. 'ꅿ' |
+    'ꆀ' .. 'ꆏ' |
+    'ꆐ' .. 'ꆟ' |
+    'ꆠ' .. 'ꆯ' |
+    'ꆰ' .. 'ꆿ' |
+    'ꇀ' .. 'ꇏ' |
+    'ꇐ' .. 'ꇟ' |
+    'ꇠ' .. 'ꇯ' |
+    'ꇰ' .. 'ꇿ' |
+    'ꈀ' .. 'ꈏ' |
+    'ꈐ' .. 'ꈟ' |
+    'ꈠ' .. 'ꈯ' |
+    'ꈰ' .. 'ꈿ' |
+    'ꉀ' .. 'ꉏ' |
+    'ꉐ' .. 'ꉟ' |
+    'ꉠ' .. 'ꉯ' |
+    'ꉰ' .. 'ꉿ' |
+    'ꊀ' .. 'ꊏ' |
+    'ꊐ' .. 'ꊟ' |
+    'ꊠ' .. 'ꊯ' |
+    'ꊰ' .. 'ꊿ' |
+    'ꋀ' .. 'ꋏ' |
+    'ꋐ' .. 'ꋟ' |
+    'ꋠ' .. 'ꋯ' |
+    'ꋰ' .. 'ꋿ' |
+    'ꌀ' .. 'ꌏ' |
+    'ꌐ' .. 'ꌟ' |
+    'ꌠ' .. 'ꌯ' |
+    'ꌰ' .. 'ꌿ' |
+    'ꍀ' .. 'ꍏ' |
+    'ꍐ' .. 'ꍟ' |
+    'ꍠ' .. 'ꍯ' |
+    'ꍰ' .. 'ꍿ' |
+    'ꎀ' .. 'ꎏ' |
+    'ꎐ' .. 'ꎟ' |
+    'ꎠ' .. 'ꎯ' |
+    'ꎰ' .. 'ꎿ' |
+    'ꏀ' .. 'ꏏ' |
+    'ꏐ' .. 'ꏟ' |
+    'ꏠ' .. 'ꏯ' |
+    'ꏰ' .. 'ꏿ' |
+    'ꐀ' .. 'ꐏ' |
+    'ꐐ' .. 'ꐟ' |
+    'ꐠ' .. 'ꐯ' |
+    'ꐰ' .. 'ꐿ' |
+    'ꑀ' .. 'ꑏ' |
+    'ꑐ' .. 'ꑟ' |
+    'ꑠ' .. 'ꑯ' |
+    'ꑰ' .. 'ꑿ' |
+    'ꒀ' .. 'ꒌ' |
+    'ꓐ' .. 'ꓟ' |
+    'ꓠ' .. 'ꓯ' |
+    'ꓰ' .. 'ꓷ' |
+    'ꔀ' .. 'ꔏ' |
+    'ꔐ' .. 'ꔟ' |
+    'ꔠ' .. 'ꔯ' |
+    'ꔰ' .. 'ꔿ' |
+    'ꕀ' .. 'ꕏ' |
+    'ꕐ' .. 'ꕟ' |
+    'ꕠ' .. 'ꕯ' |
+    'ꕰ' .. 'ꕿ' |
+    'ꖀ' .. 'ꖏ' |
+    'ꖐ' .. 'ꖟ' |
+    'ꖠ' .. 'ꖯ' |
+    'ꖰ' .. 'ꖿ' |
+    'ꗀ' .. 'ꗏ' |
+    'ꗐ' .. 'ꗟ' |
+    'ꗠ' .. 'ꗯ' |
+    'ꗰ' .. 'ꗿ' |
+    'ꘀ' .. 'ꘋ' |
+    'ꘐ' .. 'ꘟ' |
+    'ꘪ' .. 'ꘫ' |
+    'ꙮ' .. 'ꙮ' |
+    'ꚠ' .. 'ꚯ' |
+    'ꚰ' .. 'ꚿ' |
+    'ꛀ' .. 'ꛏ' |
+    'ꛐ' .. 'ꛟ' |
+    'ꛠ' .. 'ꛥ' |
+    'ꞏ' .. 'ꞏ' |
+    'ꟷ' .. 'ꟿ' |
+    'ꠀ' .. 'ꠏ' |
+    'ꠐ' .. 'ꠟ' |
+    'ꠠ' .. 'ꠢ' |
+    'ꡀ' .. 'ꡏ' |
+    'ꡐ' .. 'ꡟ' |
+    'ꡠ' .. 'ꡯ' |
+    'ꡰ' .. 'ꡳ' |
+    'ꢂ' .. 'ꢏ' |
+    'ꢐ' .. 'ꢟ' |
+    'ꢠ' .. 'ꢯ' |
+    'ꢰ' .. 'ꢳ' |
+    'ꣲ' .. 'ꣾ' |
+    'ꤊ' .. 'ꤏ' |
+    'ꤐ' .. 'ꤟ' |
+    'ꤠ' .. 'ꤥ' |
+    'ꤰ' .. 'ꤿ' |
+    'ꥀ' .. 'ꥆ' |
+    'ꥠ' .. 'ꥯ' |
+    'ꥰ' .. 'ꥼ' |
+    'ꦄ' .. 'ꦏ' |
+    'ꦐ' .. 'ꦟ' |
+    'ꦠ' .. 'ꦯ' |
+    'ꦰ' .. 'ꦲ' |
+    'ꧠ' .. 'ꧯ' |
+    'ꧺ' .. 'ꧾ' |
+    'ꨀ' .. 'ꨏ' |
+    'ꨐ' .. 'ꨟ' |
+    'ꨠ' .. 'ꨨ' |
+    'ꩀ' .. 'ꩋ' |
+    'ꩠ' .. 'ꩯ' |
+    'ꩱ' .. 'ꩿ' |
+    'ꪀ' .. 'ꪏ' |
+    'ꪐ' .. 'ꪟ' |
+    'ꪠ' .. 'ꪯ' |
+    'ꪱ' .. 'ꪽ' |
+    'ꫀ' .. 'ꫂ' |
+    'ꫛ' .. 'ꫜ' |
+    'ꫠ' .. 'ꫪ' |
+    'ꫲ' .. 'ꫲ' |
+    'ꬁ' .. 'ꬎ' |
+    'ꬑ' .. 'ꬖ' |
+    'ꬠ' .. 'ꬮ' |
+    'ꯀ' .. 'ꯏ' |
+    'ꯐ' .. 'ꯟ' |
+    'ꯠ' .. 'ꯢ' |
+    '가' .. '가' |
+    '힣' .. '힣' |
+    'ힰ' .. 'ힿ' |
+    'ퟀ' .. 'ퟏ' |
+    'ퟐ' .. 'ퟟ' |
+    'ퟠ' .. 'ퟯ' |
+    'ퟰ' .. 'ퟻ' |
+    '豈' .. '羅' |
+    '蘿' .. '蘭' |
+    '鸞' .. '勞' |
+    '擄' .. '錄' |
+    '鹿' .. '累' |
+    '縷' .. '寧' |
+    '怒' .. '說' |
+    '殺' .. '勵' |
+    '呂' .. '憐' |
+    '戀' .. '烈' |
+    '裂' .. '羚' |
+    '聆' .. '樂' |
+    '燎' .. '紐' |
+    '類' .. '履' |
+    '易' .. '璘' |
+    '藺' .. '刺' |
+    '切' .. '﨏' |
+    '塚' .. '﨟' |
+    '蘒' .. '隷' |
+    '侮' .. '憎' |
+    '懲' .. '祐' |
+    '祖' .. '著' |
+    '褐' .. '舘' |
+    '並' .. '奔' |
+    '婢' .. '摒' |
+    '敖' .. '犯' |
+    '猪' .. '絛' |
+    '練' .. '謹' |
+    '變' .. '𢡊' |
+    '𢡄' .. '龎' |
+    'יִ' .. 'ײַ' |
+    'ﬠ' .. 'אָ' |
+    'אּ' .. 'מּ' |
+    'נּ' .. 'ﭏ' |
+    'ﭐ' .. 'ﭟ' |
+    'ﭠ' .. 'ﭯ' |
+    'ﭰ' .. 'ﭿ' |
+    'ﮀ' .. 'ﮏ' |
+    'ﮐ' .. 'ﮟ' |
+    'ﮠ' .. 'ﮯ' |
+    'ﮰ' .. 'ﮱ' |
+    'ﯓ' .. 'ﯟ' |
+    'ﯠ' .. 'ﯯ' |
+    'ﯰ' .. 'ﯿ' |
+    'ﰀ' .. 'ﰏ' |
+    'ﰐ' .. 'ﰟ' |
+    'ﰠ' .. 'ﰯ' |
+    'ﰰ' .. 'ﰿ' |
+    'ﱀ' .. 'ﱏ' |
+    'ﱐ' .. 'ﱟ' |
+    'ﱠ' .. 'ﱯ' |
+    'ﱰ' .. 'ﱿ' |
+    'ﲀ' .. 'ﲏ' |
+    'ﲐ' .. 'ﲟ' |
+    'ﲠ' .. 'ﲯ' |
+    'ﲰ' .. 'ﲿ' |
+    'ﳀ' .. 'ﳏ' |
+    'ﳐ' .. 'ﳟ' |
+    'ﳠ' .. 'ﳯ' |
+    'ﳰ' .. 'ﳿ' |
+    'ﴀ' .. 'ﴏ' |
+    'ﴐ' .. 'ﴟ' |
+    'ﴠ' .. 'ﴯ' |
+    'ﴰ' .. 'ﴽ' |
+    'ﵐ' .. 'ﵟ' |
+    'ﵠ' .. 'ﵯ' |
+    'ﵰ' .. 'ﵿ' |
+    'ﶀ' .. 'ﶏ' |
+    'ﶒ' .. 'ﶟ' |
+    'ﶠ' .. 'ﶯ' |
+    'ﶰ' .. 'ﶿ' |
+    'ﷀ' .. 'ﷇ' |
+    'ﷰ' .. 'ﷻ' |
+    'ﹰ' .. 'ﹿ' |
+    'ﺀ' .. 'ﺏ' |
+    'ﺐ' .. 'ﺟ' |
+    'ﺠ' .. 'ﺯ' |
+    'ﺰ' .. 'ﺿ' |
+    'ﻀ' .. 'ﻏ' |
+    'ﻐ' .. 'ﻟ' |
+    'ﻠ' .. 'ﻯ' |
+    'ﻰ' .. 'ﻼ' |
+    'ｦ' .. 'ｯ' |
+    'ｱ' .. 'ｿ' |
+    'ﾀ' .. 'ﾏ' |
+    'ﾐ' .. 'ﾝ' |
+    'ﾠ' .. 'ﾯ' |
+    'ﾰ' .. 'ﾾ' |
+    'ￂ' .. 'ￏ' |
+    'ￒ' .. 'ￜ' |
+    '𐂠' .. '𐂯' |
+    '𐂰' .. '𐂿' |
+    '𐃀' .. '𐃏' |
+    '𐃐' .. '𐃟' |
+    '𐃠' .. '𐃯' |
+    '𐃰' .. '𐃺' |
+    '𐊠' .. '𐊯' |
+    '𐊰' .. '𐊿' |
+    '𐋀' .. '𐋏' |
+    '𐋐' .. '𐋐' |
+    '𐎠' .. '𐎯' |
+    '𐎰' .. '𐎿' |
+    '𐏀' .. '𐏏' |
+    '𐚠' .. '𐚯' |
+    '𐚰' .. '𐚿' |
+    '𐛀' .. '𐛏' |
+    '𐛐' .. '𐛟' |
+    '𐛠' .. '𐛯' |
+    '𐛰' .. '𐛿' |
+    '𐣠' .. '𐣯' |
+    '𐣰' .. '𐣵' |
+    '𐦠' .. '𐦯' |
+    '𐦰' .. '𐦿' |
+    '𐨀' .. '𐨀' |
+    '𐨐' .. '𐨟' |
+    '𐨠' .. '𐨯' |
+    '𐨰' .. '𐨵' |
+    '𐩠' .. '𐩯' |
+    '𐩰' .. '𐩼' |
+    '𐪀' .. '𐪏' |
+    '𐪐' .. '𐪜' |
+    '𐫀' .. '𐫏' |
+    '𐫐' .. '𐫟' |
+    '𐫠' .. '𐫤' |
+    '𐬀' .. '𐬏' |
+    '𐬐' .. '𐬟' |
+    '𐬠' .. '𐬯' |
+    '𐬰' .. '𐬵' |
+    '𐭀' .. '𐭏' |
+    '𐭐' .. '𐭕' |
+    '𐭠' .. '𐭯' |
+    '𐭰' .. '𐭲' |
+    '𐮀' .. '𐮏' |
+    '𐮐' .. '𐮑' |
+    '𐰀' .. '𐰏' |
+    '𐰐' .. '𐰟' |
+    '𐰠' .. '𐰯' |
+    '𐰰' .. '𐰿' |
+    '𐱀' .. '𐱈' |
+    '𐴀' .. '𐴏' |
+    '𐴐' .. '𐴟' |
+    '𐴠' .. '𐴣' |
+    '𐼀' .. '𐼏' |
+    '𐼐' .. '𐼜' |
+    '𐼧' .. '𐼧' |
+    '𐼰' .. '𐼿' |
+    '𐽀' .. '𐽅' |
+    '𑂠' .. '𑂯' |
+    '𑃐' .. '𑃟' |
+    '𑃠' .. '𑃨' |
+    '𑆠' .. '𑆯' |
+    '𑆰' .. '𑆲' |
+    '𑇁' .. '𑇄' |
+    '𑇚' .. '𑇜' |
+    '𑊠' .. '𑊨' |
+    '𑊰' .. '𑊿' |
+    '𑋀' .. '𑋏' |
+    '𑋐' .. '𑋞' |
+    '𑒠' .. '𑒯' |
+    '𑓄' .. '𑓇' |
+    '𑖠' .. '𑖮' |
+    '𑗘' .. '𑗛' |
+    '𑚠' .. '𑚪' |
+    '𑣿' .. '𑣿' |
+    '𑨀' .. '𑨏' |
+    '𑨐' .. '𑨟' |
+    '𑨠' .. '𑨯' |
+    '𑨰' .. '𑨺' |
+    '𑩐' .. '𑩟' |
+    '𑩠' .. '𑩯' |
+    '𑩰' .. '𑩿' |
+    '𑪀' .. '𑪉' |
+    '𑪝' .. '𑪝' |
+    '𑫀' .. '𑫏' |
+    '𑫐' .. '𑫟' |
+    '𑫠' .. '𑫯' |
+    '𑫰' .. '𑫸' |
+    '𑰀' .. '𑰏' |
+    '𑰐' .. '𑰟' |
+    '𑰠' .. '𑰮' |
+    '𑱀' .. '𑱀' |
+    '𑱲' .. '𑱿' |
+    '𑲀' .. '𑲏' |
+    '𑴀' .. '𑴏' |
+    '𑴐' .. '𑴟' |
+    '𑴠' .. '𑴯' |
+    '𑴰' .. '𑴰' |
+    '𑵆' .. '𑵆' |
+    '𑵠' .. '𑵯' |
+    '𑵰' .. '𑵿' |
+    '𑶀' .. '𑶉' |
+    '𑶘' .. '𑶘' |
+    '𑻠' .. '𑻯' |
+    '𑻰' .. '𑻲' |
+    '𒂠' .. '𒂯' |
+    '𒂰' .. '𒂿' |
+    '𒃀' .. '𒃏' |
+    '𒃐' .. '𒃟' |
+    '𒃠' .. '𒃯' |
+    '𒃰' .. '𒃿' |
+    '𒆠' .. '𒆯' |
+    '𒆰' .. '𒆿' |
+    '𒇀' .. '𒇏' |
+    '𒇐' .. '𒇟' |
+    '𒇠' .. '𒇯' |
+    '𒇰' .. '𒇿' |
+    '𒊠' .. '𒊯' |
+    '𒊰' .. '𒊿' |
+    '𒋀' .. '𒋏' |
+    '𒋐' .. '𒋟' |
+    '𒋠' .. '𒋯' |
+    '𒋰' .. '𒋿' |
+    '𒒠' .. '𒒯' |
+    '𒒰' .. '𒒿' |
+    '𒓀' .. '𒓏' |
+    '𒓐' .. '𒓟' |
+    '𒓠' .. '𒓯' |
+    '𒓰' .. '𒓿' |
+    '𓂠' .. '𓂯' |
+    '𓂰' .. '𓂿' |
+    '𓃀' .. '𓃏' |
+    '𓃐' .. '𓃟' |
+    '𓃠' .. '𓃯' |
+    '𓃰' .. '𓃿' |
+    '𓆠' .. '𓆯' |
+    '𓆰' .. '𓆿' |
+    '𓇀' .. '𓇏' |
+    '𓇐' .. '𓇟' |
+    '𓇠' .. '𓇯' |
+    '𓇰' .. '𓇿' |
+    '𓊠' .. '𓊯' |
+    '𓊰' .. '𓊿' |
+    '𓋀' .. '𓋏' |
+    '𓋐' .. '𓋟' |
+    '𓋠' .. '𓋯' |
+    '𓋰' .. '𓋿' |
+    '𓎠' .. '𓎯' |
+    '𓎰' .. '𓎿' |
+    '𓏀' .. '𓏏' |
+    '𓏐' .. '𓏟' |
+    '𓏠' .. '𓏯' |
+    '𓏰' .. '𓏿' |
+    '𔒠' .. '𔒯' |
+    '𔒰' .. '𔒿' |
+    '𔓀' .. '𔓏' |
+    '𔓐' .. '𔓟' |
+    '𔓠' .. '𔓯' |
+    '𔓰' .. '𔓿' |
+    '𔖠' .. '𔖯' |
+    '𔖰' .. '𔖿' |
+    '𔗀' .. '𔗏' |
+    '𔗐' .. '𔗟' |
+    '𔗠' .. '𔗯' |
+    '𔗰' .. '𔗿' |
+    '𖢠' .. '𖢯' |
+    '𖢰' .. '𖢿' |
+    '𖣀' .. '𖣏' |
+    '𖣐' .. '𖣟' |
+    '𖣠' .. '𖣯' |
+    '𖣰' .. '𖣿' |
+    '𖦠' .. '𖦯' |
+    '𖦰' .. '𖦿' |
+    '𖧀' .. '𖧏' |
+    '𖧐' .. '𖧟'
 }
 Nl = {
-    '\u{2160}' .. '\u{216F}' |
-    '\u{2170}' .. '\u{217F}' |
-    '\u{2180}' .. '\u{2188}' |
-    '\u{3007}' .. '\u{3007}' |
-    '\u{3021}' .. '\u{3029}' |
-    '\u{3038}' .. '\u{303A}' |
-    '\u{10140}' .. '\u{1014F}' |
-    '\u{10150}' .. '\u{1015F}' |
-    '\u{10160}' .. '\u{1016F}' |
-    '\u{10170}' .. '\u{10174}' |
-    '\u{10341}' .. '\u{1034A}' |
-    '\u{12400}' .. '\u{1240F}' |
-    '\u{12410}' .. '\u{1241F}' |
-    '\u{12420}' .. '\u{1242F}' |
-    '\u{12430}' .. '\u{1243F}' |
-    '\u{12440}' .. '\u{1244F}' |
-    '\u{12450}' .. '\u{1245F}' |
-    '\u{12460}' .. '\u{1246E}' |
-    '\u{16EE}' .. '\u{16EF}' |
-    '\u{16F0}' .. '\u{16F0}' |
-    '\u{A6E6}' .. '\u{A6EF}' |
-    '\u{103D1}' .. '\u{103D5}'
+    'Ⅰ' .. 'Ⅿ' |
+    'ⅰ' .. 'ⅿ' |
+    'ↀ' .. 'ↈ' |
+    '〇' .. '〇' |
+    '〡' .. '〩' |
+    '〸' .. '〺' |
+    '𐅀' .. '𐅏' |
+    '𐅐' .. '𐅟' |
+    '𐅠' .. '𐅯' |
+    '𐅰' .. '𐅴' |
+    '𐍁' .. '𐍊' |
+    '𒐀' .. '𒐏' |
+    '𒐐' .. '𒐟' |
+    '𒐠' .. '𒐯' |
+    '𒐰' .. '𒐿' |
+    '𒑀' .. '𒑏' |
+    '𒑐' .. '𒑟' |
+    '𒑠' .. '𒑮' |
+    'ᛮ' .. 'ᛯ' |
+    'ᛰ' .. 'ᛰ' |
+    'ꛦ' .. 'ꛯ' |
+    '𐏑' .. '𐏕'
 }
 Zs = {
-    '\u{1680}' .. '\u{1680}' |
-    '\u{2000}' .. '\u{200A}' |
-    '\u{202F}' .. '\u{202F}' |
-    '\u{205F}' .. '\u{205F}' |
-    '\u{3000}' .. '\u{3000}' |
-    '\u{0020}' .. '\u{0020}' |
-    '\u{00A0}' .. '\u{00A0}'
+    ' ' .. ' ' |
+    ' ' .. ' ' |
+    ' ' .. ' ' |
+    ' ' .. ' ' |
+    '　' .. '　' |
+    ' ' .. ' ' |
+    ' ' .. ' '
 }
-
 Pc = {
-    '\u{203F}' .. '\u{203F}' |
-    '\u{2040}' .. '\u{2040}' |
-    '\u{2054}' .. '\u{2054}' |
-    '\u{005F}' .. '\u{005F}' |
-    '\u{FE33}' .. '\u{FE34}' |
-    '\u{FE4D}' .. '\u{FE4F}' |
-    '\u{FF3F}' .. '\u{FF3F}'
+    '‿' .. '‿' |
+    '⁀' .. '⁀' |
+    '⁔' .. '⁔' |
+    '_' .. '_' |
+    '︳' .. '︴' |
+    '﹍' .. '﹏' |
+    '＿' .. '＿'
 }
-
 Nd = {
-    '\u{1040}' .. '\u{1049}' |
-    '\u{1090}' .. '\u{1099}' |
-    '\u{1810}' .. '\u{1819}' |
-    '\u{1946}' .. '\u{194F}' |
-    '\u{11066}' .. '\u{1106F}' |
-    '\u{11136}' .. '\u{1113F}' |
-    '\u{11450}' .. '\u{11459}' |
-    '\u{11650}' .. '\u{11659}' |
-    '\u{11730}' .. '\u{11739}' |
-    '\u{0030}' .. '\u{0039}' |
-    '\u{0660}' .. '\u{0669}' |
-    '\u{06F0}' .. '\u{06F9}' |
-    '\u{07C0}' .. '\u{07C9}' |
-    '\u{0966}' .. '\u{096F}' |
-    '\u{09E6}' .. '\u{09EF}' |
-    '\u{0A66}' .. '\u{0A6F}' |
-    '\u{0AE6}' .. '\u{0AEF}' |
-    '\u{0B66}' .. '\u{0B6F}' |
-    '\u{0BE6}' .. '\u{0BEF}' |
-    '\u{0C66}' .. '\u{0C6F}' |
-    '\u{0CE6}' .. '\u{0CEF}' |
-    '\u{0D66}' .. '\u{0D6F}' |
-    '\u{0DE6}' .. '\u{0DEF}' |
-    '\u{0E50}' .. '\u{0E59}' |
-    '\u{0ED0}' .. '\u{0ED9}' |
-    '\u{0F20}' .. '\u{0F29}' |
-    '\u{17E0}' .. '\u{17E9}' |
-    '\u{19D0}' .. '\u{19D9}' |
-    '\u{1A80}' .. '\u{1A89}' |
-    '\u{1A90}' .. '\u{1A99}' |
-    '\u{1B50}' .. '\u{1B59}' |
-    '\u{1BB0}' .. '\u{1BB9}' |
-    '\u{1C40}' .. '\u{1C49}' |
-    '\u{1C50}' .. '\u{1C59}' |
-    '\u{A620}' .. '\u{A629}' |
-    '\u{A8D0}' .. '\u{A8D9}' |
-    '\u{A900}' .. '\u{A909}' |
-    '\u{A9D0}' .. '\u{A9D9}' |
-    '\u{A9F0}' .. '\u{A9F9}' |
-    '\u{AA50}' .. '\u{AA59}' |
-    '\u{ABF0}' .. '\u{ABF9}' |
-    '\u{FF10}' .. '\u{FF19}' |
-    '\u{104A0}' .. '\u{104A9}' |
-    '\u{10D30}' .. '\u{10D39}' |
-    '\u{110F0}' .. '\u{110F9}' |
-    '\u{111D0}' .. '\u{111D9}' |
-    '\u{112F0}' .. '\u{112F9}' |
-    '\u{114D0}' .. '\u{114D9}' |
-    '\u{116C0}' .. '\u{116C9}' |
-    '\u{118E0}' .. '\u{118E9}' |
-    '\u{11C50}' .. '\u{11C59}' |
-    '\u{11D50}' .. '\u{11D59}' |
-    '\u{11DA0}' .. '\u{11DA9}' |
-    '\u{16A60}' .. '\u{16A69}' |
-    '\u{16B50}' .. '\u{16B59}' |
-    '\u{1D7CE}' .. '\u{1D7CF}' |
-    '\u{1D7D0}' .. '\u{1D7DF}' |
-    '\u{1D7E0}' .. '\u{1D7EF}' |
-    '\u{1D7F0}' .. '\u{1D7FF}' |
-    '\u{1E950}' .. '\u{1E959}'
+    '၀' .. '၉' |
+    '႐' .. '႙' |
+    '᠐' .. '᠙' |
+    '᥆' .. '᥏' |
+    '𑁦' .. '𑁯' |
+    '𑄶' .. '𑄿' |
+    '𑑐' .. '𑑙' |
+    '𑙐' .. '𑙙' |
+    '𑜰' .. '𑜹' |
+    '0' .. '9' |
+    '٠' .. '٩' |
+    '۰' .. '۹' |
+    '߀' .. '߉' |
+    '०' .. '९' |
+    '০' .. '৯' |
+    '੦' .. '੯' |
+    '૦' .. '૯' |
+    '୦' .. '୯' |
+    '௦' .. '௯' |
+    '౦' .. '౯' |
+    '೦' .. '೯' |
+    '൦' .. '൯' |
+    '෦' .. '෯' |
+    '๐' .. '๙' |
+    '໐' .. '໙' |
+    '༠' .. '༩' |
+    '០' .. '៩' |
+    '᧐' .. '᧙' |
+    '᪀' .. '᪉' |
+    '᪐' .. '᪙' |
+    '᭐' .. '᭙' |
+    '᮰' .. '᮹' |
+    '᱀' .. '᱉' |
+    '᱐' .. '᱙' |
+    '꘠' .. '꘩' |
+    '꣐' .. '꣙' |
+    '꤀' .. '꤉' |
+    '꧐' .. '꧙' |
+    '꧰' .. '꧹' |
+    '꩐' .. '꩙' |
+    '꯰' .. '꯹' |
+    '０' .. '９' |
+    '𐒠' .. '𐒩' |
+    '𐴰' .. '𐴹' |
+    '𑃰' .. '𑃹' |
+    '𑇐' .. '𑇙' |
+    '𑋰' .. '𑋹' |
+    '𑓐' .. '𑓙' |
+    '𑛀' .. '𑛉' |
+    '𑣠' .. '𑣩' |
+    '𑱐' .. '𑱙' |
+    '𑵐' .. '𑵙' |
+    '𑶠' .. '𑶩' |
+    '𖩠' .. '𖩩' |
+    '𖭐' .. '𖭙' |
+    '𝟎' .. '𝟏' |
+    '𝟐' .. '𝟟' |
+    '𝟠' .. '𝟯' |
+    '𝟰' .. '𝟿' |
+    '𞥐' .. '𞥙'
 }

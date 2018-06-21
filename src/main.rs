@@ -1,10 +1,7 @@
 extern crate js_parser;
-extern crate pest;
-use pest::Parser;
-use js_parser::JsParser;
+// extern crate pest;
+
 fn main() {
-    let js = r#"function() {
-    let x = 0;
-}"#;
+    let js = include_str!("../tests/index.js");
     js_parser::parse(js);
 }
