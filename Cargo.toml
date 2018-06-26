@@ -4,8 +4,7 @@ version = "0.1.0"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 
 [dependencies]
-pest = "1"
-pest_derive = "1"
+combine = "3.3"
 # estree-rs = { path = "../estree-rs/" }
 
 [lib]
