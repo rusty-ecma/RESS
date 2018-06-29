@@ -5,6 +5,7 @@ authors = ["Robert Masen <r@robertmasen.pizza>"]
 
 [dependencies]
 combine = "3.3"
+reqwest = "0.8"
 # estree-rs = { path = "../estree-rs/" }
 
 [lib]

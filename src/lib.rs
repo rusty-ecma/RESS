@@ -2,29 +2,24 @@ extern crate combine;
 use combine::{Parser};
 pub mod tokens;
 
-use tokens::{Token, tokens, token};
+use tokens::{Token, token};
 
-pub fn tokenize(text: &str) -> Result<Vec<Token>, String> {
-    match tokens().parse(text.trim()) {
-        Ok(t) => {
-            println!("tokens: {:?}", t);
-            Ok(t.0)
-        },
-        Err(e) => {
-            println!("error parsing js {:?}", e);
-            Err(format!("{:?}", e))
-        }
-    }
+pub fn tokenize(text: &str) -> Vec<Token> {
+    Scanner::new(text).collect()
 }
 
 pub struct Scanner {
-    stream: String
+    stream: String,
+    tokens: Vec<Token>,
+    eof: bool
 }
 
 impl Scanner {
     pub fn new(text: impl Into<String>) -> Self {
         Scanner {
             stream: text.into().trim().to_owned(),
+            tokens: vec![],
+            eof: false,
         }
     }
 }
@@ -32,18 +27,30 @@ impl Scanner {
 impl Iterator for Scanner {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
-        let (ret, new_stream) = if self.stream.len() == 0 {
-            (None, self.stream.clone())
-        } else {
-            match token().parse(self.stream.as_str()) {
-                Ok(pair) => {
-                    (Some(pair.0), pair.1.to_string())
-                },
-                Err(_) => return None //FIXME: what do we do here?
+        if self.eof {
+            return None
+        };
+        let new_stream = match token().parse(self.stream.as_str()) {
+            Ok(pair) => {
+                if pair.0 == Token::EoF {
+                    self.eof = true;
+                }
+                self.tokens.push(pair.0);
+                pair.1.to_string()
+            },
+            Err(_) => {
+                let trailer = if self.stream.len() <= 100 {
+                    ""
+                } else {
+                    "..."
+                };
+                let mut last_100 = self.stream.clone();
+                last_100.truncate(100);
+                panic!("Failed to parse token, parsed: {:?}\nstream: \n{}{}", self.tokens, last_100, trailer) //FIXME: what do we do here?
             }
         };
-        self.stream = new_stream.to_string();
-        ret
+        self.stream = new_stream.trim_left().to_string();
+        self.tokens.get(self.tokens.len() - 1).cloned()
     }
 }
 
@@ -51,14 +58,13 @@ impl Iterator for Scanner {
 mod test {
     use super::{tokenize, Token};
     #[test]
-    fn file() {
+    fn tokenize() {
         let js = "
 'use strict';
 function thing() {
     let x = 0;
     console.log('stuff');
-}
-        ";
+}";
         let expectation = vec![
             Token::String("use strict".into()),
             Token::Punct(";".into()),
@@ -80,8 +86,9 @@ function thing() {
             Token::Punct(")".into()),
             Token::Punct(";".into()),
             Token::Punct("}".into()),
+            Token::EoF,
         ];
-        let toks = tokenize(js).unwrap();
+        let toks = tokenize(js);
         assert_eq!(toks, expectation);
     }
 
@@ -97,13 +104,13 @@ this.y = 0;
             Token::Punct("(".into()),
             Token::Punct(")".into()),
             Token::Punct("{".into()),
-            Token::Ident("this".into()),
+            Token::Keyword("this".into()),
             Token::Punct(".".into()),
             Token::Ident("x".into()),
             Token::Punct("=".into()),
             Token::Numeric("100".into()),
             Token::Punct(";".into()),
-            Token::Ident("this".into()),
+            Token::Keyword("this".into()),
             Token::Punct(".".into()),
             Token::Ident("y".into()),
             Token::Punct("=".into()),
@@ -113,6 +120,8 @@ this.y = 0;
             Token::Punct(")".into()),
             Token::Punct("(".into()),
             Token::Punct(")".into()),
+            Token::Punct(";".into()),
+            Token::EoF
         ];
         for test in s.zip(expectation.into_iter()) {
             assert_eq!(test.0, test.1);

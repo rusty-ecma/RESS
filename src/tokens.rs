@@ -1,13 +1,14 @@
 use combine::{
+    any,
     between,
     choice,
     eof,
     many,
     many1,
     none_of,
+    not_followed_by,
     optional,
     Parser,
-    sep_by,
     Stream,
     token as c_token,
     try,
@@ -17,13 +18,12 @@ use combine::{
         hex_digit,
         letter,
         oct_digit,
-        spaces,
         string
     },
     error::ParseError,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Boolean(bool),
     EoF,
@@ -35,6 +35,7 @@ pub enum Token {
     String(String),
     RegEx(String, Option<String>),
     Template(String),
+    Comment(String),
 }
 #[derive(Debug, PartialEq)]
 pub enum NumericToken {
@@ -44,32 +45,26 @@ pub enum NumericToken {
     Octal(String)
 }
 
-pub fn tokens<I>() -> impl Parser<Input = I, Output = Vec<Token>>
-    where  I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    sep_by(
-        token(),
-        spaces(),
-    ).map(|t: Vec<Token>| t)
-}
+
 pub fn token<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         choice((
+            try(comment()),
             try(boolean_literal()),
             try(keyword()),
             try(ident()),
             try(null_literal()),
             try(numeric_literal()),
+            try(regex()),
             try(punctuation()),
             try(string_literal()),
-            try(regex()),
+            try(end_of_input())
             //TODO add template
         ))
-    ).skip(spaces()).map(|t| t)
+    ).map(|t| t)
 }
 
 pub fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
@@ -412,10 +407,22 @@ fn single_quote<I>() -> impl Parser<Input = I, Output = String>
     (
         between(
             c_token('\''), 
-            c_token('\''), 
-            many(none_of(vec!['\'', '\n', '\r']))
+            c_token('\''),
+            single_quoted_content()   
         )//TODO: better string literal letter construct
     ).map(|t: String| t)
+}
+
+fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    many(
+        choice((
+            string("\\'").map(|c| c.to_string()),
+            many(none_of(vec!['\'', '\n', '\r'])).map(|c: String|c)
+        ))
+    ).map(|c: String| c.to_string())
 }
 
 fn double_quote<I>() -> impl Parser<Input = I, Output = String>
@@ -426,9 +433,21 @@ fn double_quote<I>() -> impl Parser<Input = I, Output = String>
         between(
             c_token('"'), 
             c_token('"'), 
-            many(none_of(vec!['"', '\n', '\r']))
+            double_quoted_content()
         )
     ).map(|t: String| t)
+}
+
+fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    many(
+        choice((
+            string("\\\"").map(|c| c.to_string()),
+            many(none_of(vec!['\"', '\n', '\r'])).map(|c: String|c)
+        ))
+    ).map(|c: String| c.to_string())
 }
 
 pub fn regex<I>() -> impl Parser<Input = I, Output = Token>
@@ -445,6 +464,57 @@ pub fn regex<I>() -> impl Parser<Input = I, Output = Token>
         ),
         optional(many1(letter()))
     ).map(|(body, flags): (String, Option<String>)| Token::RegEx(body, flags))
+}
+
+pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        choice((
+            try(single_comment()),
+            try(multi_comment()),
+        )).map(|t: Token| t)
+    )
+}
+
+pub fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        between(
+            string("//"),
+            choice((
+                char('\r'),
+                char('\n'),
+            )),
+            many(
+                choice((
+                    char('`'),
+                    none_of(vec!['\n', '\r'])
+                )
+            )),
+        )
+    ).map(|content: String| Token::Comment(content.to_owned()))
+}
+
+pub fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        between(
+            string("/*"),
+            string("*/"),
+            many(
+                choice((
+                    try(char('*').skip(not_followed_by(char('/')))),
+                    any()
+                ))
+            )
+        ).map(|t: String| Token::Comment(t.to_owned()))
+    )
 }
 
 #[cfg(test)]
