@@ -23,6 +23,7 @@ use combine::{
     },
     error::ParseError,
 };
+use regex;
 use unicode;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -60,7 +61,7 @@ pub fn token<I>() -> impl Parser<Input = I, Output = Token>
             try(ident()),
             try(null_literal()),
             try(numeric_literal()),
-            try(regex()),
+            try(regex::literal()),
             try(punctuation()),
             try(string_literal()),
             try(end_of_input())
@@ -91,17 +92,9 @@ pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        choice((
-            c_char('$'),
-            c_char('_'),
-            letter(), //TODO add unicode escape
-        )),
+        ident_start(),
         many(
-            choice((
-                c_char('$'),
-                c_char('_'),
-                none_of(vec!['\n', '\r', '.', ' ', '(', '[', '{']),
-            )) //TODO: add <ZWNJ> <ZWJ> 
+            ident_part()
         )
     ).map(|(start, body): (char, String)| {
         let mut ret = String::new();
@@ -120,7 +113,7 @@ pub fn keyword<I>() -> impl Parser<Input = I, Output = Token>
         strict_mode_reserved(),
         restricted(),
         reserved(),
-    )).map(|t| t)
+    )).skip(not_followed_by(ident_part())).map(|t| t)
 }
 
 pub fn reserved<I>() -> impl Parser<Input = I, Output = Token>
@@ -466,7 +459,7 @@ fn double_quote<I>() -> impl Parser<Input = I, Output = String>
     .map(|t: String| t)
 }
 
-fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
+pub fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -487,83 +480,6 @@ fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
             c.to_string()
         })
 }
-
-pub fn regex<I>() -> impl Parser<Input = I, Output = Token>
-    where  I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        between(
-            c_char('/'),
-            c_char('/'),
-            (
-                regex_first_char(),
-                many1(
-                    regex_char()
-                )
-            )
-        ),
-        optional(many1(letter()))
-    ).map(|(body, flags): ((char, String), Option<String>)| {
-        let mut ret = body.0.to_string();
-        ret.push_str(&body.1);
-        Token::RegEx(ret, flags)
-    })
-}
-
-fn regex_char<I>() -> impl Parser<Input = I, Output = String>
-    where  I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        escaped('/'),
-        none_of(vec!['/', '\r', '\n']),
-    )).map(|c: char| if c == '/' {
-        String::from("\\/")
-    } else {
-        c.to_string()
-    })
-}
-
-fn regex_first_char<I>() -> impl Parser<Input = I, Output = char>
-    where  I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice([
-        none_of(vec!['\n', '\r', '\u{005C}']),
-
-    ])
-}
-
-// RegularExpressionBody           ← RegularExpressionFirstChar RegularExpressionChar*
-
-// RegularExpressionFirstChar      ← !( LineTerminator / [ * U+005C / [ ] ) SourceCharacter
-//                                / RegularExpressionBackslashSequence
-//                                / RegularExpressionClass
-
-// RegularExpressionChar           ← !( LineTerminator / [ U+005C / [ ] ) SourceCharacter
-//                                / RegularExpressionBackslashSequence
-//                                / RegularExpressionClass
-
-// RegularExpressionBackslashSequence ← RS !(LineTerminator) SourceCharacter
-
-// RegularExpressionClass          ← "[" RegularExpressionClassChar* "]"
-
-// RegularExpressionClassChar      ← !(LineTerminator / [ U+005C U+005D ]) SourceCharacter
-//                                / RegularExpressionBackslashSequence
-
-//RegularExpressionFlags          ← IdentifierPart*
-
-//IdentifierStart
-//                                / [ [:Mn:] [:Mc:]
-//                                    [:Nd:]
-//                                    [:Pc:] ]
-
-
-// IdentifierStart                 ← UnicodeLetter
-//                                 / "$"
-//                                 / "_"
-//                                 / RS UnicodeEscapeSequence
 
 pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
@@ -641,25 +557,56 @@ fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
     )).map(|c: char| c)
 }
 
-fn ident_start<I>() -> impl Parser<Input = I, Output = String>
+fn ident_start<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(unicode_char().map(|c: char| c.to_string())),
-        try(string("$")),
-        try(string("_")),
-        try(unicode_char_literal())
-    )).map(|s: String| s.to_string())
+        try(unicode_char()),
+        try(c_char('$')),
+        try(c_char('_')),
+        try(unicode::char_literal())
+    )).map(|c: char| c)
 }
 
-fn unicode_char_literal<I>() -> impl Parser<Input = I, Output = String>
+pub fn ident_part<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    char('\\').and(unicode::escape_sequence()).map(|(slash, sequence):(char, String)| {
-        format!("{}{}", slash, sequence)
-    })
+    choice((
+        try(ident_start()),
+        try(unicode::mn()),
+        try(unicode::mc()),
+        try(unicode::nd()),
+        try(unicode::pc()),
+    ))
+}
+
+
+
+fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice([
+        try(c_char('\u{000A}')),
+        try(c_char('\u{000D}')),
+        try(c_char('\u{2028}')),
+        try(c_char('\u{2029}')),
+    ]).map(|c: char| c)
+}
+
+fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice([
+        string("\u{000A}"),
+        string("\r\n"),
+        string("\u{000D}"),
+        string("\u{2028}"),
+        string("\u{2029}"),
+    ]).map(|s: &str| s.to_string())
 }
 
 #[cfg(test)]

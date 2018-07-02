@@ -1,5 +1,6 @@
 extern crate combine;
 use combine::{Parser};
+pub mod regex;
 pub mod tokens;
 pub mod unicode;
 use tokens::{Token, token};

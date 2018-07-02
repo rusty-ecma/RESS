@@ -2366,7 +2366,7 @@ pub fn nd<I>() -> impl Parser<Input = I, Output = char>
         || (raw_char >= 120782 && raw_char <= 120831)
     })
 }
-pub fn nd<I>() -> impl Parser<Input = I, Output = char>
+pub fn nl<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2396,4 +2396,13 @@ pub fn escape_sequence<I>() -> impl Parser<Input = I, Output = String>
                 hex_digit())
             )
     .map(|(u, hex): (char, String)| format!("{}{}", u, hex))
+}
+
+pub fn char_literal<I>() -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    c_char('\\').and(escape_sequence()).map(|(_, sequence):(char, String)| {
+        format!("\\u{{{0}}}", &sequence[1..]).parse().unwrap()
+    })
 }
