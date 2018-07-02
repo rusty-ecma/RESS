@@ -12,7 +12,7 @@ use combine::{
     Stream
 };
 
-pub fn ll<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn ll<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -630,7 +630,7 @@ pub fn ll<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn mn<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn mn<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -951,7 +951,7 @@ pub fn mn<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn mc<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn mc<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -1125,7 +1125,7 @@ pub fn mc<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn lu<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn lu<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -1764,7 +1764,7 @@ pub fn lu<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn lt<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn lt<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -1782,7 +1782,7 @@ pub fn lt<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn lm<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn lm<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -1847,7 +1847,7 @@ pub fn lm<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn lo<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn lo<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2273,7 +2273,7 @@ pub fn lo<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn zs<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn zs<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2288,7 +2288,7 @@ pub fn zs<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn pc<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn pc<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2302,7 +2302,7 @@ pub fn pc<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn nd<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn nd<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2366,7 +2366,7 @@ pub fn nd<I>() -> impl Parser<Input = I, Output = char>
         || (raw_char >= 120782 && raw_char <= 120831)
     })
 }
-pub fn nl<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn nl<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2386,7 +2386,7 @@ pub fn nl<I>() -> impl Parser<Input = I, Output = char>
     })
 }
 
-pub fn escape_sequence<I>() -> impl Parser<Input = I, Output = String>
+pub(crate) fn escape_sequence<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -2398,7 +2398,7 @@ pub fn escape_sequence<I>() -> impl Parser<Input = I, Output = String>
     .map(|(u, hex): (char, String)| format!("{}{}", u, hex))
 }
 
-pub fn char_literal<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn char_literal<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {

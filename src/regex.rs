@@ -18,17 +18,7 @@ use combine::{
 };
 use tokens::{ident_part, escaped, Token};
 /// Parse a regex literal
-/// ```
-/// extern crate js_parse;
-/// extern crate combine;
-/// use combine::Parser;
-/// use js_parse::tokens::Token;
-/// use js_parse::regex::literal;
-/// let reg_ex = literal().parse("/[0-9a-fA-F]/g").unwrap();
-/// let expected = (Token::RegEx("[0-9a-fA-F]".into(),Some("g".into())), "");
-/// assert_eq!(reg_ex, expected);
-/// ```
-pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -113,7 +103,7 @@ fn regular_expression_class_char<I>() -> impl Parser<Input = I, Output = String>
         try(regular_expression_backslash_sequence())
     )).map(|s: String| s)
 }
-pub fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {

@@ -26,17 +26,42 @@ use regex;
 use unicode;
 
 #[derive(Debug, PartialEq, Clone)]
+/// The representation of a single JS token
 pub enum Token {
+    /// True of false, will contain the value
     Boolean(bool),
+    /// The end of the file
     EoF,
+    /// An identifier this will be either a variable name
+    /// or a function/method name
     Ident(String),
+    /// A keyword, currently this is all EcmaScript Keywords
     Keyword(String),
+    /// A `null` literal value
     Null,
+    /// A number, this includes integers (`1`), decimals (`0.1`),
+    /// hex (`0x8f`), binary (`0b010011010`), and octal (`0o273`)
     Numeric(String),
+    /// A punctuation mark, this includes all mathematical operators
+    /// logical operators and general syntax punctuation 
     Punct(String),
+    /// A string literal, either double or single quoted, the associated
+    /// value will be the unquoted string
     String(String),
+    /// A regex literal (`/[a-fA-F0-9]+/g`) the first associated value
+    /// will be the pattern, the second will be the optional flags
     RegEx(String, Option<String>),
+    /// A template string literal
+    /// note: This is not yet implemented
     Template(String),
+    /// A comment, the associated value will contain the raw comment
+    /// This will capture both inline comments `// I am an inline comment`
+    /// and multi-line comments 
+    /// ```js
+    /// /*multi lines
+    /// * comments
+    /// */
+    /// ```
     Comment(String),
 }
 #[derive(Debug, PartialEq)]
@@ -69,7 +94,7 @@ pub fn token<I>() -> impl Parser<Input = I, Output = Token>
     ).map(|t| t)
 }
 
-pub fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -79,14 +104,14 @@ pub fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
     )).map(|t| Token::Boolean(t == "true"))
 }
 
-pub fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     eof().map(|_| Token::EoF)
 }
 
-pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -103,7 +128,7 @@ pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
     })
 }
 
-pub fn keyword<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn keyword<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -115,7 +140,7 @@ pub fn keyword<I>() -> impl Parser<Input = I, Output = Token>
     )).skip(not_followed_by(ident_part())).map(|t| t)
 }
 
-pub fn reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -149,7 +174,7 @@ pub fn reserved<I>() -> impl Parser<Input = I, Output = Token>
     ]).map(|t| Token::Keyword(t.to_owned()))
 }
 
-pub fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -161,7 +186,7 @@ pub fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
     )).map(|t| Token::Keyword(t.to_owned()))
 }
 
-pub fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -178,7 +203,7 @@ pub fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
     )).map(|t| Token::Keyword(t.to_owned()))
 }
 
-pub fn restricted<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -188,7 +213,7 @@ pub fn restricted<I>() -> impl Parser<Input = I, Output = Token>
     )).map(|t| Token::Keyword(t.to_owned()))
 }
 
-pub fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -196,7 +221,7 @@ pub fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
         .map(|_| Token::Null)
 }
 
-pub fn numeric_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn numeric_literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -345,7 +370,7 @@ fn octal_literal<I>() -> impl Parser<Input = I, Output = Token>
     })
 }
 
-pub fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -408,7 +433,7 @@ fn multi_punct<I>() -> impl Parser<Input = I, Output = String>
     ]).map(|t| t.to_string())
 }
 
-pub fn string_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn string_literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -468,7 +493,7 @@ fn double_quote<I>() -> impl Parser<Input = I, Output = String>
     .map(|t: String| t)
 }
 
-pub fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
+pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -487,7 +512,7 @@ fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
     )).map(|s: String| s)
 }
 
-pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -499,7 +524,7 @@ pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
     )
 }
 
-pub fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -509,7 +534,7 @@ pub fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
     ).map(|(_, content): (_, String)| Token::Comment(content.to_owned()))
 }
 use combine::parser::repeat::take_until;
-pub fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -569,7 +594,7 @@ fn ident_start<I>() -> impl Parser<Input = I, Output = char>
     )).map(|c: char| c)
 }
 
-pub fn ident_part<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
@@ -581,8 +606,6 @@ pub fn ident_part<I>() -> impl Parser<Input = I, Output = char>
         try(unicode::pc()),
     ))
 }
-
-
 
 fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,

@@ -2,11 +2,11 @@
 //! A crate for parsing raw JS into a token stream
 extern crate combine;
 use combine::{Parser};
-pub mod regex;
-pub mod tokens;
-pub mod unicode;
-use tokens::{Token, token};
-
+mod regex;
+mod tokens;
+mod unicode;
+use tokens::token;
+pub use tokens::Token;
 /// Send over the complete text and get back
 /// the completely parsed result
 pub fn tokenize(text: &str) -> Vec<Token> {
