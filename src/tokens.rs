@@ -4,7 +4,6 @@ use combine::{
     eof,
     many,
     many1,
-    none_of,
     not_followed_by,
     optional,
     Parser,
@@ -15,9 +14,9 @@ use combine::{
             char as c_char,
             digit,
             hex_digit,
-            letter,
             oct_digit,
-            string
+            spaces,
+            string,
         },
         item::satisfy
     },
@@ -437,13 +436,23 @@ fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('\'')),
-        try(escaped('\\')),
-        try(none_of(vec!['\'', '\n', '\r']))
-    )).map(|c: char| if c == '\'' {
-        format!("\\{}", c)
-    } else {
-        c.to_string()
+        try(escaped('\'').map(|c: char| format!("\\{}", c))),
+        try(escaped('\\').map(|c: char| c.to_string())),
+        try(string_continuation()),
+        try(satisfy(|c: char| c != '\'' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
+    )).map(|s: String| s)
+}
+
+fn string_continuation<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        c_char('\\'),
+        line_terminator_sequence()
+    ).skip(spaces())
+    .map(|_| {
+        String::new()
     })
 }
 
@@ -471,14 +480,11 @@ fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('"')),
-        try(escaped('\\')),
-        try(none_of(vec!['"', '\n', '\r']))
-    )).map(|c: char| if c == '"' {
-            format!("\\{}", c)
-        } else {
-            c.to_string()
-        })
+        try(escaped('"').map(|c: char| format!("\\{}", c))),
+        try(escaped('\\').map(|c: char| c.to_string())),
+        try(string_continuation()),
+        try(satisfy(|c: char| c != '"' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
+    )).map(|s: String| s)
 }
 
 pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
@@ -499,7 +505,7 @@ pub fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
 {
     (
         string("//"),
-        many(none_of(vec!['\n', '\r'])),
+        many(regex::source_char_not_line_term()),
     ).map(|(_, content): (_, String)| Token::Comment(content.to_owned()))
 }
 use combine::parser::repeat::take_until;
@@ -535,12 +541,6 @@ fn multi_line_comment_end<I>() -> impl Parser<Input = I, Output = String>
     (
         string("*/")
     ).map(|s| s.to_string())
-}
-fn source_char<I>() -> impl Parser<Input = I, Output = char>
-    where  I: Stream<Item = char>,
-        I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    satisfy(|c: char| c as u16 <= 4095).map(|c: char| c)
 }
 
 fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
@@ -600,13 +600,10 @@ fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice([
-        string("\u{000A}"),
-        string("\r\n"),
-        string("\u{000D}"),
-        string("\u{2028}"),
-        string("\u{2029}"),
-    ]).map(|s: &str| s.to_string())
+    choice((
+        try(string("\r\n").map(|s: &str| s.to_string())),
+        try(line_terminator().map(|c: char| c.to_string())),
+    )).map(|s: String| s)
 }
 
 #[cfg(test)]
@@ -854,14 +851,23 @@ mod test {
             "✨✨✨✨ ✨✨✨✨",
         ];
         for s in strings.into_iter() {
+            println!("testing {}", s);
             let dq_test = format!("\"{}\"", &s.clone());
             let dq = token().parse(dq_test.as_str()).unwrap();
             let sq_test = format!("'{}'", &s.clone());
             let sq = token().parse(sq_test.as_str()).unwrap();
             assert_eq!(dq, (Token::String(s.to_string().clone()), ""));
             assert_eq!(dq, sq);
-            
         }
+        let continued = r#"things and stuff \
+        and people and places"#;
+        let double = format!("\"{}\"", continued.clone());
+        let single = format!("'{}'", continued.clone());
+        let target = "things and stuff and people and places";
+        let d_r = token().parse(double.as_str()).unwrap();
+        let s_r = token().parse(single.as_str()).unwrap();
+        assert_eq!(d_r, (Token::String(target.to_string()), ""));
+        assert_eq!(s_r, d_r);
     }
 
     #[test]
