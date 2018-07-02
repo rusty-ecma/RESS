@@ -4,7 +4,6 @@ use combine::{
     between,
     choice,
     many,
-    none_of,
     optional,
     Parser,
     satisfy,
@@ -18,8 +17,17 @@ use combine::{
     error::ParseError,
 };
 use tokens::{ident_part, escaped, Token};
-use unicode;
-
+/// Parse a regex literal
+/// ```
+/// extern crate js_parse;
+/// extern crate combine;
+/// use combine::Parser;
+/// use js_parse::tokens::Token;
+/// use js_parse::regex::literal;
+/// let reg_ex = literal().parse("/[0-9a-fA-F]/g").unwrap();
+/// let expected = (Token::RegEx("[0-9a-fA-F]".into(),Some("g".into())), "");
+/// assert_eq!(reg_ex, expected);
+/// ```
 pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -40,7 +48,7 @@ pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
         Token::RegEx(body, f)
     })
 }
-
+/// Parse the body portion of the regex literal
 fn regex_body<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -105,7 +113,7 @@ fn regular_expression_class_char<I>() -> impl Parser<Input = I, Output = String>
         try(regular_expression_backslash_sequence())
     )).map(|s: String| s)
 }
-fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>
+pub fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {

@@ -1,3 +1,5 @@
+//! js_parse
+//! A crate for parsing raw JS into a token stream
 extern crate combine;
 use combine::{Parser};
 pub mod regex;
@@ -5,10 +7,14 @@ pub mod tokens;
 pub mod unicode;
 use tokens::{Token, token};
 
+/// Send over the complete text and get back
+/// the completely parsed result
 pub fn tokenize(text: &str) -> Vec<Token> {
     Scanner::new(text).collect()
 }
 
+/// An iterator over a token stream built
+/// from raw js text
 pub struct Scanner {
     stream: String,
     tokens: Vec<Token>,
@@ -16,6 +22,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
+    /// Create a new Scanner with the raw JS text
     pub fn new(text: impl Into<String>) -> Self {
         Scanner {
             stream: text.into().trim().to_owned(),
@@ -23,6 +30,8 @@ impl Scanner {
             eof: false,
         }
     }
+
+    //TODO: Implement construction from a reader
 }
 
 impl Iterator for Scanner {
@@ -45,10 +54,16 @@ impl Iterator for Scanner {
                 } else {
                     "..."
                 };
-                let mut last_100 = self.stream.clone();
-                last_100.truncate(100);
-                eprintln!("Failed to parse token, parsed: {:?}\nstream: \n{}{}", self.tokens, last_100, trailer);
-                panic!() //FIXME: what do we do here?
+                let mut next_100 = self.stream.clone();
+                next_100.truncate(100);
+                let count = if self.tokens.len() >= 10 {
+                    10
+                } else {
+                    self.tokens.len()
+                };
+                let last = &self.tokens.clone().into_iter().rev().collect::<Vec<Token>>()[0..count];
+                eprintln!("Failed to parse token, last: {:?}\nnext: \n{}{}", last, next_100, trailer);
+                panic!()
             }
         };
         self.stream = new_stream.trim_left().to_string();
