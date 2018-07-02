@@ -20675,13 +20675,17 @@ function advanced(set, name) {
         try {
             let startChar = parseChar(pair.start, 'start', name);
             let endChar = parseChar(pair.end, 'end', name);
-            lines.push(`'${startChar}' .. '${endChar}'`);
+            if (pair.start == pair.end) {
+                lines.push(`raw_char == ${pair.start}`)
+            } else {
+                lines.push(`(raw_char >= ${pair.start} && raw_char <= ${pair.end})`);
+            }
         } catch (e) {
             console.error(`Error parsing pair ${name}[${i}]: ${JSON.stringify(pair)}`);
             process.exit(e);
         }
     }
-    return `${name} = {\n    ${lines.join('\n    | ')}\n}`;
+    return `${name} = {\n    ${lines.join('\n    || ')}\n}`;
 }
 
 function parseChar(point, name, setName) {

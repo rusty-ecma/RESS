@@ -1,5 +1,4 @@
 use combine::{
-    any,
     between,
     choice,
     eof,
@@ -10,18 +9,21 @@ use combine::{
     optional,
     Parser,
     Stream,
-    token as c_token,
     try,
-    parser::char::{
-        char,
-        digit,
-        hex_digit,
-        letter,
-        oct_digit,
-        string
+    parser::{
+        char::{
+            char as c_char,
+            digit,
+            hex_digit,
+            letter,
+            oct_digit,
+            string
+        },
+        item::satisfy
     },
     error::ParseError,
 };
+use unicode;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
@@ -90,15 +92,15 @@ pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
 {
     (
         choice((
-            char('$'),
-            char('_'),
+            c_char('$'),
+            c_char('_'),
             letter(), //TODO add unicode escape
         )),
         many(
             choice((
-                char('$'), 
-                char('_'), 
-                letter()
+                c_char('$'),
+                c_char('_'),
+                none_of(vec!['\n', '\r', '.', ' ', '(', '[', '{']),
             )) //TODO: add <ZWNJ> <ZWJ> 
         )
     ).map(|(start, body): (char, String)| {
@@ -154,6 +156,7 @@ pub fn reserved<I>() -> impl Parser<Input = I, Output = Token>
         try(string("with")),
     ]).map(|t| Token::Keyword(t.to_owned()))
 }
+
 pub fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -165,6 +168,7 @@ pub fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
         try(string("enum")),
     )).map(|t| Token::Keyword(t.to_owned()))
 }
+
 pub fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -181,6 +185,7 @@ pub fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
         try(string("let")),
     )).map(|t| Token::Keyword(t.to_owned()))
 }
+
 pub fn restricted<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -227,17 +232,17 @@ fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([char('-'), char('+')])),
+        optional(choice([c_char('-'), c_char('+')])),
         //any number of digits
         many1(digit()),
         //optionally followed by a . and any number of digits
         optional((
-            char('.'),
+            c_char('.'),
             many(digit()),
         )),
         //optionally followed by e|E and any number of digits
         optional((
-            choice((char('e'), char('E'))),
+            choice((c_char('e'), c_char('E'))),
             many1(digit())
         ))
     ).map(|t: (Option<char>, String, Option<(char, String)>, Option<(char, String)>)| {
@@ -263,11 +268,11 @@ fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([char('-'), char('+')])),
-        char('.'),
+        optional(choice([c_char('-'), c_char('+')])),
+        c_char('.'),
         many1(digit()),
         optional((
-            choice([char('e'), char('E')]),
+            choice([c_char('e'), c_char('E')]),
             many1(digit())
         ))
     ).map(|t: (Option<char>, char, String, Option<(char, String)>)| {
@@ -290,9 +295,9 @@ fn hex_literal<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([char('-'), char('+')])),
-        char('0'),
-        choice([char('x'), char('X')]),
+        optional(choice([c_char('-'), c_char('+')])),
+        c_char('0'),
+        choice([c_char('x'), c_char('X')]),
         many1(hex_digit())
     ).map(|t: (Option<char>, char, char, String)| {
         let mut ret = String::new();
@@ -311,10 +316,10 @@ fn bin_literal<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([char('-'), char('+')])),
-        char('0'),
-        choice([char('b'), char('B')]),
-        many1(choice([char('1'), char('0')]))
+        optional(choice([c_char('-'), c_char('+')])),
+        c_char('0'),
+        choice([c_char('b'), c_char('B')]),
+        many1(choice([c_char('1'), c_char('0')]))
     ).map(|t: (Option<char>, char, char, String)| {
         let mut ret = String::new();
         if let Some(sign) = t.0 {
@@ -326,14 +331,15 @@ fn bin_literal<I>() -> impl Parser<Input = I, Output = Token>
         Token::Numeric(ret)
     })
 }
+
 fn octal_literal<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([char('-'), char('+')])),
-        char('0'),
-        choice([char('o'), char('O')]),
+        optional(choice([c_char('-'), c_char('+')])),
+        c_char('0'),
+        choice([c_char('o'), c_char('O')]),
         many1(oct_digit())
     ).map(|t: (Option<char>, char, char, String)| {
         let mut ret = String::new();
@@ -361,13 +367,33 @@ fn single_punct<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
+    choice((
+        try(normal_punct()),
+        try(div_punct()),
+    )).map(|c: String| c)
+}
+
+fn normal_punct<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
     choice([
-        char('{'), char('}'), char('('), char(')'), char('.'),
-        char(';'), char(','), char('['), char(']'), char(':'),
-        char('?'), char('~'), char('>'), char('<'), char('='),
-        char('!'), char('+'), char('-'), char('/'), char('*'),
-        char('%'), char('&'), char('|'), char('^'),
+        c_char('{'), c_char('}'), c_char('('), c_char(')'), c_char('.'),
+        c_char(';'), c_char(','), c_char('['), c_char(']'), c_char(':'),
+        c_char('?'), c_char('~'), c_char('>'), c_char('<'), c_char('='),
+        c_char('!'), c_char('+'), c_char('-'), c_char('*'),
+        c_char('%'), c_char('&'), c_char('|'), c_char('^'),
     ]).map(|c: char| c.to_string())
+}
+
+fn div_punct<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    string("/")
+        .skip(
+            not_followed_by(c_char('*'))
+        ).map(|c| c.to_string())
 }
 
 fn multi_punct<I>() -> impl Parser<Input = I, Output = String>
@@ -406,9 +432,9 @@ fn single_quote<I>() -> impl Parser<Input = I, Output = String>
 {
     (
         between(
-            c_token('\''), 
-            c_token('\''),
-            single_quoted_content()   
+            c_char('\''),
+            c_char('\''),
+            many(single_quoted_content())
         )//TODO: better string literal letter construct
     ).map(|t: String| t)
 }
@@ -417,37 +443,49 @@ fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many(
-        choice((
-            string("\\'").map(|c| c.to_string()),
-            many(none_of(vec!['\'', '\n', '\r'])).map(|c: String|c)
-        ))
-    ).map(|c: String| c.to_string())
+    choice((
+        try(escaped('\'')),
+        try(escaped('\\')),
+        try(none_of(vec!['\'', '\n', '\r']))
+    )).map(|c: char| if c == '\'' {
+        format!("\\{}", c)
+    } else {
+        c.to_string()
+    })
 }
 
 fn double_quote<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (
-        between(
-            c_token('"'), 
-            c_token('"'), 
-            double_quoted_content()
-        )
-    ).map(|t: String| t)
+    between(
+        c_char('"'),
+        c_char('"'),
+        many(double_quoted_content())
+    )
+    .map(|t: String| t)
+}
+
+fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    c_char('\\').and(c_char(q)).map(|(_slash, c): (char, char)| c)
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many(
-        choice((
-            string("\\\"").map(|c| c.to_string()),
-            many(none_of(vec!['\"', '\n', '\r'])).map(|c: String|c)
-        ))
-    ).map(|c: String| c.to_string())
+    choice((
+        try(escaped('"')),
+        try(escaped('\\')),
+        try(none_of(vec!['"', '\n', '\r']))
+    )).map(|c: char| if c == '"' {
+            format!("\\{}", c)
+        } else {
+            c.to_string()
+        })
 }
 
 pub fn regex<I>() -> impl Parser<Input = I, Output = Token>
@@ -456,15 +494,76 @@ pub fn regex<I>() -> impl Parser<Input = I, Output = Token>
 {
     (
         between(
-            c_token('/'), 
-            c_token('/'),
-            many1(
-                none_of(vec!['/', '\r', '\n'])
+            c_char('/'),
+            c_char('/'),
+            (
+                regex_first_char(),
+                many1(
+                    regex_char()
+                )
             )
         ),
         optional(many1(letter()))
-    ).map(|(body, flags): (String, Option<String>)| Token::RegEx(body, flags))
+    ).map(|(body, flags): ((char, String), Option<String>)| {
+        let mut ret = body.0.to_string();
+        ret.push_str(&body.1);
+        Token::RegEx(ret, flags)
+    })
 }
+
+fn regex_char<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        escaped('/'),
+        none_of(vec!['/', '\r', '\n']),
+    )).map(|c: char| if c == '/' {
+        String::from("\\/")
+    } else {
+        c.to_string()
+    })
+}
+
+fn regex_first_char<I>() -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice([
+        none_of(vec!['\n', '\r', '\u{005C}']),
+
+    ])
+}
+
+// RegularExpressionBody           ← RegularExpressionFirstChar RegularExpressionChar*
+
+// RegularExpressionFirstChar      ← !( LineTerminator / [ * U+005C / [ ] ) SourceCharacter
+//                                / RegularExpressionBackslashSequence
+//                                / RegularExpressionClass
+
+// RegularExpressionChar           ← !( LineTerminator / [ U+005C / [ ] ) SourceCharacter
+//                                / RegularExpressionBackslashSequence
+//                                / RegularExpressionClass
+
+// RegularExpressionBackslashSequence ← RS !(LineTerminator) SourceCharacter
+
+// RegularExpressionClass          ← "[" RegularExpressionClassChar* "]"
+
+// RegularExpressionClassChar      ← !(LineTerminator / [ U+005C U+005D ]) SourceCharacter
+//                                / RegularExpressionBackslashSequence
+
+//RegularExpressionFlags          ← IdentifierPart*
+
+//IdentifierStart
+//                                / [ [:Mn:] [:Mc:]
+//                                    [:Nd:]
+//                                    [:Pc:] ]
+
+
+// IdentifierStart                 ← UnicodeLetter
+//                                 / "$"
+//                                 / "_"
+//                                 / RS UnicodeEscapeSequence
 
 pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
@@ -472,8 +571,8 @@ pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
 {
     (
         choice((
-            try(single_comment()),
             try(multi_comment()),
+            try(single_comment()),
         )).map(|t: Token| t)
     )
 }
@@ -483,38 +582,84 @@ pub fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        between(
-            string("//"),
-            choice((
-                char('\r'),
-                char('\n'),
-            )),
-            many(
-                choice((
-                    char('`'),
-                    none_of(vec!['\n', '\r'])
-                )
-            )),
-        )
-    ).map(|content: String| Token::Comment(content.to_owned()))
+        string("//"),
+        many(none_of(vec!['\n', '\r'])),
+    ).map(|(_, content): (_, String)| Token::Comment(content.to_owned()))
 }
-
+use combine::parser::repeat::take_until;
 pub fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
     where  I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        between(
-            string("/*"),
-            string("*/"),
-            many(
-                choice((
-                    try(char('*').skip(not_followed_by(char('/')))),
-                    any()
-                ))
-            )
-        ).map(|t: String| Token::Comment(t.to_owned()))
-    )
+        multi_line_comment_start(),
+        take_until(
+                try(string("*/")),
+        ),
+        multi_line_comment_end()
+    ).map(|(_s, c, _e): (String, String, String)| {
+        let ret = c.lines().map(|l| l.trim()).collect::<Vec<&str>>().join("\n");
+        Token::Comment(ret)
+    })
+}
+
+fn multi_line_comment_start<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        string("/*")
+    ).map(|s| s.to_string())
+}
+
+fn multi_line_comment_end<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        string("*/")
+    ).map(|s| s.to_string())
+}
+fn source_char<I>() -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    satisfy(|c: char| c as u16 <= 4095).map(|c: char| c)
+}
+
+fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        try(unicode::lu()),
+        try(unicode::ll()),
+        try(unicode::lt()),
+        try(unicode::lm()),
+        try(unicode::lo()),
+        try(unicode::nl()),
+    )).map(|c: char| c)
+}
+
+fn ident_start<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        try(unicode_char().map(|c: char| c.to_string())),
+        try(string("$")),
+        try(string("_")),
+        try(unicode_char_literal())
+    )).map(|s: String| s.to_string())
+}
+
+fn unicode_char_literal<I>() -> impl Parser<Input = I, Output = String>
+    where  I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    char('\\').and(unicode::escape_sequence()).map(|(slash, sequence):(char, String)| {
+        format!("{}{}", slash, sequence)
+    })
 }
 
 #[cfg(test)]
@@ -690,11 +835,14 @@ mod test {
             ".7e34", "-.7e2", "+.4e5", 
         ];
         for val in vals {
-            let d = decimal_literal().parse(val.clone()).unwrap();
+            let d = token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(val.to_owned()), ""));
         }
-        if let Ok(f) = decimal_literal().parse("asdfghjk") {
-            panic!("parsed asdfghjk as decimal {:?}", f)
+        if let Ok(f) = token().parse("asdfghjk") {
+            match f {
+                (Token::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
+                _ => ()
+            }
         }
     }
 
@@ -709,11 +857,12 @@ mod test {
             "-0o12345670", "+0O12345670","0b000", "0B111", "-0B0101", "+0b1010",
         ];
         for val in vals {
-            let d = numeric_literal().parse(val.clone()).unwrap();
+            let d = token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(val.to_owned()), ""));
         }
-        if let Ok(f) = numeric_literal().parse("asdfghjk") {
-            panic!("parsed asdfghjk as number {:?}", f)
+        match token().parse("asdfghjk").unwrap() {
+            (Token::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
+            _ => ()
         }
     }
 
@@ -725,8 +874,8 @@ mod test {
         "!", "+", "-", "/", "*",
         "%", "&", "|", "^",];
         for p in single.clone() {
-            let t = single_punct().parse(p.clone()).unwrap();
-            assert_eq!(t, (p.to_string(), ""));
+            let t = token().parse(p.clone()).unwrap();
+            assert_eq!(t, (Token::Punct(p.to_string()), ""));
         }
         let multi = vec![
             ">>>=",
@@ -742,11 +891,11 @@ mod test {
             "<=", ">=", "=>", "**",
         ];
         for p in multi.clone() {
-            let t = multi_punct().parse(p.clone()).unwrap();
-            assert_eq!(t, (p.to_string(), ""));
+            let t = token().parse(p.clone()).unwrap();
+            assert_eq!(t, (Token::Punct(p.to_string()), ""));
         }
         for p in single.iter().chain(multi.iter()) {
-            let t = punctuation().parse(p.clone()).unwrap();
+            let t = token().parse(p.clone()).unwrap();
             assert_eq!(t, (Token::Punct(p.to_string()), ""))
         }
     }
@@ -759,9 +908,9 @@ mod test {
         ];
         for s in strings.into_iter() {
             let dq_test = format!("\"{}\"", &s.clone());
-            let dq = string_literal().parse(dq_test.as_str()).unwrap();
+            let dq = token().parse(dq_test.as_str()).unwrap();
             let sq_test = format!("'{}'", &s.clone());
-            let sq = string_literal().parse(sq_test.as_str()).unwrap();
+            let sq = token().parse(sq_test.as_str()).unwrap();
             assert_eq!(dq, (Token::String(s.to_string().clone()), ""));
             assert_eq!(dq, sq);
             
@@ -771,11 +920,11 @@ mod test {
     #[test]
     fn regex_tests() {
         let tests = vec![
-            "/.js?x/", "/.+/",
+            "/.jsx?/", "/.+/",
             "/(a-fA-F0-9)/g"
         ];
         for test in tests {
-            let r = regex().parse(test.clone()).unwrap();
+            let r = token().parse(test.clone()).unwrap();
             let mut parts = test.split('/');
             let _empty = parts.next();
             let pattern = parts.next().unwrap();
@@ -800,8 +949,28 @@ mod test {
             "junk", "_", "_private"
         ];
         for i in idents {
-            let t = ident().parse(i.clone()).unwrap();
+            let t = token().parse(i.clone()).unwrap();
             assert_eq!(t, (Token::Ident(i.to_owned()), ""))
+        }
+    }
+    #[test]
+    fn comments_test() {
+        let tests = vec![
+            "//single line comments",
+            "// another one with a space",
+            "/*inline multi comments*/",
+            "/*multi line comments
+            * that have extra decoration
+            * to help with readability
+            */",
+        ];
+        for test in tests {
+            let p = comment().parse(test.clone()).unwrap();
+            let comment_contents =
+                test.lines().map(|l| {
+                    l.trim().replace("//", "").replace("/*", "").replace("*/", "")
+                }).collect::<Vec<String>>().join("\n");
+            assert_eq!(p, (Token::Comment(comment_contents), ""));
         }
     }
 }

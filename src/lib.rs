@@ -1,7 +1,7 @@
 extern crate combine;
 use combine::{Parser};
 pub mod tokens;
-
+pub mod unicode;
 use tokens::{Token, token};
 
 pub fn tokenize(text: &str) -> Vec<Token> {
@@ -46,7 +46,8 @@ impl Iterator for Scanner {
                 };
                 let mut last_100 = self.stream.clone();
                 last_100.truncate(100);
-                panic!("Failed to parse token, parsed: {:?}\nstream: \n{}{}", self.tokens, last_100, trailer) //FIXME: what do we do here?
+                eprintln!("Failed to parse token, parsed: {:?}\nstream: \n{}{}", self.tokens, last_100, trailer);
+                panic!() //FIXME: what do we do here?
             }
         };
         self.stream = new_stream.trim_left().to_string();
@@ -58,7 +59,7 @@ impl Iterator for Scanner {
 mod test {
     use super::{tokenize, Token};
     #[test]
-    fn tokenize() {
+    fn tokenizer() {
         let js = "
 'use strict';
 function thing() {

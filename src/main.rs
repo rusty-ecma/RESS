@@ -9,10 +9,10 @@ fn main() {
     //     .send()
     //     .unwrap();
     let jq = ::std::fs::read_to_string("./tests/jquery.js").unwrap();
-    let s = js_parser::Scanner::new(jq);
-    for token in s {
-        println!("{:?}", token);
-    }
-    // tokenize(&jq);
+    // let s = js_parser::Scanner::new(jq.clone());
+    // for token in s {
+    //     println!("{:?}", token);
+    // }
+    println!("{:#?}", tokenize(&jq));
 }
 
