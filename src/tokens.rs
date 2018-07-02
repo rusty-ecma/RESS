@@ -133,10 +133,10 @@ pub(crate) fn keyword<I>() -> impl Parser<Input = I, Output = Token>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        future_reserved(),
-        strict_mode_reserved(),
-        restricted(),
-        reserved(),
+        try(future_reserved()),
+        try(strict_mode_reserved()),
+        try(restricted()),
+        try(reserved()),
     )).skip(not_followed_by(ident_part())).map(|t| t)
 }
 
