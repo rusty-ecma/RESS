@@ -1,11 +1,13 @@
 use combine::{
-    between, choice, eof, error::ParseError, many, many1, not_followed_by, optional,
+    choice, eof, error::ParseError, many, many1, not_followed_by, optional,
     parser::{
-        char::{char as c_char, digit, hex_digit, oct_digit, spaces, string}, item::satisfy,
+        char::{char as c_char, digit, hex_digit, oct_digit, string},
     },
     try, Parser, Stream,
 };
+
 use regex;
+use strings;
 use unicode;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -36,7 +38,7 @@ pub enum Token {
     RegEx(String, Option<String>),
     /// A template string literal
     /// note: This is not yet implemented
-    Template(String),
+    Template(Vec<Token>),
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
     /// and multi-line comments
@@ -48,6 +50,7 @@ pub enum Token {
     Comment(String),
 }
 #[derive(Debug, PartialEq)]
+#[allow(unused)]
 pub enum NumericToken {
     Decimal(String),
     Hex(String),
@@ -69,8 +72,9 @@ where
         try(numeric_literal()),
         try(regex::literal()),
         try(punctuation()),
-        try(string_literal()),
-        try(end_of_input()), //TODO add template
+        try(strings::literal()),
+        try(end_of_input()),
+        try(strings::template()),
     ))).map(|t| t)
 }
 
@@ -447,82 +451,6 @@ where
     ]).map(|t| t.to_string())
 }
 
-pub(crate) fn string_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(single_quote()), try(double_quote()))).map(|s| Token::String(s.to_owned()))
-}
-
-fn single_quote<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        between(
-            c_char('\''),
-            c_char('\''),
-            many(single_quoted_content())
-        )//TODO: better string literal letter construct
-    ).map(|t: String| t)
-}
-
-fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(escaped('\'').map(|c: char| format!("\\{}", c))),
-        try(escaped('\\').map(|c: char| c.to_string())),
-        try(string_continuation()),
-        try(satisfy(|c: char| c != '\'' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
-    )).map(|s: String| s)
-}
-
-fn string_continuation<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (c_char('\\'), line_terminator_sequence())
-        .skip(spaces())
-        .map(|_| String::new())
-}
-
-fn double_quote<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    between(c_char('"'), c_char('"'), many(double_quoted_content())).map(|t: String| t)
-}
-
-pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    c_char('\\')
-        .and(c_char(q))
-        .map(|(_slash, c): (char, char)| c)
-}
-
-fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(escaped('"').map(|c: char| format!("\\{}", c))),
-        try(escaped('\\').map(|c: char| c.to_string())),
-        try(string_continuation()),
-        try(satisfy(|c: char| c != '"' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
-    )).map(|s: String| s)
-}
-
 pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -616,29 +544,6 @@ where
     ))
 }
 
-fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice([
-        try(c_char('\u{000A}')),
-        try(c_char('\u{000D}')),
-        try(c_char('\u{2028}')),
-        try(c_char('\u{2029}')),
-    ]).map(|c: char| c)
-}
-
-fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(string("\r\n").map(|s: &str| s.to_string())),
-        try(line_terminator().map(|c: char| c.to_string())),
-    )).map(|s: String| s)
-}
 
 #[cfg(test)]
 mod test {
@@ -992,54 +897,6 @@ mod test {
         for p in single.iter().chain(multi.iter()) {
             let t = token().parse(p.clone()).unwrap();
             assert_eq!(t, (Token::Punct(p.to_string()), ""))
-        }
-    }
-
-    #[test]
-    fn strings() {
-        let strings = vec![
-            "junk and places",
-            "things and stuff",
-            "✨✨✨✨ ✨✨✨✨",
-        ];
-        for s in strings.into_iter() {
-            println!("testing {}", s);
-            let dq_test = format!("\"{}\"", &s.clone());
-            let dq = token().parse(dq_test.as_str()).unwrap();
-            let sq_test = format!("'{}'", &s.clone());
-            let sq = token().parse(sq_test.as_str()).unwrap();
-            assert_eq!(dq, (Token::String(s.to_string().clone()), ""));
-            assert_eq!(dq, sq);
-        }
-        let continued = r#"things and stuff \
-        and people and places"#;
-        let double = format!("\"{}\"", continued.clone());
-        let single = format!("'{}'", continued.clone());
-        let target = "things and stuff and people and places";
-        let d_r = token().parse(double.as_str()).unwrap();
-        let s_r = token().parse(single.as_str()).unwrap();
-        assert_eq!(d_r, (Token::String(target.to_string()), ""));
-        assert_eq!(s_r, d_r);
-    }
-
-    #[test]
-    fn regex_tests() {
-        let tests = vec!["/.jsx?/", "/.+/", "/(a-fA-F0-9)/g"];
-        for test in tests {
-            let r = token().parse(test.clone()).unwrap();
-            let mut parts = test.split('/');
-            let _empty = parts.next();
-            let pattern = parts.next().unwrap();
-            let flags = if let Some(f) = parts.next() {
-                if f == "" {
-                    None
-                } else {
-                    Some(f.to_string())
-                }
-            } else {
-                None
-            };
-            assert_eq!(r, (Token::RegEx(pattern.to_string(), flags), ""))
         }
     }
 

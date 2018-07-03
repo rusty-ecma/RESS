@@ -1,8 +1,9 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
 extern crate combine;
-use combine::Parser;
+use combine::{Parser, Stream, parser::char::char as c_char, error::ParseError};
 mod regex;
+mod strings;
 mod tokens;
 mod unicode;
 use tokens::token;
@@ -72,6 +73,16 @@ impl Iterator for Scanner {
         self.stream = new_stream.trim_left().to_string();
         self.tokens.get(self.tokens.len() - 1).cloned()
     }
+}
+
+pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    c_char('\\')
+        .and(c_char(q))
+        .map(|(_slash, c): (char, char)| c)
 }
 
 #[cfg(test)]

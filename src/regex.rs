@@ -2,7 +2,8 @@ use combine::{
     between, choice, error::ParseError, many, optional, parser::char::char as c_char, satisfy, try,
     Parser, Stream,
 };
-use tokens::{escaped, ident_part, Token};
+use tokens::{ident_part, Token};
+use super::escaped;
 /// Parse a regex literal
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where

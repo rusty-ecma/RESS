@@ -2300,7 +2300,7 @@ where
             || (raw_char >= 82944 && raw_char <= 83526)
     })
 }
-
+#[allow(unused)]
 pub(crate) fn zs<I>() -> impl Parser<Input = I, Output = char>
 where
     I: Stream<Item = char>,
