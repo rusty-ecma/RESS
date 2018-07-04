@@ -1,0 +1,6 @@
+.vscode
+/target
+**/*.rs.bk
+**/.DS_Store
+**/node_modules
+Cargo.lock

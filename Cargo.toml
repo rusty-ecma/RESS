@@ -1,0 +1,21 @@
+[package]
+name = "ress"
+version = "0.1.0"
+authors = ["Robert Masen <r@robertmasen.pizza>"]
+description = "A sanner/tokenizer for JS files"
+keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
+categories = ["parsing", "text-processing", "web-programming"]
+license = "MIT"
+
+[badges]
+travis-ci = { repository = "freemasen/js_parse", branch = "master" }
+
+[dependencies]
+combine = "3.3"
+
+[dev-dependencies]
+reqwest = "0.8"
+
+[[example]]
+name = "major_libs"
+path = "examples/major_libs/src/main.rs"

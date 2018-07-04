@@ -1,0 +1,10 @@
+language: rust
+sudo: false
+matrix:
+  include:
+    - rust: stable
+      install: true
+      cache: cargo
+      script: cargo test && cargo run --example major_libs --release
+notifications:
+  email: never
