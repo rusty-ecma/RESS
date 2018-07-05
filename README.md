@@ -55,7 +55,7 @@ In either method the major construct that you would be dealing with is a `Token`
 - Template
 - Comment
 
-In its current state it should be able to compile any valid <=ES6 JavaScript (I believe the testing is all currently done on ES3 packages though).
+In its current state it should be able to tokenize any valid <=ES6 JavaScript (I believe the testing is all currently done on ES3 packages though).
 
 ## Why?
 Ideally this project will be the starting point for building a full JS AST in Rust. The next step would be to build a companion crate that will raise the tokens into an AST.
