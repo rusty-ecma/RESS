@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.1.0-patch"
+version = "0.1.0-patch.1"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -10,7 +10,7 @@ repository = "https://github.com/freemasen/ress"
 readme = "./README.md"
 
 [badges]
-travis-ci = { repository = "freemasen/js_parse", branch = "master" }
+travis-ci = { repository = "freemasen/RESS", branch = "master" }
 
 [dependencies]
 combine = "3.3"
