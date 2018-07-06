@@ -50,6 +50,153 @@ pub enum Token {
     /// ```
     Comment(String),
 }
+
+impl Token {
+    pub fn is_punct(&self) -> bool {
+        if let Token::Punct(ref _p) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_punct_with(&self, s: &str) -> bool {
+        self == &Token::punct(s)
+    }
+
+    pub fn punct(s: impl Into<String>) -> Token {
+        Token::Punct(s.into())
+    }
+
+    pub fn is_boolean(&self) -> bool {
+        if let Token::Boolean(ref _b) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_boolean_with(&self, b: bool) -> bool {
+        self == &Token::Boolean(b)
+    }
+
+    pub fn is_eof(&self) -> bool {
+        self == &Token::EoF
+    }
+
+    pub fn is_ident(&self) -> bool {
+        if let Token::Ident(ref _i) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_ident_with(&self, name: &str) -> bool {
+        self == &Token::ident(name)
+    }
+
+    pub fn ident(name: impl Into<String>) -> Token {
+        Token::Ident(name.into())
+    }
+
+    pub fn is_keyword(&self) -> bool {
+        if let Token::Keyword(ref _k) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_keyword_with(&self, name: &str) -> bool {
+        self == &Token::keyword(name)
+    }
+
+    pub fn keyword(name: impl Into<String>) -> Token {
+        Token::Keyword(name.into())
+    }
+
+    pub fn is_null(&self) -> bool {
+        self == &Token::Null
+    }
+
+    pub fn is_numeric(&self) -> bool {
+        if let Token::Numeric(ref _n) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_numeric_with(&self, number: &str) -> bool {
+        self == &Token::numeric(number)
+    }
+
+    pub fn numeric(number: impl Into<String>) -> Token {
+        Token::Numeric(number.into())
+    }
+
+    pub fn is_string(&self) -> bool {
+        if let Token::String(ref _s) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_string_with(&self, s: &str) -> bool {
+        self == &Token::string(s)
+    }
+
+    pub fn string(s: impl Into<String>) -> Token {
+        Token::String(s.into())
+    }
+
+    pub fn is_regex(&self) -> bool {
+        if let Token::RegEx(ref _b, ref _f) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_regex_with(&self, body: &str, flags: Option<&str>) -> bool {
+        self == &Token::regex(body, flags)
+    }
+
+    pub fn regex(body: impl Into<String>, flags: Option<impl Into<String>>) -> Token {
+        Token::RegEx(body.into(), flags.map(|s| s.into()))
+    }
+
+    pub fn is_template(&self) -> bool {
+        if let Token::Template(ref _t) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn template(value: impl Iterator<Item = Token>) -> Token {
+        Token::Template(value.collect())
+    }
+
+    pub fn is_comment(&self) -> bool {
+        if let Token::Comment(ref _c) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_comment_with(&self, comment: &str) -> bool {
+        self == &Token::comment(comment)
+    }
+
+    pub fn comment(comment: impl Into<String>) -> Token {
+        Token::Comment(comment.into())
+    }
+}
+
 #[derive(Debug, PartialEq)]
 #[allow(unused)]
 pub enum NumericToken {

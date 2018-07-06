@@ -1,3 +1,6 @@
+//! This example is primarily for illustrating the
+//! project's abilities. It is a good example of how
+//! the `tokenize` function works.
 extern crate ress;
 extern crate reqwest;
 use std::time::{SystemTime, Duration};

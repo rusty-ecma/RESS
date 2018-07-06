@@ -15,7 +15,14 @@ combine = "3.3"
 
 [dev-dependencies]
 reqwest = "0.8"
+docopt = "0.9"
+serde = "1.0" # if you're using `derive(Deserialize)`
+serde_derive = "1.0" # if you're using `derive(Deserialize)`
 
 [[example]]
 name = "major_libs"
 path = "examples/major_libs/src/main.rs"
+
+[[example]]
+name = "clear-comments"
+path = "examples/clear-comments/src/main.rs"

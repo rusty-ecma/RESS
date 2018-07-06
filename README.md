@@ -17,13 +17,16 @@ static &str JS = include_str!("index.js");
 
 fn main() {
     let tokens = tokenize(JS);
-    //do something with your list of tokens
+    it !tokens.iter().any(|t| t.is_punct_with(";")) {
+        panic!("No semi-colon!? You nave!");
+    } else {
+        println!("At least you are sane at one point");
+    }
 }
 
 ```
-The above method could be a bit expensive, since it will attempt to parse the whole js string all at once.
 
-The other option is to create a `Scanner`, this will create a iterator of tokens parsing them one by one from your `String`.
+The other option is to create a `Scanner`, an iterator of tokens parsing them one by one from your js.
 ```rust
 extern crate ress;
 
@@ -34,11 +37,13 @@ static &str JS = include_str!("index.js");
 fn main() {
     let s = Scanner::new(JS);
     for token in s {
-        // do something with this token
+        if token.is_punct_with(";") {
+            panic!("A semi-colon!? Heathen!");
+        }
     }
+    println!("Good show! Why use something that's optional?")
 }
 ```
-> note: The overall cost for either method is going to be the same as `tokenize` is just creating a `Scanner` and then calling `collect` on it.
 
 In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 10 different tokens defined in the ECMAScript specification, plus `Comments`.
 
@@ -58,9 +63,9 @@ In either method the major construct that you would be dealing with is a `Token`
 In its current state it should be able to tokenize any valid <=ES6 JavaScript (I believe the testing is all currently done on ES3 packages though).
 
 ## Why?
-Ideally this project will be the starting point for building a full JS AST in Rust. The next step would be to build a companion crate that will raise the tokens into an AST.
+Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[./examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that.
 
-One of my major motivations to get started was to help streamline the generation and formatting of JS when working with `wasm-bindgen`, though it is not currently included there.
+Ideally this project will be the starting point for building a full JS AST in Rust. The next step would be to build a companion crate that will raise the tokens into a full Abstract Syntax Tree. And once we have an AST a program that will write out JS text from that ast, essentially coming full circle.
 
 # Performance
 I am sure there are a lot of low hanging fruit in this area, on my 13" MBP Late 2013 2.4 GHz Intel Core i5
