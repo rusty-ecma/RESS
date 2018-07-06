@@ -10,7 +10,7 @@ repository = "https://github.com/freemasen/ress"
 readme = "./README.md"
 
 [badges]
-travis-ci = { repository = "freemasen/RESS", branch = "master" }
+travis-ci = { repository = "FreeMasen/RESS", branch = "master" }
 
 [dependencies]
 combine = "3.3"
