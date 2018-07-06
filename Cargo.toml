@@ -6,6 +6,7 @@ description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
 categories = ["parsing", "text-processing", "web-programming"]
 license = "MIT"
+repository = "https://github.com/freemasen/ress"
 
 [badges]
 travis-ci = { repository = "freemasen/js_parse", branch = "master" }
