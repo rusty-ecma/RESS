@@ -1,7 +1,7 @@
 use combine::{
-    choice, eof, error::ParseError, many, many1, not_followed_by, optional,
+    choice, eof, error::ParseError, many, not_followed_by,
     parser::{
-        char::{char as c_char, digit, hex_digit, oct_digit, string},
+        char::{char as c_char, string},
         repeat::take_until,
     },
     try, Parser, Stream,
@@ -10,12 +10,23 @@ use combine::{
 use regex;
 use strings;
 use unicode;
+use numeric;
+
+pub struct Token {
+    data: TokenData,
+    span: Span,
+}
+
+pub struct Span {
+    start: usize,
+    end: usize,
+}
 
 #[derive(Debug, PartialEq, Clone)]
 /// The representation of a single JS token
-pub enum Token {
+pub enum TokenData {
     /// True of false, will contain the value
-    Boolean(bool),
+    Boolean(BooleanLiteral),
     /// The end of the file
     EoF,
     /// An identifier this will be either a variable name
@@ -27,7 +38,7 @@ pub enum Token {
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
     /// hex (`0x8f`), binary (`0b010011010`), and octal (`0o273`)
-    Numeric(String),
+    Numeric(numeric::Token),
     /// A punctuation mark, this includes all mathematical operators
     /// logical operators and general syntax punctuation
     Punct(String),
@@ -39,7 +50,7 @@ pub enum Token {
     RegEx(String, Option<String>),
     /// A template string literal
     /// note: This is not yet implemented
-    Template(Vec<Token>),
+    Template(Vec<TokenData>),
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
     /// and multi-line comments
@@ -50,10 +61,46 @@ pub enum Token {
     /// ```
     Comment(String),
 }
+#[derive(Debug, PartialEq, Clone)]
+pub enum BooleanLiteral {
+    True,
+    False,
+}
 
-impl Token {
+impl<'a> From<&'a str> for BooleanLiteral {
+    fn from(s: &'a str) -> Self {
+        if s == "true" {
+            BooleanLiteral::True
+        } else if s == "false" {
+            BooleanLiteral::False
+        } else {
+            panic!(r#"BooleanLiteral can only be created for "true" or "false"."#)
+        }
+    }
+}
+
+impl From<bool> for BooleanLiteral {
+    fn from(b: bool) -> Self {
+        if b {
+            BooleanLiteral::True
+        } else {
+            BooleanLiteral::False
+        }
+    }
+}
+
+impl Into<String> for BooleanLiteral {
+    fn into(self) -> String {
+        match self {
+            BooleanLiteral::True => "true".into(),
+            BooleanLiteral::False => "false".into(),
+        }
+    }
+}
+
+impl TokenData {
     pub fn is_punct(&self) -> bool {
-        if let Token::Punct(ref _p) = self {
+        if let TokenData::Punct(ref _p) = self {
             true
         } else {
             false
@@ -61,15 +108,15 @@ impl Token {
     }
 
     pub fn is_punct_with(&self, s: &str) -> bool {
-        self == &Token::punct(s)
+        self == &TokenData::punct(s)
     }
 
-    pub fn punct(s: impl Into<String>) -> Token {
-        Token::Punct(s.into())
+    pub fn punct(s: impl Into<String>) -> TokenData {
+        TokenData::Punct(s.into())
     }
 
     pub fn is_boolean(&self) -> bool {
-        if let Token::Boolean(ref _b) = self {
+        if let TokenData::Boolean(ref _b) = self {
             true
         } else {
             false
@@ -77,15 +124,15 @@ impl Token {
     }
 
     pub fn is_boolean_with(&self, b: bool) -> bool {
-        self == &Token::Boolean(b)
+        self == &TokenData::Boolean(BooleanLiteral::from(b))
     }
 
     pub fn is_eof(&self) -> bool {
-        self == &Token::EoF
+        self == &TokenData::EoF
     }
 
     pub fn is_ident(&self) -> bool {
-        if let Token::Ident(ref _i) = self {
+        if let TokenData::Ident(ref _i) = self {
             true
         } else {
             false
@@ -93,15 +140,15 @@ impl Token {
     }
 
     pub fn is_ident_with(&self, name: &str) -> bool {
-        self == &Token::ident(name)
+        self == &TokenData::ident(name)
     }
 
-    pub fn ident(name: impl Into<String>) -> Token {
-        Token::Ident(name.into())
+    pub fn ident(name: impl Into<String>) -> TokenData {
+        TokenData::Ident(name.into())
     }
 
     pub fn is_keyword(&self) -> bool {
-        if let Token::Keyword(ref _k) = self {
+        if let TokenData::Keyword(ref _k) = self {
             true
         } else {
             false
@@ -109,19 +156,19 @@ impl Token {
     }
 
     pub fn is_keyword_with(&self, name: &str) -> bool {
-        self == &Token::keyword(name)
+        self == &TokenData::keyword(name)
     }
 
-    pub fn keyword(name: impl Into<String>) -> Token {
-        Token::Keyword(name.into())
+    pub fn keyword(name: impl Into<String>) -> TokenData {
+        TokenData::Keyword(name.into())
     }
 
     pub fn is_null(&self) -> bool {
-        self == &Token::Null
+        self == &TokenData::Null
     }
 
     pub fn is_numeric(&self) -> bool {
-        if let Token::Numeric(ref _n) = self {
+        if let TokenData::Numeric(ref _n) = self {
             true
         } else {
             false
@@ -129,15 +176,15 @@ impl Token {
     }
 
     pub fn is_numeric_with(&self, number: &str) -> bool {
-        self == &Token::numeric(number)
+        self == &TokenData::numeric(number)
     }
 
-    pub fn numeric(number: impl Into<String>) -> Token {
-        Token::Numeric(number.into())
+    pub fn numeric(number: impl Into<String>) -> TokenData {
+        TokenData::Numeric(numeric::Token::from(number.into()))
     }
 
     pub fn is_string(&self) -> bool {
-        if let Token::String(ref _s) = self {
+        if let TokenData::String(ref _s) = self {
             true
         } else {
             false
@@ -145,15 +192,15 @@ impl Token {
     }
 
     pub fn is_string_with(&self, s: &str) -> bool {
-        self == &Token::string(s)
+        self == &TokenData::string(s)
     }
 
-    pub fn string(s: impl Into<String>) -> Token {
-        Token::String(s.into())
+    pub fn string(s: impl Into<String>) -> TokenData {
+        TokenData::String(s.into())
     }
 
     pub fn is_regex(&self) -> bool {
-        if let Token::RegEx(ref _b, ref _f) = self {
+        if let TokenData::RegEx(ref _b, ref _f) = self {
             true
         } else {
             false
@@ -161,27 +208,27 @@ impl Token {
     }
 
     pub fn is_regex_with(&self, body: &str, flags: Option<&str>) -> bool {
-        self == &Token::regex(body, flags)
+        self == &TokenData::regex(body, flags)
     }
 
-    pub fn regex(body: impl Into<String>, flags: Option<impl Into<String>>) -> Token {
-        Token::RegEx(body.into(), flags.map(|s| s.into()))
+    pub fn regex(body: impl Into<String>, flags: Option<impl Into<String>>) -> TokenData {
+        TokenData::RegEx(body.into(), flags.map(|s| s.into()))
     }
 
     pub fn is_template(&self) -> bool {
-        if let Token::Template(ref _t) = self {
+        if let TokenData::Template(ref _t) = self {
             true
         } else {
             false
         }
     }
 
-    pub fn template(value: impl Iterator<Item = Token>) -> Token {
-        Token::Template(value.collect())
+    pub fn template(value: impl Iterator<Item = TokenData>) -> TokenData {
+        TokenData::Template(value.collect())
     }
 
     pub fn is_comment(&self) -> bool {
-        if let Token::Comment(ref _c) = self {
+        if let TokenData::Comment(ref _c) = self {
             true
         } else {
             false
@@ -189,24 +236,15 @@ impl Token {
     }
 
     pub fn is_comment_with(&self, comment: &str) -> bool {
-        self == &Token::comment(comment)
+        self == &TokenData::comment(comment)
     }
 
-    pub fn comment(comment: impl Into<String>) -> Token {
-        Token::Comment(comment.into())
+    pub fn comment(comment: impl Into<String>) -> TokenData {
+        TokenData::Comment(comment.into())
     }
 }
 
-#[derive(Debug, PartialEq)]
-#[allow(unused)]
-pub enum NumericToken {
-    Decimal(String),
-    Hex(String),
-    Bin(String),
-    Octal(String),
-}
-
-pub fn token<I>() -> impl Parser<Input = I, Output = Token>
+pub fn token<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -217,7 +255,7 @@ where
         try(keyword()),
         try(ident()),
         try(null_literal()),
-        try(numeric_literal()),
+        try(numeric::literal()),
         try(regex::literal()),
         try(punctuation()),
         try(strings::literal()),
@@ -226,23 +264,23 @@ where
     ))).map(|t| t)
 }
 
-pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((string("true"), string("false"))).map(|t| Token::Boolean(t == "true"))
+    choice((string("true"), string("false"))).map(|t: &str| TokenData::Boolean(BooleanLiteral::from(t)))
 }
 
-pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    eof().map(|_| Token::EoF)
+    eof().map(|_| TokenData::EoF)
 }
 
-pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -251,11 +289,11 @@ where
         let mut ret = String::new();
         ret.push(start);
         ret.push_str(&body);
-        Token::Ident(ret)
+        TokenData::Ident(ret)
     })
 }
 
-pub(crate) fn keyword<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn keyword<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -269,7 +307,7 @@ where
         .map(|t| t)
 }
 
-pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -301,10 +339,10 @@ where
         try(string("void")),
         try(string("while")),
         try(string("with")),
-    ]).map(|t| Token::Keyword(t.to_owned()))
+    ]).map(|t| TokenData::Keyword(t.to_owned()))
 }
 
-pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -314,10 +352,10 @@ where
         try(string("import")),
         try(string("super")),
         try(string("enum")),
-    )).map(|t| Token::Keyword(t.to_owned()))
+    )).map(|t| TokenData::Keyword(t.to_owned()))
 }
 
-pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -332,181 +370,31 @@ where
         try(string("static")),
         try(string("yield")),
         try(string("let")),
-    )).map(|t| Token::Keyword(t.to_owned()))
+    )).map(|t| TokenData::Keyword(t.to_owned()))
 }
 
-pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(string("eval")), try(string("arguments")))).map(|t| Token::Keyword(t.to_owned()))
+    choice((try(string("eval")), try(string("arguments")))).map(|t| TokenData::Keyword(t.to_owned()))
 }
 
-pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string("null").map(|_| Token::Null)
+    string("null").map(|_| TokenData::Null)
 }
 
-pub(crate) fn numeric_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        try(bin_literal()),
-        try(octal_literal()),
-        try(hex_literal()),
-        try(decimal_literal()),
-    )).map(|t| t)
-}
-
-fn decimal_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(full_decimal_literal()), try(no_leading_decimal())))
-}
-
-fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        optional(choice([c_char('-'), c_char('+')])),
-        //any number of digits
-        many1(digit()),
-        //optionally followed by a . and any number of digits
-        optional((c_char('.'), many(digit()))),
-        //optionally followed by e|E and any number of digits
-        optional((choice((c_char('e'), c_char('E'))), many1(digit()))),
-    ).map(
-        |t: (
-            Option<char>,
-            String,
-            Option<(char, String)>,
-            Option<(char, String)>,
-        )| {
-            let mut ret = String::new();
-            if let Some(sign) = t.0 {
-                ret.push(sign);
-            }
-            ret.push_str(&t.1);
-            if let Some(decimal) = t.2 {
-                ret.push(decimal.0);
-                ret.push_str(&decimal.1);
-            }
-            if let Some(exp) = t.3 {
-                ret.push(exp.0);
-                ret.push_str(&exp.1);
-            }
-            Token::Numeric(ret)
-        },
-    )
-}
-
-fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        optional(choice([c_char('-'), c_char('+')])),
-        c_char('.'),
-        many1(digit()),
-        optional((choice([c_char('e'), c_char('E')]), many1(digit()))),
-    ).map(|t: (Option<char>, char, String, Option<(char, String)>)| {
-        let mut ret = String::new();
-        if let Some(sign) = t.0 {
-            ret.push(sign);
-        }
-        ret.push(t.1);
-        ret.push_str(&t.2);
-        if let Some(exp) = t.3 {
-            ret.push(exp.0);
-            ret.push_str(&exp.1);
-        }
-        Token::Numeric(ret)
-    })
-}
-
-fn hex_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        optional(choice([c_char('-'), c_char('+')])),
-        c_char('0'),
-        choice([c_char('x'), c_char('X')]),
-        many1(hex_digit()),
-    ).map(|t: (Option<char>, char, char, String)| {
-        let mut ret = String::new();
-        if let Some(sign) = t.0 {
-            ret.push(sign);
-        }
-        ret.push(t.1);
-        ret.push(t.2);
-        ret.push_str(&t.3);
-        Token::Numeric(ret)
-    })
-}
-
-fn bin_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        optional(choice([c_char('-'), c_char('+')])),
-        c_char('0'),
-        choice([c_char('b'), c_char('B')]),
-        many1(choice([c_char('1'), c_char('0')])),
-    ).map(|t: (Option<char>, char, char, String)| {
-        let mut ret = String::new();
-        if let Some(sign) = t.0 {
-            ret.push(sign);
-        }
-        ret.push(t.1);
-        ret.push(t.2);
-        ret.push_str(&t.3);
-        Token::Numeric(ret)
-    })
-}
-
-fn octal_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        optional(choice([c_char('-'), c_char('+')])),
-        c_char('0'),
-        choice([c_char('o'), c_char('O')]),
-        many1(oct_digit()),
-    ).map(|t: (Option<char>, char, char, String)| {
-        let mut ret = String::new();
-        if let Some(sign) = t.0 {
-            ret.push(sign);
-        }
-        ret.push(t.1);
-        ret.push(t.2);
-        ret.push_str(&t.3);
-        Token::Numeric(ret)
-    })
-}
-
-pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(multi_punct()), try(single_punct()))).map(|t: String| Token::Punct(t))
+    choice((try(multi_punct()), try(single_punct()))).map(|t: String| TokenData::Punct(t))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
@@ -599,15 +487,15 @@ where
     ]).map(|t| t.to_string())
 }
 
-pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (choice((try(multi_comment()), try(single_comment()))).map(|t: Token| t))
+    (choice((try(multi_comment()), try(single_comment()))).map(|t: TokenData| t))
 }
 
-pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -617,10 +505,10 @@ where
             try(strings::line_terminator_sequence()),
             try(eof().map(|_| String::new())),
             ))))
-        .map(|(_, content): (_, String)| Token::Comment(content.to_owned()))
+        .map(|(_, content): (_, String)| TokenData::Comment(content.to_owned()))
 }
 
-pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -634,7 +522,7 @@ where
             .map(|l| l.trim())
             .collect::<Vec<&str>>()
             .join("\n");
-        Token::Comment(ret)
+        TokenData::Comment(ret)
     })
 }
 
@@ -704,14 +592,14 @@ mod test {
     fn bool() {
         let t = super::boolean_literal().parse("true").unwrap();
         let f = super::boolean_literal().parse("false").unwrap();
-        assert_eq!(t, (Token::Boolean(true), ""));
-        assert_eq!(f, (Token::Boolean(false), ""));
+        assert_eq!(t, (TokenData::Boolean(true), ""));
+        assert_eq!(f, (TokenData::Boolean(false), ""));
     }
 
     #[test]
     fn eof() {
         let e = super::end_of_input().parse("").unwrap();
-        assert_eq!(e, (Token::EoF, ""));
+        assert_eq!(e, (TokenData::EoF, ""));
     }
 
     #[test]
@@ -719,7 +607,7 @@ mod test {
         let keywords = ["enum", "export", "import", "super"];
         for keyword in keywords.iter() {
             let k = super::future_reserved().parse(keyword.clone()).unwrap();
-            assert_eq!(k, (Token::Keyword(keyword.to_string()), ""))
+            assert_eq!(k, (TokenData::Keyword(keyword.to_string()), ""))
         }
         match super::future_reserved().parse("junk") {
             Ok(k) => panic!("parsed junk as {:?}", k),
@@ -744,7 +632,7 @@ mod test {
             let k = super::strict_mode_reserved()
                 .parse(keyword.clone())
                 .unwrap();
-            assert_eq!(k, (Token::Keyword(keyword.to_string()), ""));
+            assert_eq!(k, (TokenData::Keyword(keyword.to_string()), ""));
         }
         match super::strict_mode_reserved().parse("junk") {
             Ok(k) => panic!("parsed junk as {:?}", k),
@@ -755,9 +643,9 @@ mod test {
     #[test]
     fn restricted_reserved() {
         let k = super::restricted().parse("eval").unwrap();
-        assert_eq!(k, (Token::Keyword("eval".into()), ""));
+        assert_eq!(k, (TokenData::Keyword("eval".into()), ""));
         let k2 = super::restricted().parse("arguments").unwrap();
-        assert_eq!(k2, (Token::Keyword("arguments".into()), ""))
+        assert_eq!(k2, (TokenData::Keyword("arguments".into()), ""))
     }
 
     #[test]
@@ -792,7 +680,7 @@ mod test {
         ];
         for key in keys {
             let k = reserved().parse(key.clone()).unwrap();
-            assert_eq!(k, (Token::Keyword(key.to_owned()), ""));
+            assert_eq!(k, (TokenData::Keyword(key.to_owned()), ""));
         }
     }
 
@@ -842,7 +730,7 @@ mod test {
         ];
         for key in keys {
             let k = keyword().parse(key.clone()).unwrap();
-            assert_eq!(k, (Token::Keyword(key.to_owned()), ""));
+            assert_eq!(k, (TokenData::Keyword(key.to_owned()), ""));
         }
     }
     #[test]
@@ -860,7 +748,7 @@ mod test {
         ];
         for val in vals {
             let d = full_decimal_literal().parse(val.clone()).unwrap();
-            assert_eq!(d, (Token::Numeric(val.to_owned()), ""));
+            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
         }
         if let Ok(_) = full_decimal_literal().parse(".00") {
             panic!("parsed .00 as full decimal literal");
@@ -874,7 +762,7 @@ mod test {
         ];
         for val in vals {
             let d = no_leading_decimal().parse(val.clone()).unwrap();
-            assert_eq!(d, (Token::Numeric(val.to_owned()), ""))
+            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""))
         }
         if let Ok(_) = no_leading_decimal().parse("00.0") {
             panic!("parsed 00.0 as no leading decimal")
@@ -888,7 +776,7 @@ mod test {
         ];
         for val in vals {
             let h = hex_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (Token::Numeric(val.to_owned()), ""))
+            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
         }
 
         if let Ok(_) = hex_literal().parse("555") {
@@ -900,7 +788,7 @@ mod test {
         let vals = vec!["0b000", "0B111", "-0B0101", "+0b1010"];
         for val in vals {
             let h = bin_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (Token::Numeric(val.to_owned()), ""))
+            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
         }
 
         if let Ok(_) = bin_literal().parse("0b") {
@@ -913,7 +801,7 @@ mod test {
         let vals = vec!["0o7", "0O554", "-0o12345670", "+0O12345670"];
         for val in vals {
             let h = octal_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (Token::Numeric(val.to_owned()), ""))
+            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
         }
 
         if let Ok(_) = octal_literal().parse("0O8") {
@@ -944,11 +832,11 @@ mod test {
         ];
         for val in vals {
             let d = token().parse(val.clone()).unwrap();
-            assert_eq!(d, (Token::Numeric(val.to_owned()), ""));
+            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
         }
         if let Ok(f) = token().parse("asdfghjk") {
             match f {
-                (Token::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
+                (TokenData::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
                 _ => (),
             }
         }
@@ -992,10 +880,10 @@ mod test {
         ];
         for val in vals {
             let d = token().parse(val.clone()).unwrap();
-            assert_eq!(d, (Token::Numeric(val.to_owned()), ""));
+            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
         }
         match token().parse("asdfghjk").unwrap() {
-            (Token::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
+            (TokenData::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
             _ => (),
         }
     }
@@ -1008,7 +896,7 @@ mod test {
         ];
         for p in single.clone() {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (Token::Punct(p.to_string()), ""));
+            assert_eq!(t, (TokenData::Punct(p.to_string()), ""));
         }
         let multi = vec![
             ">>>=",
@@ -1044,11 +932,11 @@ mod test {
         ];
         for p in multi.clone() {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (Token::Punct(p.to_string()), ""));
+            assert_eq!(t, (TokenData::Punct(p.to_string()), ""));
         }
         for p in single.iter().chain(multi.iter()) {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (Token::Punct(p.to_string()), ""))
+            assert_eq!(t, (TokenData::Punct(p.to_string()), ""))
         }
     }
 
@@ -1068,7 +956,7 @@ mod test {
         ];
         for i in idents {
             let t = token().parse(i.clone()).unwrap();
-            assert_eq!(t, (Token::Ident(i.to_owned()), ""))
+            assert_eq!(t, (TokenData::Ident(i.to_owned()), ""))
         }
     }
     #[test]
@@ -1093,7 +981,7 @@ mod test {
                 })
                 .collect::<Vec<String>>()
                 .join("\n");
-            assert_eq!(p, (Token::Comment(comment_contents), ""));
+            assert_eq!(p, (TokenData::Comment(comment_contents), ""));
         }
     }
 }

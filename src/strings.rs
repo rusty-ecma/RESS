@@ -11,12 +11,12 @@ use combine::{
 use tokens::*;
 use super::escaped;
 
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(single_quote()), try(double_quote()))).map(|s| Token::String(s.to_owned()))
+    choice((try(single_quote()), try(double_quote()))).map(|s| TokenData::String(s.to_owned()))
 }
 
 fn single_quote<I>() -> impl Parser<Input = I, Output = String>
@@ -102,7 +102,7 @@ where
     )).map(|s: String| s)
 }
 
-pub fn template<I>() -> impl Parser<Input = I, Output = Token>
+pub fn template<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -113,7 +113,7 @@ where
     ))
 }
 
-fn no_sub_template<I>() -> impl Parser<Input = I, Output = Token>
+fn no_sub_template<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -122,10 +122,10 @@ where
         c_char('`'),
         c_char('`'),
         many(template_char())
-    ).map(|s: String| Token::Template(vec![Token::String(s)]))
+    ).map(|s: String| TokenData::Template(vec![TokenData::String(s)]))
 }
 
-fn actual_template<I>() -> impl Parser<Input = I, Output = Token>
+fn actual_template<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -138,7 +138,7 @@ where
             replaced(),
         )),
         template_tail(),
-    ).map(|(h, r1, m, t): (Token, Vec<Token>, Vec<(Token, Vec<Token>)>, Token)| {
+    ).map(|(h, r1, m, t): (TokenData, Vec<TokenData>, Vec<(TokenData, Vec<TokenData>)>, TokenData)| {
         let mut ret = vec![h];
         ret.extend(r1);
         for mid in m {
@@ -146,21 +146,21 @@ where
             ret.extend(mid.1);
         }
         ret.push(t);
-        Token::Template(ret)
+        TokenData::Template(ret)
     })
 }
 
-fn template_middle<I>() -> impl Parser<Input = I, Output = Token>
+fn template_middle<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     c_char('}').and(
         take_until(try(string("${")))
-    ).map(|(_, s): (_, String)| Token::String(s))
+    ).map(|(_, s): (_, String)| TokenData::String(s))
 }
 
-fn template_head<I>() -> impl Parser<Input = I, Output = Token>
+fn template_head<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -173,10 +173,10 @@ where
                 )
             )
         )
-        .map(|(_, s): (char, String)| Token::String(s))
+        .map(|(_, s): (char, String)| TokenData::String(s))
 }
 
-fn template_tail<I>() -> impl Parser<Input = I, Output = Token>
+fn template_tail<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -185,7 +185,7 @@ where
         string("}"),
         string("`"),
         many(template_char())
-    ).map(|s: String| Token::String(s))
+    ).map(|s: String| TokenData::String(s))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>
@@ -201,7 +201,7 @@ where
     ))
 }
 
-fn replaced<I>() -> impl Parser<Input = I, Output = Vec<Token>>
+fn replaced<I>() -> impl Parser<Input = I, Output = Vec<TokenData>>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -212,13 +212,13 @@ where
     ))
     )).map(|(_,s): (_, String)| {
         let s = super::Scanner::new(s);
-        s.filter(|t| t != &Token::EoF).collect()
+        s.filter(|t| t != &TokenData::EoF).collect()
     })
 }
 
 #[cfg(test)]
 mod test {
-    use super::super::{token, Token};
+    use super::super::{token, TokenData};
     use combine::Parser;
     #[test]
     fn strings() {
@@ -233,7 +233,7 @@ mod test {
             let dq = token().parse(dq_test.as_str()).unwrap();
             let sq_test = format!("'{}'", &s.clone());
             let sq = token().parse(sq_test.as_str()).unwrap();
-            assert_eq!(dq, (Token::String(s.to_string().clone()), ""));
+            assert_eq!(dq, (TokenData::String(s.to_string().clone()), ""));
             assert_eq!(dq, sq);
         }
     }
@@ -247,7 +247,7 @@ mod test {
         let target = "things and stuff and people and places";
         let d_r = token().parse(double.as_str()).unwrap();
         let s_r = token().parse(single.as_str()).unwrap();
-        assert_eq!(d_r, (Token::String(target.to_string()), ""));
+        assert_eq!(d_r, (TokenData::String(target.to_string()), ""));
         assert_eq!(s_r, d_r);
     }
 
@@ -256,7 +256,7 @@ mod test {
         let empty = "`things and stuff`";
         let e_r = token().parse(empty).unwrap();
         println!("empty: {:?}", e_r);
-        assert_eq!(e_r, (Token::Template(vec![Token::String("things and stuff".into())]), ""));
+        assert_eq!(e_r, (TokenData::Template(vec![TokenData::String("things and stuff".into())]), ""));
         let th = "`things and stuff ${";
         let th_r = super::template_head().parse(th).unwrap();
         println!("template head: {:?}", th_r);
@@ -270,21 +270,21 @@ mod test {
             super::template_head(),
             super::replaced(),
             super::template_tail(),
-        ).map(|x: (Token, Vec<Token>, Token)| x).parse(one_sub).unwrap();
+        ).map(|x: (TokenData, Vec<TokenData>, TokenData)| x).parse(one_sub).unwrap();
         println!("manual: {:?}", manual);
         let o_r = super::token().parse(one_sub).unwrap();
         println!("one: {:?}", o_r);
-        assert_eq!(o_r, (Token::Template(vec![Token::String("things and stuff times ".into()),
-                                                Token::Ident("x".into()),
-                                                Token::String("".into())]), ""));
+        assert_eq!(o_r, (TokenData::Template(vec![TokenData::String("things and stuff times ".into()),
+                                                TokenData::Ident("x".into()),
+                                                TokenData::String("".into())]), ""));
         let two_subs = "`things and stuff times ${x} divided by ${y}`";
         let t_r = super::token().parse(two_subs).unwrap();
-        assert_eq!(t_r, (Token::Template(vec![
-            Token::String("things and stuff times ".into()),
-            Token::Ident("x".into()),
-            Token::String(" divided by ".into()),
-            Token::Ident("y".into()),
-            Token::String("".into())
+        assert_eq!(t_r, (TokenData::Template(vec![
+            TokenData::String("things and stuff times ".into()),
+            TokenData::Ident("x".into()),
+            TokenData::String(" divided by ".into()),
+            TokenData::Ident("y".into()),
+            TokenData::String("".into())
         ]), ""))
     }
 
@@ -293,18 +293,18 @@ mod test {
         let plain = "`things and
         stuff`";
         let p_r = token().parse(plain).unwrap();
-        assert_eq!(p_r, (Token::Template(vec![
-            Token::String(plain[1..plain.len() - 1].into())
+        assert_eq!(p_r, (TokenData::Template(vec![
+            TokenData::String(plain[1..plain.len() - 1].into())
         ]), ""));
         let subbed = "`things and
         stuff times ${x}`";
         let s_r = token().parse(subbed).unwrap();
         assert_eq!(s_r, 
             (
-                Token::Template(vec![
-                    Token::String(subbed[1..subbed.len() - 5].to_string()),
-                    Token::Ident("x".into()),
-                    Token::String("".into())
+                TokenData::Template(vec![
+                    TokenData::String(subbed[1..subbed.len() - 5].to_string()),
+                    TokenData::Ident("x".into()),
+                    TokenData::String("".into())
                     ]
                 ), ""
             )

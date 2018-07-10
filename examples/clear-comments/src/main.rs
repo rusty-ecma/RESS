@@ -18,7 +18,7 @@ use std::{
 
 use docopt::Docopt;
 
-use ress::{Token, Scanner};
+use ress::{TokenData, Scanner};
 
 const USAGE: &'static str = "
 clear-comments
@@ -44,7 +44,7 @@ fn main() {
     let mut indent = 0;
     let f = File::create(&opts.arg_out_path).expect("Error opening outfile");
     let mut out = BufWriter::new(f);
-    let mut last_token = Token::EoF;
+    let mut last_token = TokenData::EoF;
     let mut new_line = false;
     let mut in_loop = false;
     let mut in_case = false;
@@ -120,7 +120,7 @@ fn main() {
     }
 }
 
-fn space_before(last_token: &Token, token: &Token) -> bool {
+fn space_before(last_token: &TokenData, token: &TokenData) -> bool {
     if last_token.is_punct_with("=") || token.is_punct_with("=") {
         return true;
     }
@@ -225,33 +225,33 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
     false
 }
 
-fn token_to_string(t: &Token) -> String {
+fn token_to_string(t: &TokenData) -> String {
     match t {
-        &Token::Boolean(ref t) => if *t {
+        &TokenData::Boolean(ref t) => if *t {
             "true"
         } else {
             "false"
         }.to_string(),
-        &Token::Comment(ref info) => if info.contains('\n') {
+        &TokenData::Comment(ref info) => if info.contains('\n') {
             format!("/*\n{}\n*/", info)
         } else {
             format!("//{}", info)
         },
-        &Token::Ident(ref name) => name.to_string(),
-        &Token::Keyword(ref key) => key.to_string(),
-        &Token::Null => "null".to_string(),
-        &Token::Numeric(ref number) => number.to_string(),
-        &Token::Punct(ref c) => c.to_string(),
-        &Token::RegEx(ref body, ref flags) => match flags {
+        &TokenData::Ident(ref name) => name.to_string(),
+        &TokenData::Keyword(ref key) => key.to_string(),
+        &TokenData::Null => "null".to_string(),
+        &TokenData::Numeric(ref number) => number.to_string(),
+        &TokenData::Punct(ref c) => c.to_string(),
+        &TokenData::RegEx(ref body, ref flags) => match flags {
             Some(ref f) => format!("/{}/{}", body, f),
             None => format!("/{}/", body),
         },
-        &Token::String(ref s) => format!("'{}'", s),
-        &Token::Template(ref tokens) => {
+        &TokenData::String(ref s) => format!("'{}'", s),
+        &TokenData::Template(ref tokens) => {
             let mut open = false;
             let mut ret = String::new();
             for token in tokens {
-                if let Token::String(ref s) = token {
+                if let TokenData::String(ref s) = token {
                     if open {
                         open = false;
                         ret.push_str(&format!("}}{}", s))

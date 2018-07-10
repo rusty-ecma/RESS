@@ -2,10 +2,10 @@ use combine::{
     between, choice, error::ParseError, many, optional, parser::char::char as c_char, satisfy, try,
     Parser, Stream,
 };
-use tokens::{ident_part, Token};
+use tokens::{ident_part, TokenData};
 
 /// Parse a regex literal
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -19,7 +19,7 @@ where
         } else {
             flags
         };
-        Token::RegEx(body, f)
+        TokenData::RegEx(body, f)
     })
 }
 /// Parse the body portion of the regex literal
@@ -149,14 +149,14 @@ mod test {
         let simple = r#"/[a-zA-Z]/"#;
         let s_r = super::literal().parse(simple.clone()).unwrap();
         println!("simple: {:?}", s_r);
-        assert_eq!(s_r, (Token::RegEx(simple[1..9].to_string(), None), ""));
+        assert_eq!(s_r, (TokenData::RegEx(simple[1..9].to_string(), None), ""));
         let flagged = r#"/[0-9]+/g"#;
         let f_r = super::literal().parse(flagged).unwrap();
         println!("flagged: {:?}", f_r);
         assert_eq!(
             f_r,
             (
-                Token::RegEx(flagged[1..7].to_string(), Some("g".to_string())),
+                TokenData::RegEx(flagged[1..7].to_string(), Some("g".to_string())),
                 ""
             )
         );
