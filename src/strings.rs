@@ -3,23 +3,60 @@ use combine::{
     parser::{
         char::{char as c_char, string, spaces}, 
         item::satisfy,
-        repeat::take_until,
     },
     try, Parser, Stream, not_followed_by,
 };
 
-use tokens::*;
+use tokens;
+use tokens::{TokenData};
+use regex;
+use keywords;
+use numeric;
+use punct;
+use comments;
 use super::escaped;
+#[derive(Debug, PartialEq, Clone)]
+pub struct Token {
+    pub quote: Quote,
+    pub content: String,
+}
+
+impl Token {
+    pub fn into_simple(self) -> String {
+        let q = match self.quote {
+            Quote::Single => '\'',
+            Quote::Double => '"',
+            _ => panic!("Cannot convert template string to simple string")
+        };
+        format!("{0}{1}{0}",q, self.content)
+    }
+}
+
+impl Token {
+    pub fn from_parts(quote: Quote, content: &str) -> Token {
+        Token {
+            quote,
+            content: content.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Quote {
+    Single,
+    Double,
+    BackTick,
+}
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(single_quote()), try(double_quote()))).map(|s| TokenData::String(s.to_owned()))
+    choice((try(single_quote()), try(double_quote()))).map(|t| TokenData::String(t))
 }
 
-fn single_quote<I>() -> impl Parser<Input = I, Output = String>
+fn single_quote<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -30,7 +67,7 @@ where
             c_char('\''),
             many(single_quoted_content())
         )
-    ).map(|t: String| t)
+    ).map(|t: String| Token::from_parts(Quote::Single, t.as_str()))
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -56,12 +93,16 @@ where
         .map(|_| String::new())
 }
 
-fn double_quote<I>() -> impl Parser<Input = I, Output = String>
+fn double_quote<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('"'), c_char('"'), many(double_quoted_content())).map(|t: String| t)
+    between(
+        c_char('"'), 
+        c_char('"'), 
+        many(double_quoted_content())
+    ).map(|t: String| Token::from_parts(Quote::Double, t.as_str()))
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -122,7 +163,7 @@ where
         c_char('`'),
         c_char('`'),
         many(template_char())
-    ).map(|s: String| TokenData::Template(vec![TokenData::String(s)]))
+    ).map(|s: String| TokenData::Template(vec![TokenData::String(Token::from_parts(Quote::BackTick, s.as_str()))]))
 }
 
 fn actual_template<I>() -> impl Parser<Input = I, Output = TokenData>
@@ -155,9 +196,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    c_char('}').and(
-        take_until(try(string("${")))
-    ).map(|(_, s): (_, String)| TokenData::String(s))
+    between(
+        string("}"),
+        string("${"),
+        many(template_char()),
+    ).map(|s: String| TokenData::String(Token::from_parts(Quote::BackTick, s.as_str())))
 }
 
 fn template_head<I>() -> impl Parser<Input = I, Output = TokenData>
@@ -165,15 +208,12 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    c_char('`')
-        .and(
-            take_until(
-                try(
-                    string("${")
-                )
-            )
-        )
-        .map(|(_, s): (char, String)| TokenData::String(s))
+    between(
+        string("`"),
+        string("${"),
+        many(template_char()),
+    )
+    .map(|s: String| TokenData::String(Token::from_parts(Quote::BackTick, s.as_str())))
 }
 
 fn template_tail<I>() -> impl Parser<Input = I, Output = TokenData>
@@ -185,7 +225,7 @@ where
         string("}"),
         string("`"),
         many(template_char())
-    ).map(|s: String| TokenData::String(s))
+    ).map(|s: String| TokenData::String(Token::from_parts(Quote::BackTick, s.as_str())))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>
@@ -201,24 +241,46 @@ where
     ))
 }
 
-fn replaced<I>() -> impl Parser<Input = I, Output = Vec<TokenData>>
+fn replaced_<I>() -> impl Parser<Input = I, Output = Vec<TokenData>>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string("${").and(take_until(choice((
-        try(template_middle()),
-        try(template_tail()),
-    ))
-    )).map(|(_,s): (_, String)| {
-        let s = super::Scanner::new(s);
-        s.filter(|t| t != &TokenData::EoF).collect()
-    })
+    many(replaced_content()).map(|ts: Vec<TokenData>| ts)
+}
+
+fn replaced_content<I>() -> impl Parser<Input = I, Output = TokenData>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (choice((
+        try(comments::comment()),
+        try(tokens::boolean_literal()),
+        try(keywords::literal()),
+        try(tokens::ident()),
+        try(tokens::null_literal()),
+        try(numeric::literal()),
+        try(regex::literal()),
+        try(template()),
+        try(punct::punctuation_not_close_brace()),
+        try(literal()),
+    ))).map(|t| t)
+}
+
+parser!{
+    fn replaced[I]()(I) -> Vec<TokenData>
+    where [I: Stream<Item = char>]
+    {
+        replaced_()
+        
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use super::super::{token, TokenData};
+    use tokens::{token, TokenData};
+    use super::*;
     use combine::Parser;
     #[test]
     fn strings() {
@@ -228,13 +290,12 @@ mod test {
             "✨✨✨✨ ✨✨✨✨",
         ];
         for s in strings.into_iter() {
-            println!("testing {}", s);
             let dq_test = format!("\"{}\"", &s.clone());
             let dq = token().parse(dq_test.as_str()).unwrap();
             let sq_test = format!("'{}'", &s.clone());
             let sq = token().parse(sq_test.as_str()).unwrap();
-            assert_eq!(dq, (TokenData::String(s.to_string().clone()), ""));
-            assert_eq!(dq, sq);
+            assert_eq!(dq, (TokenData::String(super::Token::from_parts(Quote::Double, s)), ""));
+            assert_eq!(sq, (TokenData::String(super::Token::from_parts(Quote::Single, s)), ""));
         }
     }
 
@@ -247,54 +308,44 @@ mod test {
         let target = "things and stuff and people and places";
         let d_r = token().parse(double.as_str()).unwrap();
         let s_r = token().parse(single.as_str()).unwrap();
-        assert_eq!(d_r, (TokenData::String(target.to_string()), ""));
-        assert_eq!(s_r, d_r);
+        assert_eq!(d_r, (TokenData::String(super::Token::from_parts(Quote::Double, target.clone())), ""));
+        assert_eq!(s_r, (TokenData::String(super::Token::from_parts(Quote::Single, target.clone())), ""));
     }
-
     #[test]
-    fn template() {
+    fn template_no_sub() {
         let empty = "`things and stuff`";
-        let e_r = token().parse(empty).unwrap();
-        println!("empty: {:?}", e_r);
-        assert_eq!(e_r, (TokenData::Template(vec![TokenData::String("things and stuff".into())]), ""));
-        let th = "`things and stuff ${";
-        let th_r = super::template_head().parse(th).unwrap();
-        println!("template head: {:?}", th_r);
-        let tt = "}`";
-        let tt_r = super::template_tail().parse(tt).unwrap();
-        println!("template tail: {:?}", tt_r);
-        // let r = super::replaced().parse("x}`").unwrap();
-        // println!("replaced: {:?}", r);
+        let e_r = tokens::token().easy_parse(empty).unwrap();
+        assert_eq!(e_r, (TokenData::Template(vec![TokenData::String(super::Token::from_parts(Quote::BackTick, "things and stuff"))]), ""));
+    }
+    #[test]
+    fn template_one_sub() {
         let one_sub = "`things and stuff times ${x}`";
-        let manual = (
-            super::template_head(),
-            super::replaced(),
-            super::template_tail(),
-        ).map(|x: (TokenData, Vec<TokenData>, TokenData)| x).parse(one_sub).unwrap();
-        println!("manual: {:?}", manual);
-        let o_r = super::token().parse(one_sub).unwrap();
-        println!("one: {:?}", o_r);
-        assert_eq!(o_r, (TokenData::Template(vec![TokenData::String("things and stuff times ".into()),
+        match tokens::token().easy_parse(one_sub) {
+            Ok(o_r) => assert_eq!(o_r, (TokenData::Template(vec![TokenData::String(super::Token::from_parts(Quote::BackTick, "things and stuff times ")),
                                                 TokenData::Ident("x".into()),
-                                                TokenData::String("".into())]), ""));
+                                                TokenData::String(super::Token::from_parts(Quote::BackTick, ""))]), "")),
+            Err(e) => panic!("Error in template one sub\nposition: {:?}\nerrors: {:?}", e.position.translate_position(one_sub.clone()), e.errors),
+        }
+    }
+    #[test]
+    fn template_two_subs() {
         let two_subs = "`things and stuff times ${x} divided by ${y}`";
-        let t_r = super::token().parse(two_subs).unwrap();
+        let t_r = tokens::token().parse(two_subs).unwrap();
         assert_eq!(t_r, (TokenData::Template(vec![
-            TokenData::String("things and stuff times ".into()),
+            TokenData::String(super::Token::from_parts(Quote::BackTick, "things and stuff times ")),
             TokenData::Ident("x".into()),
-            TokenData::String(" divided by ".into()),
+            TokenData::String(super::Token::from_parts(Quote::BackTick, " divided by ")),
             TokenData::Ident("y".into()),
-            TokenData::String("".into())
+            TokenData::String(super::Token::from_parts(Quote::BackTick, ""))
         ]), ""))
     }
-
     #[test]
     fn multi_template() {
         let plain = "`things and
         stuff`";
         let p_r = token().parse(plain).unwrap();
         assert_eq!(p_r, (TokenData::Template(vec![
-            TokenData::String(plain[1..plain.len() - 1].into())
+            TokenData::String(super::Token::from_parts(Quote::BackTick, &plain[1..plain.len() - 1]))
         ]), ""));
         let subbed = "`things and
         stuff times ${x}`";
@@ -302,9 +353,9 @@ mod test {
         assert_eq!(s_r, 
             (
                 TokenData::Template(vec![
-                    TokenData::String(subbed[1..subbed.len() - 5].to_string()),
+                    TokenData::String(super::Token::from_parts(Quote::BackTick, &subbed[1..subbed.len() - 5])),
                     TokenData::Ident("x".into()),
-                    TokenData::String("".into())
+                    TokenData::String(super::Token::from_parts(Quote::BackTick, "")),
                     ]
                 ), ""
             )

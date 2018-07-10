@@ -1,5 +1,6 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
+#[macro_use]
 extern crate combine;
 use combine::{Parser, Stream, parser::char::char as c_char, error::ParseError};
 mod regex;
@@ -7,11 +8,14 @@ mod strings;
 mod tokens;
 mod unicode;
 mod numeric;
+mod punct;
+mod keywords;
+mod comments;
 use tokens::token;
-pub use tokens::TokenData;
+pub use tokens::{TokenData, Token};
 /// Send over the complete text and get back
 /// the completely parsed result
-pub fn tokenize(text: &str) -> Vec<TokenData> {
+pub fn tokenize(text: &str) -> Vec<Token> {
     Scanner::new(text).collect()
 }
 
@@ -26,10 +30,12 @@ pub struct Scanner {
 impl Scanner {
     /// Create a new Scanner with the raw JS text
     pub fn new(text: impl Into<String>) -> Self {
+        let text = text.into();
+        let cursor = text.len() - text.trim_left().len();
         Scanner {
-            stream: text.into().trim().to_owned(),
+            stream: text,
             eof: false,
-            cursor: 0
+            cursor,
         }
     }
 
@@ -37,8 +43,8 @@ impl Scanner {
 }
 
 impl Iterator for Scanner {
-    type Item = TokenData;
-    fn next(&mut self) -> Option<TokenData> {
+    type Item = Token;
+    fn next(&mut self) -> Option<Token> {
         if self.eof {
             return None;
         };
@@ -47,8 +53,10 @@ impl Iterator for Scanner {
                 if pair.0 == TokenData::EoF {
                     self.eof = true;
                 }
-                self.cursor = self.stream.len() - pair.1.trim().len();
-                Some(pair.0)
+                let new_cursor = self.stream.len() - pair.1.trim_left().len();
+                let ret = Token::new(pair.0, self.cursor, new_cursor);
+                self.cursor = new_cursor;
+                Some(ret)
             }
             Err(e) => {
                 eprintln!(
@@ -96,7 +104,7 @@ mod error {
 
 #[cfg(test)]
 mod test {
-    use super::{tokenize, TokenData};
+    use super::*;
     #[test]
     fn tokenizer() {
         let js = "
@@ -106,30 +114,31 @@ function thing() {
     console.log('stuff');
 }";
         let expectation = vec![
-            TokenData::String("use strict".into()),
-            TokenData::Punct(";".into()),
-            TokenData::Keyword("function".into()),
-            TokenData::Ident("thing".into()),
-            TokenData::Punct("(".into()),
-            TokenData::Punct(")".into()),
-            TokenData::Punct("{".into()),
-            TokenData::Keyword("let".into()),
-            TokenData::Ident("x".into()),
-            TokenData::Punct("=".into()),
-            TokenData::Numeric("0".into()),
-            TokenData::Punct(";".into()),
-            TokenData::Ident("console".into()),
-            TokenData::Punct(".".into()),
-            TokenData::Ident("log".into()),
-            TokenData::Punct("(".into()),
-            TokenData::String("stuff".into()),
-            TokenData::Punct(")".into()),
-            TokenData::Punct(";".into()),
-            TokenData::Punct("}".into()),
+            TokenData::single_quoted_string("use strict"),
+            TokenData::punct(";"),
+            TokenData::keyword("function"),
+            TokenData::ident("thing"),
+            TokenData::punct("("),
+            TokenData::punct(")"),
+            TokenData::punct("{"),
+            TokenData::keyword("let"),
+            TokenData::ident("x"),
+            TokenData::punct("="),
+            TokenData::numeric("0"),
+            TokenData::punct(";"),
+            TokenData::ident("console"),
+            TokenData::punct("."),
+            TokenData::ident("log"),
+            TokenData::punct("("),
+            TokenData::single_quoted_string("stuff"),
+            TokenData::punct(")"),
+            TokenData::punct(";"),
+            TokenData::punct("}"),
             TokenData::EoF,
         ];
-        let toks = tokenize(js);
-        assert_eq!(toks, expectation);
+        for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
+            assert_eq!(tok.0.data, tok.1);
+        }
     }
 
     #[test]
@@ -141,32 +150,32 @@ this.y = 0;
 })();",
         );
         let expectation = vec![
-            TokenData::Punct("(".into()),
-            TokenData::Keyword("function".into()),
-            TokenData::Punct("(".into()),
-            TokenData::Punct(")".into()),
-            TokenData::Punct("{".into()),
-            TokenData::Keyword("this".into()),
-            TokenData::Punct(".".into()),
-            TokenData::Ident("x".into()),
-            TokenData::Punct("=".into()),
-            TokenData::Numeric("100".into()),
-            TokenData::Punct(";".into()),
-            TokenData::Keyword("this".into()),
-            TokenData::Punct(".".into()),
-            TokenData::Ident("y".into()),
-            TokenData::Punct("=".into()),
-            TokenData::Numeric("0".into()),
-            TokenData::Punct(";".into()),
-            TokenData::Punct("}".into()),
-            TokenData::Punct(")".into()),
-            TokenData::Punct("(".into()),
-            TokenData::Punct(")".into()),
-            TokenData::Punct(";".into()),
+            TokenData::punct("("),
+            TokenData::keyword("function"),
+            TokenData::punct("("),
+            TokenData::punct(")"),
+            TokenData::punct("{"),
+            TokenData::keyword("this"),
+            TokenData::punct("."),
+            TokenData::ident("x"),
+            TokenData::punct("="),
+            TokenData::numeric("100"),
+            TokenData::punct(";"),
+            TokenData::keyword("this"),
+            TokenData::punct("."),
+            TokenData::ident("y"),
+            TokenData::punct("="),
+            TokenData::numeric("0"),
+            TokenData::punct(";"),
+            TokenData::punct("}"),
+            TokenData::punct(")"),
+            TokenData::punct("("),
+            TokenData::punct(")"),
+            TokenData::punct(";"),
             TokenData::EoF,
         ];
         for test in s.zip(expectation.into_iter()) {
-            assert_eq!(test.0, test.1);
+            assert_eq!(test.0.data, test.1);
         }
     }
 }

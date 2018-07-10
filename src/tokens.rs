@@ -1,8 +1,7 @@
 use combine::{
-    choice, eof, error::ParseError, many, not_followed_by,
+    choice, eof, error::ParseError, many,
     parser::{
         char::{char as c_char, string},
-        repeat::take_until,
     },
     try, Parser, Stream,
 };
@@ -11,15 +10,31 @@ use regex;
 use strings;
 use unicode;
 use numeric;
+use punct;
+use keywords;
+use comments;
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
-    data: TokenData,
-    span: Span,
+    pub data: TokenData,
+    pub span: Span,
 }
 
+impl Token {
+    pub fn new(data: TokenData, start: usize, end: usize) -> Token {
+        Token {
+            data,
+            span: Span {
+                start,
+                end,
+            }
+        }
+    }
+}
+#[derive(Debug, PartialEq, Clone)]
 pub struct Span {
-    start: usize,
-    end: usize,
+    pub start: usize,
+    pub end: usize,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -33,7 +48,7 @@ pub enum TokenData {
     /// or a function/method name
     Ident(String),
     /// A keyword, currently this is all EcmaScript Keywords
-    Keyword(String),
+    Keyword(keywords::Token),
     /// A `null` literal value
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
@@ -41,13 +56,13 @@ pub enum TokenData {
     Numeric(numeric::Token),
     /// A punctuation mark, this includes all mathematical operators
     /// logical operators and general syntax punctuation
-    Punct(String),
+    Punct(punct::Token),
     /// A string literal, either double or single quoted, the associated
     /// value will be the unquoted string
-    String(String),
+    String(strings::Token),
     /// A regex literal (`/[a-fA-F0-9]+/g`) the first associated value
     /// will be the pattern, the second will be the optional flags
-    RegEx(String, Option<String>),
+    RegEx(regex::Token),
     /// A template string literal
     /// note: This is not yet implemented
     Template(Vec<TokenData>),
@@ -59,7 +74,7 @@ pub enum TokenData {
     /// * comments
     /// */
     /// ```
-    Comment(String),
+    Comment(comments::Token),
 }
 #[derive(Debug, PartialEq, Clone)]
 pub enum BooleanLiteral {
@@ -107,12 +122,12 @@ impl TokenData {
         }
     }
 
-    pub fn is_punct_with(&self, s: &str) -> bool {
-        self == &TokenData::punct(s)
+    pub fn is_punct_with(&self, p: &str) -> bool {
+        self == &TokenData::punct(p)
     }
 
     pub fn punct(s: impl Into<String>) -> TokenData {
-        TokenData::Punct(s.into())
+        TokenData::Punct(punct::Token::from(s.into()))
     }
 
     pub fn is_boolean(&self) -> bool {
@@ -160,7 +175,7 @@ impl TokenData {
     }
 
     pub fn keyword(name: impl Into<String>) -> TokenData {
-        TokenData::Keyword(name.into())
+        TokenData::Keyword(keywords::Token::from(name.into()))
     }
 
     pub fn is_null(&self) -> bool {
@@ -172,6 +187,27 @@ impl TokenData {
             true
         } else {
             false
+        }
+    }
+
+    pub fn is_hex_literal(&self) -> bool {
+        match self {
+            &TokenData::Numeric(ref n) => n.kind == numeric::Kind::Hex,
+            _ => false,
+        }
+    }
+
+    pub fn is_bin_literal(&self) -> bool {
+        match self {
+            &TokenData::Numeric(ref n) => n.kind == numeric::Kind::Bin,
+            _ => false,
+        }
+    }
+
+    pub fn is_oct_literal(&self) -> bool {
+        match self {
+            &TokenData::Numeric(ref n) => n.kind == numeric::Kind::Octal,
+            _ => false,
         }
     }
 
@@ -191,16 +227,27 @@ impl TokenData {
         }
     }
 
-    pub fn is_string_with(&self, s: &str) -> bool {
-        self == &TokenData::string(s)
+    pub fn is_string_with_content(&self, s: &str) -> bool {
+        match self {
+            TokenData::String(ref t) => t.content == s,
+            _ => false,
+        }
     }
 
-    pub fn string(s: impl Into<String>) -> TokenData {
-        TokenData::String(s.into())
+    pub fn double_quoted_string(s: &str) -> TokenData {
+        TokenData::String(strings::Token::from_parts(strings::Quote::Double, s))
+    }
+
+    pub fn single_quoted_string(s: &str) -> TokenData {
+        TokenData::String(strings::Token::from_parts(strings::Quote::Single, s))
+    }
+
+    pub fn string(s: impl Into<String>, quote: strings::Quote) -> TokenData {
+        TokenData::String(strings::Token::from_parts(quote, s.into().as_str()))
     }
 
     pub fn is_regex(&self) -> bool {
-        if let TokenData::RegEx(ref _b, ref _f) = self {
+        if let TokenData::RegEx(ref _r) = self {
             true
         } else {
             false
@@ -211,8 +258,8 @@ impl TokenData {
         self == &TokenData::regex(body, flags)
     }
 
-    pub fn regex(body: impl Into<String>, flags: Option<impl Into<String>>) -> TokenData {
-        TokenData::RegEx(body.into(), flags.map(|s| s.into()))
+    pub fn regex(body: &str, flags: Option<impl Into<String>>) -> TokenData {
+        TokenData::RegEx(regex::Token::from_parts(body, flags.map(|s| s.into())))
     }
 
     pub fn is_template(&self) -> bool {
@@ -236,11 +283,32 @@ impl TokenData {
     }
 
     pub fn is_comment_with(&self, comment: &str) -> bool {
-        self == &TokenData::comment(comment)
+        match self {
+            &TokenData::Comment(ref t) => t.content == comment,
+            _ => false
+        }
     }
 
-    pub fn comment(comment: impl Into<String>) -> TokenData {
-        TokenData::Comment(comment.into())
+    pub fn is_multi_line_comment(&self) -> bool {
+        match self {
+            &TokenData::Comment(ref t) => t.kind == comments::Kind::Multi,
+            _ => false
+        }
+    }
+
+    pub fn is_single_line_comment(&self) -> bool {
+        match self {
+            &TokenData::Comment(ref t) => t.kind == comments::Kind::Single,
+            _ => false,
+        }
+    }
+
+    pub fn comment(comment: impl Into<String>, multi: bool) -> TokenData {
+        TokenData::Comment(comments::Token::from_parts(comment.into(), if multi {
+            comments::Kind::Multi
+        } else {
+            comments::Kind::Single
+        }))
     }
 }
 
@@ -250,16 +318,26 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (choice((
-        try(comment()),
+        try(token_not_eof()),
+        try(end_of_input()),
+    ))).map(|t| t)
+}
+
+pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = TokenData>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (choice((
+        try(comments::comment()),
         try(boolean_literal()),
-        try(keyword()),
+        try(keywords::literal()),
         try(ident()),
         try(null_literal()),
         try(numeric::literal()),
         try(regex::literal()),
-        try(punctuation()),
         try(strings::literal()),
-        try(end_of_input()),
+        try(punct::punctuation()),
         try(strings::template()),
     ))).map(|t| t)
 }
@@ -293,253 +371,12 @@ where
     })
 }
 
-pub(crate) fn keyword<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(future_reserved()),
-        try(strict_mode_reserved()),
-        try(restricted()),
-        try(reserved()),
-    )).skip(not_followed_by(ident_part()))
-        .map(|t| t)
-}
-
-pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice([
-        try(string("break")),
-        try(string("case")),
-        try(string("catch")),
-        try(string("continue")),
-        try(string("debugger")),
-        try(string("default")),
-        try(string("delete")),
-        try(string("do")),
-        try(string("else")),
-        try(string("finally")),
-        try(string("for")),
-        try(string("function")),
-        try(string("if")),
-        try(string("instanceof")),
-        try(string("in")),
-        try(string("new")),
-        try(string("return")),
-        try(string("switch")),
-        try(string("this")),
-        try(string("throw")),
-        try(string("try")),
-        try(string("typeof")),
-        try(string("var")),
-        try(string("void")),
-        try(string("while")),
-        try(string("with")),
-    ]).map(|t| TokenData::Keyword(t.to_owned()))
-}
-
-pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(string("export")),
-        try(string("import")),
-        try(string("super")),
-        try(string("enum")),
-    )).map(|t| TokenData::Keyword(t.to_owned()))
-}
-
-pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(string("implements")),
-        try(string("interface")),
-        try(string("package")),
-        try(string("private")),
-        try(string("protected")),
-        try(string("public")),
-        try(string("static")),
-        try(string("yield")),
-        try(string("let")),
-    )).map(|t| TokenData::Keyword(t.to_owned()))
-}
-
-pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(string("eval")), try(string("arguments")))).map(|t| TokenData::Keyword(t.to_owned()))
-}
-
 pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     string("null").map(|_| TokenData::Null)
-}
-
-pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(multi_punct()), try(single_punct()))).map(|t: String| TokenData::Punct(t))
-}
-
-fn single_punct<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(normal_punct()), try(div_punct()))).map(|c: String| c)
-}
-
-fn normal_punct<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice([
-        c_char('{'),
-        c_char('}'),
-        c_char('('),
-        c_char(')'),
-        c_char('.'),
-        c_char(';'),
-        c_char(','),
-        c_char('['),
-        c_char(']'),
-        c_char(':'),
-        c_char('?'),
-        c_char('~'),
-        c_char('>'),
-        c_char('<'),
-        c_char('='),
-        c_char('!'),
-        c_char('+'),
-        c_char('-'),
-        c_char('*'),
-        c_char('%'),
-        c_char('&'),
-        c_char('|'),
-        c_char('^'),
-    ]).map(|c: char| c.to_string())
-}
-
-fn div_punct<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    string("/")
-        .skip(not_followed_by(c_char('*')))
-        .map(|c| c.to_string())
-}
-
-fn multi_punct<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice([
-        //4 char
-        try(string(">>>=")),
-        //3 char
-        try(string("...")),
-        try(string("===")),
-        try(string("!==")),
-        try(string(">>>")),
-        try(string("<<=")),
-        try(string(">>=")),
-        try(string("**=")),
-        //2 char
-        try(string("&&")),
-        try(string("||")),
-        try(string("==")),
-        try(string("!=")),
-        try(string("+=")),
-        try(string("-=")),
-        try(string("*=")),
-        try(string("/=")),
-        try(string("++")),
-        try(string("--")),
-        try(string("<<")),
-        try(string(">>")),
-        try(string("&=")),
-        try(string("|=")),
-        try(string("^=")),
-        try(string("%=")),
-        try(string("<=")),
-        try(string(">=")),
-        try(string("=>")),
-        try(string("**")),
-    ]).map(|t| t.to_string())
-}
-
-pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (choice((try(multi_comment()), try(single_comment()))).map(|t: TokenData| t))
-}
-
-pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (string("//"), take_until(
-        choice((
-            try(strings::line_terminator_sequence()),
-            try(eof().map(|_| String::new())),
-            ))))
-        .map(|(_, content): (_, String)| TokenData::Comment(content.to_owned()))
-}
-
-pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = TokenData>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        multi_line_comment_start(),
-        take_until(try(string("*/"))),
-        multi_line_comment_end(),
-    ).map(|(_s, c, _e): (String, String, String)| {
-        let ret = c.lines()
-            .map(|l| l.trim())
-            .collect::<Vec<&str>>()
-            .join("\n");
-        TokenData::Comment(ret)
-    })
-}
-
-fn multi_line_comment_start<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (string("/*")).map(|s| s.to_string())
-}
-
-fn multi_line_comment_end<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (string("*/")).map(|s| s.to_string())
 }
 
 fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
@@ -592,352 +429,14 @@ mod test {
     fn bool() {
         let t = super::boolean_literal().parse("true").unwrap();
         let f = super::boolean_literal().parse("false").unwrap();
-        assert_eq!(t, (TokenData::Boolean(true), ""));
-        assert_eq!(f, (TokenData::Boolean(false), ""));
+        assert_eq!(t, (TokenData::Boolean(BooleanLiteral::True), ""));
+        assert_eq!(f, (TokenData::Boolean(BooleanLiteral::False), ""));
     }
 
     #[test]
     fn eof() {
         let e = super::end_of_input().parse("").unwrap();
         assert_eq!(e, (TokenData::EoF, ""));
-    }
-
-    #[test]
-    fn future_reserved() {
-        let keywords = ["enum", "export", "import", "super"];
-        for keyword in keywords.iter() {
-            let k = super::future_reserved().parse(keyword.clone()).unwrap();
-            assert_eq!(k, (TokenData::Keyword(keyword.to_string()), ""))
-        }
-        match super::future_reserved().parse("junk") {
-            Ok(k) => panic!("parsed junk as {:?}", k),
-            Err(_) => (),
-        }
-    }
-
-    #[test]
-    fn strict_mode_reserved() {
-        let keywords = [
-            "implements",
-            "interface",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "static",
-            "yield",
-            "let",
-        ];
-        for keyword in keywords.iter() {
-            let k = super::strict_mode_reserved()
-                .parse(keyword.clone())
-                .unwrap();
-            assert_eq!(k, (TokenData::Keyword(keyword.to_string()), ""));
-        }
-        match super::strict_mode_reserved().parse("junk") {
-            Ok(k) => panic!("parsed junk as {:?}", k),
-            Err(_) => (),
-        }
-    }
-
-    #[test]
-    fn restricted_reserved() {
-        let k = super::restricted().parse("eval").unwrap();
-        assert_eq!(k, (TokenData::Keyword("eval".into()), ""));
-        let k2 = super::restricted().parse("arguments").unwrap();
-        assert_eq!(k2, (TokenData::Keyword("arguments".into()), ""))
-    }
-
-    #[test]
-    fn reserved_keywords() {
-        let keys = vec![
-            "break",
-            "case",
-            "catch",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "instanceof",
-            "in",
-            "new",
-            "return",
-            "switch",
-            "this",
-            "throw",
-            "try",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-        ];
-        for key in keys {
-            let k = reserved().parse(key.clone()).unwrap();
-            assert_eq!(k, (TokenData::Keyword(key.to_owned()), ""));
-        }
-    }
-
-    #[test]
-    fn keywords_test() {
-        let keys = vec![
-            "enum",
-            "export",
-            "import",
-            "super",
-            "implements",
-            "interface",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "static",
-            "yield",
-            "let",
-            "eval",
-            "break",
-            "case",
-            "catch",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "instanceof",
-            "in",
-            "new",
-            "return",
-            "switch",
-            "this",
-            "throw",
-            "try",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-        ];
-        for key in keys {
-            let k = keyword().parse(key.clone()).unwrap();
-            assert_eq!(k, (TokenData::Keyword(key.to_owned()), ""));
-        }
-    }
-    #[test]
-    fn full_decimal() {
-        let vals = vec![
-            "0.1",
-            "1.1",
-            "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
-            "1.8876e2",
-            "-1.009987e87",
-        ];
-        for val in vals {
-            let d = full_decimal_literal().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
-        }
-        if let Ok(_) = full_decimal_literal().parse(".00") {
-            panic!("parsed .00 as full decimal literal");
-        }
-    }
-
-    #[test]
-    fn no_leading() {
-        let vals = vec![
-            ".2", "-.2", ".2E1", "+.8", "+.2E4", ".7e34", "-.7e2", "+.4e5",
-        ];
-        for val in vals {
-            let d = no_leading_decimal().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""))
-        }
-        if let Ok(_) = no_leading_decimal().parse("00.0") {
-            panic!("parsed 00.0 as no leading decimal")
-        }
-    }
-
-    #[test]
-    fn hex() {
-        let vals = vec![
-            "0x123", "0X456", "-0x789", "+0X0abc", "0xdef", "0xABC", "0xDEF",
-        ];
-        for val in vals {
-            let h = hex_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
-        }
-
-        if let Ok(_) = hex_literal().parse("555") {
-            panic!("parsed 555 as hex literal")
-        }
-    }
-    #[test]
-    fn bin() {
-        let vals = vec!["0b000", "0B111", "-0B0101", "+0b1010"];
-        for val in vals {
-            let h = bin_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
-        }
-
-        if let Ok(_) = bin_literal().parse("0b") {
-            panic!("parsed 0b as hex literal")
-        }
-    }
-
-    #[test]
-    fn oct() {
-        let vals = vec!["0o7", "0O554", "-0o12345670", "+0O12345670"];
-        for val in vals {
-            let h = octal_literal().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(val.to_owned()), ""))
-        }
-
-        if let Ok(_) = octal_literal().parse("0O8") {
-            panic!("parsed 0O8 as hex literal")
-        }
-    }
-
-    #[test]
-    fn decimal() {
-        let vals = vec![
-            "0.1",
-            "1.1",
-            "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
-            "1.8876e2",
-            "-1.009987e87",
-            ".2",
-            "-.2",
-            ".2E1",
-            "+.8",
-            "+.2E4",
-            ".7e34",
-            "-.7e2",
-            "+.4e5",
-        ];
-        for val in vals {
-            let d = token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
-        }
-        if let Ok(f) = token().parse("asdfghjk") {
-            match f {
-                (TokenData::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
-                _ => (),
-            }
-        }
-    }
-
-    #[test]
-    fn number() {
-        let vals = vec![
-            "0.1",
-            "1.1",
-            "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
-            "1.8876e2",
-            "-1.009987e87",
-            ".2",
-            "-.2",
-            ".2E1",
-            "+.8",
-            "+.2E4",
-            ".7e34",
-            "-.7e2",
-            "+.4e5",
-            "0x123",
-            "0X456",
-            "-0x789",
-            "+0X0abc",
-            "0xdef",
-            "0xABC",
-            "0xDEF",
-            "0o7",
-            "0O554",
-            "-0o12345670",
-            "+0O12345670",
-            "0b000",
-            "0B111",
-            "-0B0101",
-            "+0b1010",
-        ];
-        for val in vals {
-            let d = token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(val.to_owned()), ""));
-        }
-        match token().parse("asdfghjk").unwrap() {
-            (TokenData::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
-            _ => (),
-        }
-    }
-
-    #[test]
-    fn punct() {
-        let single = vec![
-            "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+",
-            "-", "/", "*", "%", "&", "|", "^",
-        ];
-        for p in single.clone() {
-            let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::Punct(p.to_string()), ""));
-        }
-        let multi = vec![
-            ">>>=",
-            //3 char
-            "...",
-            "===",
-            "!==",
-            ">>>",
-            "<<=",
-            ">>=",
-            "**=",
-            //2 char
-            "&&",
-            "||",
-            "==",
-            "!=",
-            "+=",
-            "-=",
-            "*=",
-            "/=",
-            "++",
-            "--",
-            "<<",
-            ">>",
-            "&=",
-            "|=",
-            "^=",
-            "%=",
-            "<=",
-            ">=",
-            "=>",
-            "**",
-        ];
-        for p in multi.clone() {
-            let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::Punct(p.to_string()), ""));
-        }
-        for p in single.iter().chain(multi.iter()) {
-            let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::Punct(p.to_string()), ""))
-        }
     }
 
     #[test]
@@ -959,29 +458,5 @@ mod test {
             assert_eq!(t, (TokenData::Ident(i.to_owned()), ""))
         }
     }
-    #[test]
-    fn comments_test() {
-        let tests = vec![
-            "//single line comments",
-            "// another one with a space",
-            "/*inline multi comments*/",
-            "/*multi line comments
-            * that have extra decoration
-            * to help with readability
-            */",
-        ];
-        for test in tests {
-            let p = comment().parse(test.clone()).unwrap();
-            let comment_contents = test.lines()
-                .map(|l| {
-                    l.trim()
-                        .replace("//", "")
-                        .replace("/*", "")
-                        .replace("*/", "")
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
-            assert_eq!(p, (TokenData::Comment(comment_contents), ""));
-        }
-    }
+    
 }

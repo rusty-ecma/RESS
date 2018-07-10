@@ -4,6 +4,30 @@ use combine::{
 };
 use tokens::{ident_part, TokenData};
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Token {
+    body: String,
+    flags: Option<String>,
+}
+
+impl Token {
+    pub fn from_parts(body: &str, flags: Option<String>) -> Token {
+        let flags = if let Some(flags) = flags {
+            if flags == "" {
+                None
+            } else {
+                Some(flags.to_string())
+            }
+        } else { 
+            None
+        };
+        Token {
+            body: body.to_string(),
+            flags,
+        }
+    }
+}
+
 /// Parse a regex literal
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
@@ -14,12 +38,7 @@ where
         between(c_char('/'), c_char('/'), regex_body()),
         optional(regex_flags()),
     ).map(|(body, flags): (String, Option<String>)| {
-        let f = if flags == Some(String::new()) {
-            None
-        } else {
-            flags
-        };
-        TokenData::RegEx(body, f)
+        TokenData::RegEx(Token::from_parts(&body, flags))
     })
 }
 /// Parse the body portion of the regex literal
@@ -148,48 +167,25 @@ mod test {
     fn regex_test() {
         let simple = r#"/[a-zA-Z]/"#;
         let s_r = super::literal().parse(simple.clone()).unwrap();
-        println!("simple: {:?}", s_r);
-        assert_eq!(s_r, (TokenData::RegEx(simple[1..9].to_string(), None), ""));
+        assert_eq!(s_r, (TokenData::RegEx(super::Token::from_parts(&simple[1..9], None)), ""));
         let flagged = r#"/[0-9]+/g"#;
         let f_r = super::literal().parse(flagged).unwrap();
-        println!("flagged: {:?}", f_r);
         assert_eq!(
             f_r,
             (
-                TokenData::RegEx(flagged[1..7].to_string(), Some("g".to_string())),
+                TokenData::RegEx(super::Token::from_parts(&flagged[1..7], Some("g".to_string()))),
                 ""
             )
         );
         let complex = r#"/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g"#;
-        let sc_r = (
-            c_char('/'),
-            regex_first_char(),
-            regular_expression_class(),
-            source_char_not_line_term(),
-            source_char_not_line_term(),
-            regular_expression_class(),
-            source_char_not_line_term(),
-            source_char_not_line_term(),
-            c_char('/'),
-            regex_flags(),
-        ).parse(complex.clone());
-        println!("as source chars {:?}", sc_r);
-        let r = super::literal().parse(complex.clone()).unwrap();
-        println!("complex result: {:?}", r);
+        super::literal().parse(complex.clone()).unwrap();
         let escaped = r#"/\D/"#;
-        let e_r = (
-            c_char('/'),
-            regular_expression_backslash_sequence(),
-            c_char('/'),
-        ).parse(escaped)
-            .unwrap();
-        println!("escaped: {:?}", e_r);
+        super::literal().parse(escaped).unwrap();
     }
 
     #[test]
     fn url_regex() {
         let url = r#"/^[a-z][a-z\d.+-]*:\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+\])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i"#;
-        let u_r = super::literal().parse(url).unwrap();
-        println!("url: {:?}", u_r);
+        let _u_r = super::literal().parse(url).unwrap();
     }
 }
