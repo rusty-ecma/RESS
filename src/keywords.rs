@@ -49,6 +49,7 @@ pub enum Token {
     Let,
     Eval,
     Arguments,
+    Of
 }
 
 impl<'a> From<&'a str> for Token {
@@ -95,7 +96,8 @@ impl<'a> From<&'a str> for Token {
             "let" => Token::Let,
             "eval" => Token::Eval,
             "arguments" => Token::Arguments,
-            _ => panic!("Unknown Keyword")
+            "of" => Token::Of,
+            _ => panic!("Unknown Keyword, `{}`", s)
         }
     }
 }
@@ -103,6 +105,55 @@ impl<'a> From<&'a str> for Token {
 impl From<String> for Token {
     fn from(s: String) -> Token {
         Self::from(s.as_str())
+    }
+}
+
+impl ::std::string::ToString for Token {
+    fn to_string(&self) -> String {
+        match self {
+            Token::Break => "break".into(),
+            Token::Case => "case".into(),
+            Token::Catch => "catch".into(),
+            Token::Continue => "continue".into(),
+            Token::Debugger => "debugger".into(),
+            Token::Default => "default".into(),
+            Token::Delete => "delete".into(),
+            Token::Do => "do".into(),
+            Token::Else => "else".into(),
+            Token::Finally => "finally".into(),
+            Token::For => "for".into(),
+            Token::Function => "function".into(),
+            Token::If => "if".into(),
+            Token::InstanceOf => "instanceof".into(),
+            Token::In => "in".into(),
+            Token::New => "new".into(),
+            Token::Return => "return".into(),
+            Token::Switch => "switch".into(),
+            Token::This => "this".into(),
+            Token::Throw => "throw".into(),
+            Token::Try => "try".into(),
+            Token::TypeOf => "typeof".into(),
+            Token::Var => "var".into(),
+            Token::Void => "void".into(),
+            Token::While => "while".into(),
+            Token::With => "with".into(),
+            Token::Export => "export".into(),
+            Token::Import => "import".into(),
+            Token::Super => "super".into(),
+            Token::Enum => "enum".into(),
+            Token::Implements => "implements".into(),
+            Token::Interface => "interface".into(),
+            Token::Package => "package".into(),
+            Token::Private => "private".into(),
+            Token::Protected => "protected".into(),
+            Token::Public => "public".into(),
+            Token::Static => "static".into(),
+            Token::Yield => "yield".into(),
+            Token::Let => "let".into(),
+            Token::Eval => "eval".into(),
+            Token::Arguments => "arguments".into(),
+            Token::Of => "of".into()
+        }
     }
 }
 

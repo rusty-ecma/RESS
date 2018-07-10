@@ -12,7 +12,11 @@ mod punct;
 mod keywords;
 mod comments;
 use tokens::token;
-pub use tokens::{TokenData, Token};
+pub use tokens::{TokenData, Token, BooleanLiteral};
+pub use punct::Token as Punct;
+pub use keywords::Token as Keyword;
+pub use numeric::Token as Number;
+
 /// Send over the complete text and get back
 /// the completely parsed result
 pub fn tokenize(text: &str) -> Vec<Token> {

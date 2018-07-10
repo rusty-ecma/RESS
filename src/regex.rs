@@ -6,8 +6,8 @@ use tokens::{ident_part, TokenData};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
-    body: String,
-    flags: Option<String>,
+    pub body: String,
+    pub flags: Option<String>,
 }
 
 impl Token {

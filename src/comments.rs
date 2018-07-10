@@ -27,6 +27,14 @@ impl Token {
             kind,
         }
     }
+
+    pub fn is_multi_line(&self) -> bool {
+        self.kind == Kind::Multi
+    }
+
+    pub fn is_single_line(&self) -> bool {
+        self.kind == Kind::Single
+    }
 }
 
 pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = TokenData>

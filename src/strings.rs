@@ -22,7 +22,7 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn into_simple(self) -> String {
+    pub fn into_simple(&self) -> String {
         let q = match self.quote {
             Quote::Single => '\'',
             Quote::Double => '"',
