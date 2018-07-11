@@ -1,0 +1,24 @@
+environment:
+  global:
+    RUSTFLAGS: -Zunstable-options -Ctarget-feature=+crt-static
+    RUST_BACKTRACE: 1
+    CARGO_INCREMENTAL: 0   # should turn this back on when fixed!
+  matrix:
+    - TARGET: x86_64-pc-windows-msvc
+
+install:
+  - appveyor-retry appveyor DownloadFile https://win.rustup.rs/ -FileName rustup-init.exe
+  - rustup-init.exe -y --default-host x86_64-pc-windows-msvc --default-toolchain nightly
+  - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - rustc -V
+  - cargo -V
+
+build: true
+
+test_script:
+  - cargo test
+  - cargo run --example major_libs --release
+
+branches:
+  only:
+    - master
