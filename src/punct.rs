@@ -6,9 +6,9 @@ use combine::{
     },
     try, Parser, Stream,
 };
-use tokens::TokenData;
+use tokens::Token;
 #[derive(Debug, PartialEq, Clone)]
-pub enum Token {
+pub enum Punct {
     OpenBrace,
     CloseBrace,
     OpenParen,
@@ -63,143 +63,143 @@ pub enum Token {
     Exponent,
 }
 
-impl<'a> From<&'a str> for Token {
-    fn from(s: &'a str) -> Token {
+impl<'a> From<&'a str> for Punct {
+    fn from(s: &'a str) -> Self {
         match s {
-            "{" => Token::OpenBrace,
-            "}" => Token::CloseBrace,
-            "(" => Token::OpenParen,
-            ")" => Token::CloseParen,
-            "." => Token::Period,
-            ";" => Token::SemiColon,
-            "," => Token::Comma,
-            "[" => Token::OpenBracket,
-            "]" => Token::CloseBracket,
-            ":" => Token::Colon,
-            "?" => Token::QuestionMark,
-            "~" => Token::BitwiseNot,
-            ">" => Token::GreaterThan,
-            "<" => Token::LessThan,
-            "=" => Token::Assign,
-            "!" => Token::Not,
-            "+" => Token::Plus,
-            "-" => Token::Minus,
-            "*" => Token::Asterisk,
-            "%" => Token::Modulo,
-            "|" => Token::Pipe,
-            "&" => Token::And,
-            "^" => Token::Caret,
-            "/" => Token::ForwardSlash,
-            ">>>=" => Token::UnsignedRightShiftAssign,
-            "..." => Token::Spread,
-            "===" => Token::StrictEquals,
-            "!==" => Token::StrictNotEquals,
-            ">>>" => Token::UnsignedRightShift,
-            "<<=" => Token::LeftShiftAssign,
-            ">>=" => Token::RightShiftAssign,
-            "**=" => Token::ExponentAssign,
-            "&&" => Token::LogicalAnd,
-            "||" => Token::LogicalOr,
-            "==" => Token::Equal,
-            "!=" => Token::NotEqual,
-            "+=" => Token::AddAssign,
-            "-=" => Token::SubtractAssign,
-            "*=" => Token::MultiplyAssign,
-            "/=" => Token::DivideAssign,
-            "++" => Token::Increment,
-            "--" => Token::Decrement,
-            "<<" => Token::LeftShift,
-            ">>" => Token::RightShift,
-            "&=" => Token::BitwiseAndAssign,
-            "|=" => Token::BitwiseOrAssign,
-            "^=" => Token::BitwiseXOrAssign,
-            "%=" => Token::ModuloAssign,
-            "=>" => Token::FatArrow,
-            ">=" => Token::GreaterThanEqual,
-            "<=" => Token::LessThanEqual,
-            "**" => Token::Exponent,
+            "{" => Punct::OpenBrace,
+            "}" => Punct::CloseBrace,
+            "(" => Punct::OpenParen,
+            ")" => Punct::CloseParen,
+            "." => Punct::Period,
+            ";" => Punct::SemiColon,
+            "," => Punct::Comma,
+            "[" => Punct::OpenBracket,
+            "]" => Punct::CloseBracket,
+            ":" => Punct::Colon,
+            "?" => Punct::QuestionMark,
+            "~" => Punct::BitwiseNot,
+            ">" => Punct::GreaterThan,
+            "<" => Punct::LessThan,
+            "=" => Punct::Assign,
+            "!" => Punct::Not,
+            "+" => Punct::Plus,
+            "-" => Punct::Minus,
+            "*" => Punct::Asterisk,
+            "%" => Punct::Modulo,
+            "|" => Punct::Pipe,
+            "&" => Punct::And,
+            "^" => Punct::Caret,
+            "/" => Punct::ForwardSlash,
+            ">>>=" => Punct::UnsignedRightShiftAssign,
+            "..." => Punct::Spread,
+            "===" => Punct::StrictEquals,
+            "!==" => Punct::StrictNotEquals,
+            ">>>" => Punct::UnsignedRightShift,
+            "<<=" => Punct::LeftShiftAssign,
+            ">>=" => Punct::RightShiftAssign,
+            "**=" => Punct::ExponentAssign,
+            "&&" => Punct::LogicalAnd,
+            "||" => Punct::LogicalOr,
+            "==" => Punct::Equal,
+            "!=" => Punct::NotEqual,
+            "+=" => Punct::AddAssign,
+            "-=" => Punct::SubtractAssign,
+            "*=" => Punct::MultiplyAssign,
+            "/=" => Punct::DivideAssign,
+            "++" => Punct::Increment,
+            "--" => Punct::Decrement,
+            "<<" => Punct::LeftShift,
+            ">>" => Punct::RightShift,
+            "&=" => Punct::BitwiseAndAssign,
+            "|=" => Punct::BitwiseOrAssign,
+            "^=" => Punct::BitwiseXOrAssign,
+            "%=" => Punct::ModuloAssign,
+            "=>" => Punct::FatArrow,
+            ">=" => Punct::GreaterThanEqual,
+            "<=" => Punct::LessThanEqual,
+            "**" => Punct::Exponent,
             _ => panic!("Unknown punctuation: {}", s)
         }
     }
 }
 
-impl From<String> for Token {
-    fn from(s: String) -> Token {
+impl From<String> for Punct {
+    fn from(s: String) -> Punct {
         Self::from(s.as_str())
     }
 }
 
-impl ::std::string::ToString for Token {
+impl ::std::string::ToString for Punct {
     fn to_string(&self) -> String {
         match self {
-            &Token::OpenBrace => "{".into(),
-            &Token::CloseBrace => "}".into(),
-            &Token::OpenParen => "(".into(),
-            &Token::CloseParen => ")".into(),
-            &Token::Period => ".".into(),
-            &Token::SemiColon => ";".into(),
-            &Token::Comma => ",".into(),
-            &Token::OpenBracket => "[".into(),
-            &Token::CloseBracket => "]".into(),
-            &Token::Colon => ":".into(),
-            &Token::QuestionMark => "?".into(),
-            &Token::BitwiseNot => "~".into(),
-            &Token::GreaterThan => ">".into(),
-            &Token::LessThan => "<".into(),
-            &Token::Assign => "=".into(),
-            &Token::Not => "!".into(),
-            &Token::Plus => "+".into(),
-            &Token::Minus => "-".into(),
-            &Token::Asterisk => "*".into(),
-            &Token::Modulo => "%".into(),
-            &Token::Pipe => "|".into(),
-            &Token::And => "&".into(),
-            &Token::Caret => "^".into(),
-            &Token::ForwardSlash => "/".into(),
-            &Token::UnsignedRightShiftAssign => ">>>=".into(),
-            &Token::Spread => "...".into(),
-            &Token::StrictEquals => "===".into(),
-            &Token::StrictNotEquals => "!==".into(),
-            &Token::UnsignedRightShift => ">>>".into(),
-            &Token::LeftShiftAssign => "<<=".into(),
-            &Token::RightShiftAssign => ">>=".into(),
-            &Token::ExponentAssign => "**=".into(),
-            &Token::LogicalAnd => "&&".into(),
-            &Token::LogicalOr => "||".into(),
-            &Token::Equal => "==".into(),
-            &Token::NotEqual => "!=".into(),
-            &Token::AddAssign => "+=".into(),
-            &Token::SubtractAssign => "-=".into(),
-            &Token::MultiplyAssign => "*=".into(),
-            &Token::DivideAssign => "/=".into(),
-            &Token::Increment => "++".into(),
-            &Token::Decrement => "--".into(),
-            &Token::LeftShift => ">>".into(),
-            &Token::RightShift => "<<".into(),
-            &Token::BitwiseAndAssign => "&=".into(),
-            &Token::BitwiseOrAssign => "|=".into(),
-            &Token::BitwiseXOrAssign => "^=".into(),
-            &Token::ModuloAssign => "%=".into(),
-            &Token::FatArrow => "=>".into(),
-            &Token::GreaterThanEqual => ">=".into(),
-            &Token::LessThanEqual => "<=".into(),
-            &Token::Exponent => "**".into(),
+            &Punct::OpenBrace => "{".into(),
+            &Punct::CloseBrace => "}".into(),
+            &Punct::OpenParen => "(".into(),
+            &Punct::CloseParen => ")".into(),
+            &Punct::Period => ".".into(),
+            &Punct::SemiColon => ";".into(),
+            &Punct::Comma => ",".into(),
+            &Punct::OpenBracket => "[".into(),
+            &Punct::CloseBracket => "]".into(),
+            &Punct::Colon => ":".into(),
+            &Punct::QuestionMark => "?".into(),
+            &Punct::BitwiseNot => "~".into(),
+            &Punct::GreaterThan => ">".into(),
+            &Punct::LessThan => "<".into(),
+            &Punct::Assign => "=".into(),
+            &Punct::Not => "!".into(),
+            &Punct::Plus => "+".into(),
+            &Punct::Minus => "-".into(),
+            &Punct::Asterisk => "*".into(),
+            &Punct::Modulo => "%".into(),
+            &Punct::Pipe => "|".into(),
+            &Punct::And => "&".into(),
+            &Punct::Caret => "^".into(),
+            &Punct::ForwardSlash => "/".into(),
+            &Punct::UnsignedRightShiftAssign => ">>>=".into(),
+            &Punct::Spread => "...".into(),
+            &Punct::StrictEquals => "===".into(),
+            &Punct::StrictNotEquals => "!==".into(),
+            &Punct::UnsignedRightShift => ">>>".into(),
+            &Punct::LeftShiftAssign => "<<=".into(),
+            &Punct::RightShiftAssign => ">>=".into(),
+            &Punct::ExponentAssign => "**=".into(),
+            &Punct::LogicalAnd => "&&".into(),
+            &Punct::LogicalOr => "||".into(),
+            &Punct::Equal => "==".into(),
+            &Punct::NotEqual => "!=".into(),
+            &Punct::AddAssign => "+=".into(),
+            &Punct::SubtractAssign => "-=".into(),
+            &Punct::MultiplyAssign => "*=".into(),
+            &Punct::DivideAssign => "/=".into(),
+            &Punct::Increment => "++".into(),
+            &Punct::Decrement => "--".into(),
+            &Punct::LeftShift => ">>".into(),
+            &Punct::RightShift => "<<".into(),
+            &Punct::BitwiseAndAssign => "&=".into(),
+            &Punct::BitwiseOrAssign => "|=".into(),
+            &Punct::BitwiseXOrAssign => "^=".into(),
+            &Punct::ModuloAssign => "%=".into(),
+            &Punct::FatArrow => "=>".into(),
+            &Punct::GreaterThanEqual => ">=".into(),
+            &Punct::LessThanEqual => "<=".into(),
+            &Punct::Exponent => "**".into(),
         }
     }
 }
-pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(multi_punct()), try(single_punct()))).map(|t: String| TokenData::Punct(Token::from(t)))
+    choice((try(multi_punct()), try(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
 }
-pub(crate) fn punctuation_not_close_brace<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn punctuation_not_close_brace<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(multi_punct()), try(single_punct_not_close_brace()))).map(|t: String| TokenData::Punct(Token::from(t)))
+    choice((try(multi_punct()), try(single_punct_not_close_brace()))).map(|t: String| Token::Punct(Punct::from(t)))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
@@ -325,7 +325,7 @@ mod test {
         ];
         for p in single.clone() {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::punct(p), ""));
+            assert_eq!(t, (Token::punct(p), ""));
         }
         let multi = vec![
             ">>>=",
@@ -361,11 +361,11 @@ mod test {
         ];
         for p in multi.clone() {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::punct(p), ""));
+            assert_eq!(t, (Token::punct(p), ""));
         }
         for p in single.iter().chain(multi.iter()) {
             let t = token().parse(p.clone()).unwrap();
-            assert_eq!(t, (TokenData::punct(*p), ""))
+            assert_eq!(t, (Token::punct(*p), ""))
         }
     }
 }

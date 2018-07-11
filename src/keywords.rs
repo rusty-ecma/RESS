@@ -5,9 +5,9 @@ use combine::{
     },
     try, Parser, Stream,
 };
-use tokens::{ident_part, TokenData};
+use tokens::{ident_part, Token};
 #[derive(Debug, PartialEq, Clone)]
-pub enum Token {
+pub enum Keyword {
     Break,
     Case,
     Catch,
@@ -52,116 +52,176 @@ pub enum Token {
     Of
 }
 
-impl<'a> From<&'a str> for Token {
-    fn from(s: &'a str) -> Token {
+impl<'a> From<&'a str> for Keyword {
+    fn from(s: &'a str) -> Self {
         match s {
-            "break" => Token::Break,
-            "case" => Token::Case,
-            "catch" => Token::Catch,
-            "continue" => Token::Continue,
-            "debugger" => Token::Debugger,
-            "default" => Token::Default,
-            "delete" => Token::Delete,
-            "do" => Token::Do,
-            "else" => Token::Else,
-            "finally" => Token::Finally,
-            "for" => Token::For,
-            "function" => Token::Function,
-            "if" => Token::If,
-            "instanceof" => Token::InstanceOf,
-            "in" => Token::In,
-            "new" => Token::New,
-            "return" => Token::Return,
-            "switch" => Token::Switch,
-            "this" => Token::This,
-            "throw" => Token::Throw,
-            "try" => Token::Try,
-            "typeof" => Token::TypeOf,
-            "var" => Token::Var,
-            "void" => Token::Void,
-            "while" => Token::While,
-            "with" => Token::With,
-            "export" => Token::Export,
-            "import" => Token::Import,
-            "super" => Token::Super,
-            "enum" => Token::Enum,
-            "implements" => Token::Implements,
-            "interface" => Token::Interface,
-            "package" => Token::Package,
-            "private" => Token::Private,
-            "protected" => Token::Protected,
-            "public" => Token::Public,
-            "static" => Token::Static,
-            "yield" => Token::Yield,
-            "let" => Token::Let,
-            "eval" => Token::Eval,
-            "arguments" => Token::Arguments,
-            "of" => Token::Of,
+            "break" => Keyword::Break,
+            "case" => Keyword::Case,
+            "catch" => Keyword::Catch,
+            "continue" => Keyword::Continue,
+            "debugger" => Keyword::Debugger,
+            "default" => Keyword::Default,
+            "delete" => Keyword::Delete,
+            "do" => Keyword::Do,
+            "else" => Keyword::Else,
+            "finally" => Keyword::Finally,
+            "for" => Keyword::For,
+            "function" => Keyword::Function,
+            "if" => Keyword::If,
+            "instanceof" => Keyword::InstanceOf,
+            "in" => Keyword::In,
+            "new" => Keyword::New,
+            "return" => Keyword::Return,
+            "switch" => Keyword::Switch,
+            "this" => Keyword::This,
+            "throw" => Keyword::Throw,
+            "try" => Keyword::Try,
+            "typeof" => Keyword::TypeOf,
+            "var" => Keyword::Var,
+            "void" => Keyword::Void,
+            "while" => Keyword::While,
+            "with" => Keyword::With,
+            "export" => Keyword::Export,
+            "import" => Keyword::Import,
+            "super" => Keyword::Super,
+            "enum" => Keyword::Enum,
+            "implements" => Keyword::Implements,
+            "interface" => Keyword::Interface,
+            "package" => Keyword::Package,
+            "private" => Keyword::Private,
+            "protected" => Keyword::Protected,
+            "public" => Keyword::Public,
+            "static" => Keyword::Static,
+            "yield" => Keyword::Yield,
+            "let" => Keyword::Let,
+            "eval" => Keyword::Eval,
+            "arguments" => Keyword::Arguments,
+            "of" => Keyword::Of,
             _ => panic!("Unknown Keyword, `{}`", s)
         }
     }
 }
 
-impl From<String> for Token {
-    fn from(s: String) -> Token {
+impl From<String> for Keyword {
+    fn from(s: String) -> Self {
         Self::from(s.as_str())
     }
 }
 
-impl ::std::string::ToString for Token {
+impl ::std::string::ToString for Keyword {
     fn to_string(&self) -> String {
         match self {
-            Token::Break => "break".into(),
-            Token::Case => "case".into(),
-            Token::Catch => "catch".into(),
-            Token::Continue => "continue".into(),
-            Token::Debugger => "debugger".into(),
-            Token::Default => "default".into(),
-            Token::Delete => "delete".into(),
-            Token::Do => "do".into(),
-            Token::Else => "else".into(),
-            Token::Finally => "finally".into(),
-            Token::For => "for".into(),
-            Token::Function => "function".into(),
-            Token::If => "if".into(),
-            Token::InstanceOf => "instanceof".into(),
-            Token::In => "in".into(),
-            Token::New => "new".into(),
-            Token::Return => "return".into(),
-            Token::Switch => "switch".into(),
-            Token::This => "this".into(),
-            Token::Throw => "throw".into(),
-            Token::Try => "try".into(),
-            Token::TypeOf => "typeof".into(),
-            Token::Var => "var".into(),
-            Token::Void => "void".into(),
-            Token::While => "while".into(),
-            Token::With => "with".into(),
-            Token::Export => "export".into(),
-            Token::Import => "import".into(),
-            Token::Super => "super".into(),
-            Token::Enum => "enum".into(),
-            Token::Implements => "implements".into(),
-            Token::Interface => "interface".into(),
-            Token::Package => "package".into(),
-            Token::Private => "private".into(),
-            Token::Protected => "protected".into(),
-            Token::Public => "public".into(),
-            Token::Static => "static".into(),
-            Token::Yield => "yield".into(),
-            Token::Let => "let".into(),
-            Token::Eval => "eval".into(),
-            Token::Arguments => "arguments".into(),
-            Token::Of => "of".into()
+            Keyword::Break => "break".into(),
+            Keyword::Case => "case".into(),
+            Keyword::Catch => "catch".into(),
+            Keyword::Continue => "continue".into(),
+            Keyword::Debugger => "debugger".into(),
+            Keyword::Default => "default".into(),
+            Keyword::Delete => "delete".into(),
+            Keyword::Do => "do".into(),
+            Keyword::Else => "else".into(),
+            Keyword::Finally => "finally".into(),
+            Keyword::For => "for".into(),
+            Keyword::Function => "function".into(),
+            Keyword::If => "if".into(),
+            Keyword::InstanceOf => "instanceof".into(),
+            Keyword::In => "in".into(),
+            Keyword::New => "new".into(),
+            Keyword::Return => "return".into(),
+            Keyword::Switch => "switch".into(),
+            Keyword::This => "this".into(),
+            Keyword::Throw => "throw".into(),
+            Keyword::Try => "try".into(),
+            Keyword::TypeOf => "typeof".into(),
+            Keyword::Var => "var".into(),
+            Keyword::Void => "void".into(),
+            Keyword::While => "while".into(),
+            Keyword::With => "with".into(),
+            Keyword::Export => "export".into(),
+            Keyword::Import => "import".into(),
+            Keyword::Super => "super".into(),
+            Keyword::Enum => "enum".into(),
+            Keyword::Implements => "implements".into(),
+            Keyword::Interface => "interface".into(),
+            Keyword::Package => "package".into(),
+            Keyword::Private => "private".into(),
+            Keyword::Protected => "protected".into(),
+            Keyword::Public => "public".into(),
+            Keyword::Static => "static".into(),
+            Keyword::Yield => "yield".into(),
+            Keyword::Let => "let".into(),
+            Keyword::Eval => "eval".into(),
+            Keyword::Arguments => "arguments".into(),
+            Keyword::Of => "of".into()
         }
     }
 }
 
-impl Token {
-    
+impl Keyword {
+    pub fn is_future_reserved(&self) -> bool {
+        match self {
+            &Keyword::Export => true,
+            &Keyword::Implements => true,
+            &Keyword::Super => true,
+            &Keyword::Enum => true,
+            _ => false,
+        }
+    }
+    pub fn is_strict_reserved(&self) -> bool {
+        match self {
+            &Keyword::Implements => true,
+            &Keyword::Interface => true,
+            &Keyword::Package => true,
+            &Keyword::Private => true,
+            &Keyword::Protected => true,
+            &Keyword::Public => true,
+            &Keyword::Static => true,
+            &Keyword::Yield => true,
+            &Keyword::Let => true,
+            _ => false
+        }
+    }
+    pub fn is_restricted(&self) -> bool {
+        match self {
+            &Keyword::Eval => true,
+            &Keyword::Arguments => true,
+            _ => false,
+        }
+    }
+    pub fn is_reserved(&self) -> bool {
+        match self {
+            &Keyword::Break => true,
+            &Keyword::Case => true,
+            &Keyword::Catch => true,
+            &Keyword::Continue => true,
+            &Keyword::Debugger => true,
+            &Keyword::Default => true,
+            &Keyword::Delete => true,
+            &Keyword::Do => true,
+            &Keyword::Else => true,
+            &Keyword::Finally => true,
+            &Keyword::For => true,
+            &Keyword::Function => true,
+            &Keyword::If => true,
+            &Keyword::InstanceOf => true,
+            &Keyword::In => true,
+            &Keyword::New => true,
+            &Keyword::Return => true,
+            &Keyword::Switch => true,
+            &Keyword::This => true,
+            &Keyword::Throw => true,
+            &Keyword::Try => true,
+            &Keyword::TypeOf => true,
+            &Keyword::Var => true,
+            &Keyword::Void => true,
+            &Keyword::While => true,
+            &Keyword::With => true,
+            _ => false
+        }
+    }
 }
 
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -175,7 +235,7 @@ where
         .map(|t| t)
 }
 
-pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -207,10 +267,10 @@ where
         try(string("void")),
         try(string("while")),
         try(string("with")),
-    ]).map(|t| TokenData::Keyword(Token::from(t.to_owned())))
+    ]).map(|t| Token::Keyword(Keyword::from(t.to_owned())))
 }
 
-pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -220,10 +280,10 @@ where
         try(string("import")),
         try(string("super")),
         try(string("enum")),
-    )).map(|t| TokenData::Keyword(Token::from(t)))
+    )).map(|t| Token::Keyword(Keyword::from(t)))
 }
 
-pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -238,28 +298,28 @@ where
         try(string("static")),
         try(string("yield")),
         try(string("let")),
-    )).map(|t| TokenData::Keyword(Token::from(t)))
+    )).map(|t| Token::Keyword(Keyword::from(t)))
 }
 
-pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(string("eval")), try(string("arguments")))).map(|t| TokenData::Keyword(Token::from(t)))
+    choice((try(string("eval")), try(string("arguments")))).map(|t| Token::Keyword(Keyword::from(t)))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use tokens::token;
-    use tokens::TokenData;
+    use tokens::Token;
     #[test]
     fn future_reserved() {
         let keywords = ["enum", "export", "import", "super"];
         for keyword in keywords.iter() {
             let k = token().parse(keyword.clone()).unwrap();
-            assert_eq!(k, (TokenData::keyword(*keyword), ""))
+            assert_eq!(k, (Token::keyword(*keyword), ""))
         }
         match super::future_reserved().parse("junk") {
             Ok(k) => panic!("parsed junk as {:?}", k),
@@ -283,7 +343,7 @@ mod test {
         for keyword in keywords.iter() {
             let k = token().parse(keyword.clone())
                 .unwrap();
-            assert_eq!(k, (TokenData::keyword(*keyword), ""));
+            assert_eq!(k, (Token::keyword(*keyword), ""));
         }
         match super::strict_mode_reserved().parse("junk") {
             Ok(k) => panic!("parsed junk as {:?}", k),
@@ -294,9 +354,9 @@ mod test {
     #[test]
     fn restricted_reserved() {
         let k = token().parse("eval").unwrap();
-        assert_eq!(k, (TokenData::keyword("eval"), ""));
+        assert_eq!(k, (Token::keyword("eval"), ""));
         let k2 = token().parse("arguments").unwrap();
-        assert_eq!(k2, (TokenData::keyword("arguments"), ""))
+        assert_eq!(k2, (Token::keyword("arguments"), ""))
     }
 
     #[test]
@@ -331,7 +391,7 @@ mod test {
         ];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
-            assert_eq!(k, (TokenData::keyword(key), ""));
+            assert_eq!(k, (Token::keyword(key), ""));
         }
     }
 
@@ -381,7 +441,7 @@ mod test {
         ];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
-            assert_eq!(k, (TokenData::keyword(key), ""));
+            assert_eq!(k, (Token::keyword(key), ""));
         }
     }
 }

@@ -6,11 +6,11 @@ use combine::{
     },
     try, Parser, Stream,
 };
-use tokens::TokenData;
+use tokens::Token;
 use strings;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Token {
+pub struct Comment {
     pub kind: Kind,
     pub content: String,
 }
@@ -20,9 +20,9 @@ pub enum Kind {
     Multi
 }
 
-impl Token {
+impl Comment {
     pub fn from_parts(content: String, kind: Kind) -> Self {
-        Token {
+        Comment {
             content,
             kind,
         }
@@ -37,15 +37,15 @@ impl Token {
     }
 }
 
-pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (choice((try(multi_comment()), try(single_comment()))).map(|t: Token| TokenData::Comment(t)))
+    (choice((try(multi_comment()), try(single_comment()))).map(|t: Comment| Token::Comment(t)))
 }
 
-pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -55,10 +55,10 @@ where
             try(strings::line_terminator_sequence()),
             try(eof().map(|_| String::new())),
             ))))
-        .map(|(_, content): (_, String)| Token::from_parts(content, Kind::Single))
+        .map(|(_, content): (_, String)| Comment::from_parts(content, Kind::Single))
 }
 
-pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Comment>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -72,7 +72,7 @@ where
             .map(|l| l.trim())
             .collect::<Vec<&str>>()
             .join("\n");
-        Token::from_parts(ret, Kind::Multi)
+        Comment::from_parts(ret, Kind::Multi)
     })
 }
 
@@ -119,7 +119,7 @@ mod test {
                 })
                 .collect::<Vec<String>>()
                 .join("\n");
-            assert_eq!(p, (TokenData::comment(comment_contents, is_multi), ""));
+            assert_eq!(p, (Token::comment(&comment_contents, is_multi), ""));
         }
     }
 }

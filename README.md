@@ -6,7 +6,7 @@ A scanner/tokenizer for JS written in Rust
 ## Usage
 There are two interfaces for using `ress` in your Rust code.
 
-The first is the very simple function `tokenize`, this takes in a `String` and outputs a `Vec<TokenData>`.
+The first is the very simple function `tokenize`, this takes in a `String` and outputs a `Vec<Token>`.
 
 ```rust
 extern crate ress;

@@ -86,7 +86,7 @@ fn test_js(text: &str, name: &str) {
 
     let now = SystemTime::now();
     let s = ress::Scanner::new(text);
-    let _: Vec<ress::Token> = s.collect();
+    let _: Vec<ress::Item> = s.collect();
     if let Ok(e) = now.elapsed() {
         report(size, e, "scanner", name)
     } else {

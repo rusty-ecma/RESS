@@ -2,16 +2,16 @@ use combine::{
     between, choice, error::ParseError, many, optional, parser::char::char as c_char, satisfy, try,
     Parser, Stream,
 };
-use tokens::{ident_part, TokenData};
+use tokens::{ident_part, Token};
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Token {
+pub struct RegEx {
     pub body: String,
     pub flags: Option<String>,
 }
 
-impl Token {
-    pub fn from_parts(body: &str, flags: Option<String>) -> Token {
+impl RegEx {
+    pub fn from_parts(body: &str, flags: Option<String>) -> Self {
         let flags = if let Some(flags) = flags {
             if flags == "" {
                 None
@@ -21,7 +21,7 @@ impl Token {
         } else { 
             None
         };
-        Token {
+        RegEx {
             body: body.to_string(),
             flags,
         }
@@ -29,7 +29,7 @@ impl Token {
 }
 
 /// Parse a regex literal
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -38,7 +38,7 @@ where
         between(c_char('/'), c_char('/'), regex_body()),
         optional(regex_flags()),
     ).map(|(body, flags): (String, Option<String>)| {
-        TokenData::RegEx(Token::from_parts(&body, flags))
+        Token::RegEx(RegEx::from_parts(&body, flags))
     })
 }
 /// Parse the body portion of the regex literal
@@ -167,13 +167,13 @@ mod test {
     fn regex_test() {
         let simple = r#"/[a-zA-Z]/"#;
         let s_r = super::literal().parse(simple.clone()).unwrap();
-        assert_eq!(s_r, (TokenData::RegEx(super::Token::from_parts(&simple[1..9], None)), ""));
+        assert_eq!(s_r, (Token::RegEx(super::RegEx::from_parts(&simple[1..9], None)), ""));
         let flagged = r#"/[0-9]+/g"#;
         let f_r = super::literal().parse(flagged).unwrap();
         assert_eq!(
             f_r,
             (
-                TokenData::RegEx(super::Token::from_parts(&flagged[1..7], Some("g".to_string()))),
+                Token::RegEx(super::RegEx::from_parts(&flagged[1..7], Some("g".to_string()))),
                 ""
             )
         );

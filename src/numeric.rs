@@ -6,9 +6,9 @@ use combine::{
     },
     try, Parser, Stream,
 };
-use tokens::{TokenData};
+use tokens::{Token};
 #[derive(Debug, PartialEq, Clone)]
-pub struct Token {
+pub struct Number {
     pub sign: Option<Sign>,
     pub integer: Option<usize>,
     pub remainder: Option<usize>,
@@ -17,7 +17,7 @@ pub struct Token {
     pub kind: Kind
 }
 
-impl Token {
+impl Number {
     pub fn from_parts(sign: Option<char>, integer: Option<&str>, remainder: Option<&str>, 
                         char_case: Option<char>, exponent: Option<&str>, kind: Kind) -> Result<Self, super::error::Error> {
         let sign = if let Some(s) = sign {
@@ -48,7 +48,7 @@ impl Token {
         } else {
             None
         };
-        Ok(Token {
+        Ok(Number {
             sign,
             integer,
             remainder,
@@ -77,13 +77,13 @@ impl Token {
     }
 }
 
-impl From<String> for Token {
+impl From<String> for Number {
     fn from(s: String) -> Self {
         Self::from(s.as_str())
     }
 }
 
-impl<'a> From<&'a str> for Token {
+impl<'a> From<&'a str> for Number {
     fn from(s: &'a str) -> Self {
         let (sign, s) = if s.starts_with('-') ||  s.starts_with('+') {
             (Some(
@@ -133,7 +133,7 @@ impl<'a> From<&'a str> for Token {
     }
 }
 
-impl ToString for Token {
+impl ToString for Number {
     fn to_string(&self) -> String {
         match self.kind {
             Kind::Hex => self.as_hex_string(),
@@ -145,7 +145,7 @@ impl ToString for Token {
 }
 
 //to string implementations
-impl Token {
+impl Number {
     fn string_prefix(&self) -> String {
         let mut ret = String::new();
         if let Some(ref sign) = self.sign {
@@ -300,7 +300,7 @@ impl Kind {
     }
 }
 
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
+pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -310,10 +310,10 @@ where
         try(octal_literal()),
         try(hex_literal()),
         try(decimal_literal()),
-    )).map(|t: Token| super::TokenData::Numeric(t))
+    )).map(|t: Number| super::Token::Numeric(t))
 }
 
-fn decimal_literal<I>() -> impl Parser<Input = I, Output = Token>
+fn decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -324,7 +324,7 @@ where
     )).map(|t| t)
 }
 
-fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Token>
+fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -346,10 +346,10 @@ where
         )| {
 
             let res = match (remainder, exponent) {
-                (Some(r), Some(e)) => Token::from_parts(sign, Some(&integer), Some(r.1.as_str()), Some(e.0), Some(e.1.as_str()), Kind::Decimal),
-                (None, Some(e)) => Token::from_parts(sign, Some(&integer), None, Some(e.0), Some(e.1.as_str()), Kind::Decimal),
-                (Some(r), None) => Token::from_parts(sign, Some(&integer), Some(r.1.as_str()), None, None, Kind::Decimal),
-                (None, None) => Token::from_parts(sign, Some(&integer), None, None, None, Kind::Decimal),
+                (Some(r), Some(e)) => Number::from_parts(sign, Some(&integer), Some(r.1.as_str()), Some(e.0), Some(e.1.as_str()), Kind::Decimal),
+                (None, Some(e)) => Number::from_parts(sign, Some(&integer), None, Some(e.0), Some(e.1.as_str()), Kind::Decimal),
+                (Some(r), None) => Number::from_parts(sign, Some(&integer), Some(r.1.as_str()), None, None, Kind::Decimal),
+                (None, None) => Number::from_parts(sign, Some(&integer), None, None, None, Kind::Decimal),
             };
 
             match res {
@@ -360,7 +360,7 @@ where
     )
 }
 
-fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Token>
+fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -372,9 +372,9 @@ where
         optional((choice([c_char('e'), c_char('E')]), many1(digit()))),
     ).map(|(sign, _dot, remainder, exponent): (Option<char>, char, String, Option<(char, String)>)| {
         let res = if let Some(e) = exponent {
-            Token::from_parts(sign, None, Some(remainder.as_str()), Some(e.0), Some(e.1.as_str()), Kind::Decimal)
+            Number::from_parts(sign, None, Some(remainder.as_str()), Some(e.0), Some(e.1.as_str()), Kind::Decimal)
         } else {
-            Token::from_parts(sign, None, Some(remainder.as_str()), None, None, Kind::Decimal)
+            Number::from_parts(sign, None, Some(remainder.as_str()), None, None, Kind::Decimal)
         };
         match  res {
             Ok(t) => t,
@@ -384,7 +384,7 @@ where
     })
 }
 
-fn hex_literal<I>() -> impl Parser<Input = I, Output = Token>
+fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -395,14 +395,14 @@ where
         choice([c_char('x'), c_char('X')]),
         many1(hex_digit()),
     ).map(|(sign, _, x, integer): (Option<char>, char, char, String)| {
-        match Token::from_parts(sign, Some(integer.as_str()), None, Some(x), None, Kind::Hex) {
+        match Number::from_parts(sign, Some(integer.as_str()), None, Some(x), None, Kind::Hex) {
             Ok(t) => t,
             Err(e) => panic!("Error parsing hex literal {}", e)
         }
     })
 }
 
-fn bin_literal<I>() -> impl Parser<Input = I, Output = Token>
+fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -413,14 +413,14 @@ where
         choice([c_char('b'), c_char('B')]),
         many1(choice([c_char('1'), c_char('0')])),
     ).map(|(sign, _, b, integer): (Option<char>, char, char, String)| {
-        match Token::from_parts(sign, Some(integer.as_str()), None, Some(b), None, Kind::Bin) {
+        match Number::from_parts(sign, Some(integer.as_str()), None, Some(b), None, Kind::Bin) {
             Ok(t) => t,
             Err(e) => panic!("Error parsing binary literal {}", e)
         }
     })
 }
 
-fn octal_literal<I>() -> impl Parser<Input = I, Output = Token>
+fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -431,7 +431,7 @@ where
         choice([c_char('o'), c_char('O')]),
         many1(oct_digit()),
     ).map(|(sign, _, o, integer): (Option<char>, char, char, String)| {
-        match Token::from_parts(sign, Some(integer.as_str()), None, Some(o), None, Kind::Octal) {
+        match Number::from_parts(sign, Some(integer.as_str()), None, Some(o), None, Kind::Octal) {
             Ok(t) => t,
             Err(e) => panic!("Error parsing octal literal {}", e),
         }
@@ -457,7 +457,7 @@ mod test {
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(Token::from(val)), ""));
+            assert_eq!(d, (Token::Numeric(Number::from(val)), ""));
         }
         if let Ok(_) = full_decimal_literal().parse(".00") {
             panic!("parsed .00 as full decimal literal");
@@ -471,7 +471,7 @@ mod test {
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(Token::from(val)), ""))
+            assert_eq!(d, (Token::Numeric(Number::from(val)), ""))
         }
         if let Ok(_) = no_leading_decimal().parse("00.0") {
             panic!("parsed 00.0 as no leading decimal")
@@ -485,7 +485,7 @@ mod test {
         ];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(Token::from(val)), ""))
+            assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
         }
 
         if let Ok(_) = hex_literal().parse("555") {
@@ -497,7 +497,7 @@ mod test {
         let vals = vec!["0b000", "0B111", "-0B0101", "+0b1010"];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(Token::from(val)), ""))
+            assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
         }
 
         if let Ok(_) = bin_literal().parse("0b") {
@@ -510,7 +510,7 @@ mod test {
         let vals = vec!["0o7", "0O554", "-0o12345670", "+0O12345670"];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(h, (TokenData::Numeric(Token::from(val)), ""))
+            assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
         }
 
         if let Ok(_) = octal_literal().parse("0O8") {
@@ -541,11 +541,11 @@ mod test {
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(Token::from(val)), ""));
+            assert_eq!(d, (Token::Numeric(Number::from(val)), ""));
         }
         if let Ok(f) = tokens::token().parse("asdfghjk") {
             match f {
-                (TokenData::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
+                (Token::Numeric(d), _) => panic!("parsed asdfghjk as decimal {:?}", d),
                 _ => (),
             }
         }
@@ -589,10 +589,10 @@ mod test {
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
-            assert_eq!(d, (TokenData::Numeric(Token::from(val)), ""));
+            assert_eq!(d, (Token::Numeric(Number::from(val)), ""));
         }
         match tokens::token().parse("asdfghjk").unwrap() {
-            (TokenData::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
+            (Token::Numeric(f), "") => panic!("parsed asdfghjk as number {:?}", f),
             _ => (),
         }
     }
