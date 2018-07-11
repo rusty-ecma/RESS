@@ -157,6 +157,10 @@ impl ::std::string::ToString for Token {
     }
 }
 
+impl Token {
+    
+}
+
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
 where
     I: Stream<Item = char>,

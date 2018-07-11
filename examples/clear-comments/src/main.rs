@@ -138,6 +138,9 @@ fn space_before(last_token: &TokenData, token: &TokenData) -> bool {
     if last_token.is_keyword_with("if") {
         return true;
     }
+    if last_token.is_keyword_with("return") && !token.is_punct() {
+        return true;
+    }
     if last_token.is_keyword_with("for") {
         return true;
     }
@@ -242,10 +245,8 @@ fn token_to_string(t: &TokenData) -> String {
         &TokenData::Ident(ref name) => name.to_string(),
         &TokenData::Keyword(ref key) => key.to_string(),
         &TokenData::Null => "null".to_string(),
-        &TokenData::Numeric(ref number) => {
-            String::new()
-        },
-        &TokenData::Punct(ref c) => c.to_string(),
+        &TokenData::Numeric(ref number) => number.to_string(),
+        &TokenData::Punct(ref p) => p.to_string(),
         &TokenData::RegEx(ref regex) => match regex.flags {
             Some(ref f) => format!("/{}/{}", regex.body, f),
             None => format!("/{}/", regex.body),

@@ -140,7 +140,7 @@ function thing() {
             TokenData::EoF,
         ];
         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
-            assert_eq!(tok.0.data, tok.1);
+            assert_eq!(tok.0, tok.1);
         }
     }
 

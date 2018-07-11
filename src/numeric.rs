@@ -133,15 +133,92 @@ impl<'a> From<&'a str> for Token {
     }
 }
 
+impl ToString for Token {
+    fn to_string(&self) -> String {
+        match self.kind {
+            Kind::Hex => self.as_hex_string(),
+            Kind::Decimal => self.as_decimal_string(),
+            Kind::Octal => self.as_oct_string(),
+            Kind::Bin => self.as_bin_string(),
+        }
+    }
+}
+
+//to string implementations
+impl Token {
+    fn string_prefix(&self) -> String {
+        let mut ret = String::new();
+        if let Some(ref sign) = self.sign {
+            ret.push(sign.into());
+        }
+        if self.kind == Kind::Decimal {
+            return ret;
+        }
+        if let Some(ref c) = self.char_case {
+            ret.push_str(&format!("0{}", self.kind.flag(c)));
+        } else {
+            ret.push_str(&format!("0{}", self.kind.flag(&CharCase::Lower)));
+        }
+        ret
+    }
+    fn as_hex_string(&self) -> String {
+        let mut ret = self.string_prefix();
+        if let Some(ref i) = self.integer {
+            ret.push_str(&format!("{:x}", i));
+        }
+        ret
+    }
+    fn as_oct_string(&self) -> String {
+        let mut ret = self.string_prefix();
+        if let Some(ref i) = self.integer {
+            ret.push_str(&format!("{:o}", i))
+        }
+        ret
+    }
+    fn as_bin_string(&self) -> String {
+        let mut ret = self.string_prefix();
+        if let Some(ref i) = self.integer {
+            ret.push_str(&format!("{:b}", i))
+        }
+        ret
+    }
+    fn as_decimal_string(&self) -> String {
+        let mut ret = self.string_prefix();
+        if let Some(i) = self.integer {
+            ret.push_str(&format!("{}", i));
+        }
+        if let Some(r) = self.remainder {
+            ret.push_str(&format!(".{}", r));
+        }
+        if let Some(ref c) = self.char_case {
+            ret.push(self.kind.flag(c));
+        }
+        if let Some(e) = self.exponent {
+            ret.push_str(&format!("{}", e));
+        }
+        ret
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Sign {
     Positive,
     Negative,
 }
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum CharCase {
     Lower,
     Upper,
+}
+
+impl CharCase {
+    fn with_char(&self, c: char) -> Option<char> {
+        match self {
+            CharCase::Upper => c.to_uppercase().next(),
+            CharCase::Lower => c.to_lowercase().next(),
+        }
+    }
 }
 
 impl From<char> for CharCase {
@@ -195,12 +272,32 @@ impl Into<char> for Sign {
     }
 }
 
+impl<'a> Into<char> for &'a Sign {
+    fn into(self) -> char {
+        match self {
+            &Sign::Positive => '+',
+            &Sign::Negative => '-',
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Kind {
     Decimal,
     Hex,
     Bin,
     Octal,
+}
+
+impl Kind {
+    fn flag(&self, case: &CharCase) -> char {
+        match self {
+            Kind::Decimal => case.with_char('e').unwrap(),
+            Kind::Hex => case.with_char('x').unwrap(),
+            Kind::Octal => case.with_char('o').unwrap(),
+            Kind::Bin => case.with_char('b').unwrap(),
+        }
+    }
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = TokenData>
