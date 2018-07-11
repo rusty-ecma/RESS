@@ -104,3 +104,7 @@ If you are interested in getting an idea about performance without waiting for `
 ```sh
 $ cargo run --example major_libs
 ```
+
+# Contributing
+
+[see contributing.md](https://github.com/FreeMasen/RESS/blob/master/CONTRIBUTING.md)
