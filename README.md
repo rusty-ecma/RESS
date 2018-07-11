@@ -26,7 +26,7 @@ fn main() {
 
 ```
 
-The other option is to create a `Scanner`, an iterator of tokens parsing them one by one from your js.
+The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has two fields `token` for the `Token` found and `Span` for the position in the string.
 ```rust
 extern crate ress;
 
@@ -60,12 +60,12 @@ In either method the major construct that you would be dealing with is a `Token`
 - Template
 - Comment
 
-In its current state it should be able to tokenize any valid <=ES6 JavaScript (I believe the testing is all currently done on ES3 packages though).
+In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner not-context aware this should be dealt with by the user code.
 
 ## Why?
-Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[./examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that.
+Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that.
 
-Ideally this project will be the starting point for building a full JS AST in Rust. The next step would be to build a companion crate that will raise the tokens into a full Abstract Syntax Tree. And once we have an AST a program that will write out JS text from that ast, essentially coming full circle.
+Ideally this project will be the starting point for building a full JS AST in Rust. The next step would be to build a companion crate that will raise the tokens into a full Abstract Syntax Tree (AST). And once we have an AST a program that will write out JS text from that ast, essentially coming full circle.
 
 # Performance
 I am sure there are a lot of low hanging fruit in this area, on my 13" MBP Late 2013 2.4 GHz Intel Core i5
