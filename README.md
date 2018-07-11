@@ -1,6 +1,11 @@
 # RESS
 > Rusty EcmaScript Scanner
 
+![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)
+![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)
+![crates.io](https://img.shields.io/crates/v/ress.svg)
+![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)
+
 A scanner/tokenizer for JS written in Rust
 
 ## Usage
