@@ -1,17 +1,28 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
+#[macro_use]
 extern crate combine;
 use combine::{Parser, Stream, parser::char::char as c_char, error::ParseError};
+mod comments;
+mod keywords;
+mod numeric;
+mod punct;
 mod regex;
 mod strings;
 mod tokens;
 mod unicode;
-use tokens::token;
-pub use tokens::Token;
+pub use comments::Comment;
+pub use keywords::Keyword;
+pub use numeric::Number;
+pub use punct::Punct;
+pub use regex::RegEx;
+pub use strings::StringLit;
+pub use tokens::{Token, Item, BooleanLiteral as Boolean};
+
 /// Send over the complete text and get back
 /// the completely parsed result
 pub fn tokenize(text: &str) -> Vec<Token> {
-    Scanner::new(text).collect()
+    tokens::tokens().easy_parse(text).expect("failed to tokenize text").0
 }
 
 /// An iterator over a token stream built
@@ -25,10 +36,12 @@ pub struct Scanner {
 impl Scanner {
     /// Create a new Scanner with the raw JS text
     pub fn new(text: impl Into<String>) -> Self {
+        let text = text.into();
+        let cursor = text.len() - text.trim_left().len();
         Scanner {
-            stream: text.into().trim().to_owned(),
+            stream: text,
             eof: false,
-            cursor: 0
+            cursor,
         }
     }
 
@@ -36,18 +49,20 @@ impl Scanner {
 }
 
 impl Iterator for Scanner {
-    type Item = Token;
-    fn next(&mut self) -> Option<Token> {
+    type Item = Item;
+    fn next(&mut self) -> Option<Item> {
         if self.eof {
             return None;
         };
-        match token().easy_parse(&self.stream[self.cursor..]) {
+        match tokens::token().easy_parse(&self.stream[self.cursor..]) {
             Ok(pair) => {
                 if pair.0 == Token::EoF {
                     self.eof = true;
                 }
-                self.cursor = self.stream.len() - pair.1.trim().len();
-                Some(pair.0)
+                let new_cursor = self.stream.len() - pair.1.trim_left().len();
+                let ret = Item::new(pair.0, self.cursor, new_cursor);
+                self.cursor = new_cursor;
+                Some(ret)
             }
             Err(e) => {
                 eprintln!(
@@ -70,9 +85,32 @@ where
         .map(|(_slash, c): (char, char)| c)
 }
 
+pub mod error {
+    #[derive(Debug)]
+    pub enum Error {
+        DataMismatch(String),
+    }
+
+    impl ::std::fmt::Display for Error {
+        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+            match self {
+                &Error::DataMismatch(ref msg) => msg.fmt(f)
+            }
+        }
+    }
+
+    impl ::std::error::Error for Error {}
+
+    impl From<::std::num::ParseIntError> for Error {
+        fn from(other: ::std::num::ParseIntError) -> Self {
+            Error::DataMismatch(format!("Error parsing int: {}", other))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{tokenize, Token};
+    use super::*;
     #[test]
     fn tokenizer() {
         let js = "
@@ -82,30 +120,31 @@ function thing() {
     console.log('stuff');
 }";
         let expectation = vec![
-            Token::String("use strict".into()),
-            Token::Punct(";".into()),
-            Token::Keyword("function".into()),
-            Token::Ident("thing".into()),
-            Token::Punct("(".into()),
-            Token::Punct(")".into()),
-            Token::Punct("{".into()),
-            Token::Keyword("let".into()),
-            Token::Ident("x".into()),
-            Token::Punct("=".into()),
-            Token::Numeric("0".into()),
-            Token::Punct(";".into()),
-            Token::Ident("console".into()),
-            Token::Punct(".".into()),
-            Token::Ident("log".into()),
-            Token::Punct("(".into()),
-            Token::String("stuff".into()),
-            Token::Punct(")".into()),
-            Token::Punct(";".into()),
-            Token::Punct("}".into()),
+            Token::single_quoted_string("use strict"),
+            Token::punct(";"),
+            Token::keyword("function"),
+            Token::ident("thing"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct("{"),
+            Token::keyword("let"),
+            Token::ident("x"),
+            Token::punct("="),
+            Token::numeric("0"),
+            Token::punct(";"),
+            Token::ident("console"),
+            Token::punct("."),
+            Token::ident("log"),
+            Token::punct("("),
+            Token::single_quoted_string("stuff"),
+            Token::punct(")"),
+            Token::punct(";"),
+            Token::punct("}"),
             Token::EoF,
         ];
-        let toks = tokenize(js);
-        assert_eq!(toks, expectation);
+        for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
+            assert_eq!(tok.0, tok.1);
+        }
     }
 
     #[test]
@@ -117,32 +156,32 @@ this.y = 0;
 })();",
         );
         let expectation = vec![
-            Token::Punct("(".into()),
-            Token::Keyword("function".into()),
-            Token::Punct("(".into()),
-            Token::Punct(")".into()),
-            Token::Punct("{".into()),
-            Token::Keyword("this".into()),
-            Token::Punct(".".into()),
-            Token::Ident("x".into()),
-            Token::Punct("=".into()),
-            Token::Numeric("100".into()),
-            Token::Punct(";".into()),
-            Token::Keyword("this".into()),
-            Token::Punct(".".into()),
-            Token::Ident("y".into()),
-            Token::Punct("=".into()),
-            Token::Numeric("0".into()),
-            Token::Punct(";".into()),
-            Token::Punct("}".into()),
-            Token::Punct(")".into()),
-            Token::Punct("(".into()),
-            Token::Punct(")".into()),
-            Token::Punct(";".into()),
+            Token::punct("("),
+            Token::keyword("function"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct("{"),
+            Token::keyword("this"),
+            Token::punct("."),
+            Token::ident("x"),
+            Token::punct("="),
+            Token::numeric("100"),
+            Token::punct(";"),
+            Token::keyword("this"),
+            Token::punct("."),
+            Token::ident("y"),
+            Token::punct("="),
+            Token::numeric("0"),
+            Token::punct(";"),
+            Token::punct("}"),
+            Token::punct(")"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct(";"),
             Token::EoF,
         ];
         for test in s.zip(expectation.into_iter()) {
-            assert_eq!(test.0, test.1);
+            assert_eq!(test.0.token, test.1);
         }
     }
 }

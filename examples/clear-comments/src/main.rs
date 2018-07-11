@@ -3,7 +3,7 @@
 //! Essentially this is reading in the file and writing it out
 //! with no comments. It successfully stripped all of the comments
 //! out of a webpack output file though it cannot handle object literals
-//! very well. It does a pretty good job of how you might use the Scanner.
+//! very well. It does a pretty good job of showing how you might use the Scanner.
 extern crate docopt;
 extern crate ress;
 extern crate serde;
@@ -14,11 +14,12 @@ use std::{
     path::PathBuf,
     fs::{read_to_string, File},
     io::{Write, BufWriter},
+    string::ToString,
 };
 
 use docopt::Docopt;
 
-use ress::{Token, Scanner};
+use ress::{Token, Scanner, Boolean, Keyword, Punct};
 
 const USAGE: &'static str = "
 clear-comments
@@ -51,52 +52,53 @@ fn main() {
     let mut in_if = false;
     let mut if_parens = 0;
     let mut unbraced_if = false;
-    for token in s {
-        if last_token.is_keyword_with("if") {
+    for item in s {
+        let token = item.token;
+        if token.matches_keyword(Keyword::If) {
             in_if = true;
         }
-        if in_if && token.is_punct_with("(") {
+        if in_if && token.matches_punct(Punct::OpenParen) {
             if_parens += 1;
         }
-        if in_if && token.is_punct_with(")") {
+        if in_if && token.matches_punct(Punct::CloseParen) {
             if_parens -= 1;
         }
-        if last_token.is_keyword_with("for") {
+        if last_token.matches_keyword(Keyword::For) {
             in_loop = true;
         }
-        if last_token.is_keyword_with("case") || last_token.is_keyword_with("default") {
+        if last_token.matches_keyword(Keyword::Case) || last_token.matches_keyword(Keyword::Default) {
             in_case = true;
         }
-        if last_token.is_punct_with(":") && in_case {
+        if last_token.matches_punct(Punct::Colon) && in_case {
             new_line = true;
         }
-        if in_loop && last_token.is_punct_with(")") {
+        if in_loop && last_token.matches_punct(Punct::CloseParen) {
             in_loop = false;
         }
         if token.is_comment() {
             continue;
         }
-        if last_token.is_punct_with("{") {
+        if last_token.matches_punct(Punct::OpenBrace) {
             indent += 1;
             new_line = true;
         }
-        if in_if && if_parens == 0 && last_token.is_punct_with(")") && !token.is_punct() {
+        if in_if && if_parens == 0 && last_token.matches_punct(Punct::CloseParen) && !token.is_punct() {
             unbraced_if = true;
             new_line = true;
             indent += 1;
         }
-        if last_token.is_punct_with(")") && !token.is_punct() {
+        if last_token.matches_punct(Punct::CloseParen) && !token.is_punct() {
             new_line = true;
         }
-        if last_token.is_punct_with(";") && !in_loop {
+        if last_token.matches_punct(Punct::SemiColon) && !in_loop {
             new_line = true;
         }
-        if last_token.is_punct_with("}") && !token.is_punct() {
+        if last_token.matches_punct(Punct::CloseBrace) && !token.is_punct() {
             new_line = true;
         }
-        if token.is_punct_with("}") {
+        if token.matches_punct(Punct::CloseBrace) {
             indent -= 1;
-            new_line = !last_token.is_punct_with("{");
+            new_line = !last_token.matches_punct(Punct::OpenBrace);
         }
         if last_token.is_comment() {
             new_line = true;
@@ -121,102 +123,106 @@ fn main() {
 }
 
 fn space_before(last_token: &Token, token: &Token) -> bool {
-    if last_token.is_punct_with("=") || token.is_punct_with("=") {
+    if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Assign) {
         return true;
     }
-    if last_token.is_punct_with(".") && (token.is_ident() || token.is_keyword_with("this")) {
+    if last_token.matches_punct(Punct::Period) && (token.is_ident() || token.matches_keyword(Keyword::This)) {
         return false;
     }
-    if (last_token.is_ident() || last_token.is_keyword_with("this")) && token.is_punct_with(".") {
+    if (last_token.is_ident() || last_token.matches_keyword(Keyword::This)) && token.matches_punct(Punct::Period) {
         return false
     }
-    if token.is_keyword_with("if") {
+    if token.matches_keyword(Keyword::If) {
         return false;
     }
-    if last_token.is_keyword_with("if") {
+    if last_token.matches_keyword(Keyword::If) {
         return true;
     }
-    if last_token.is_keyword_with("for") {
+    if last_token.matches_keyword(Keyword::Return) && !token.is_punct() {
         return true;
     }
-    if last_token.is_keyword_with("switch") {
+    if last_token.matches_keyword(Keyword::For) {
         return true;
     }
-    if last_token.is_punct_with(":") {
+    if last_token.matches_keyword(Keyword::Switch) {
         return true;
     }
-    if token.is_keyword_with("this") {
-        return false;
-    }
-    if token.is_punct_with("(") {
-        return false;
-    }
-    if token.is_punct_with(")") {
-        return false;
-    }
-    if token.is_punct_with("]") {
-        return false;
-    }
-    if token.is_punct_with("[") {
-        return false;
-    }
-    if token.is_punct_with("}") {
-        return false;
-    }
-    if last_token.is_punct_with("{") {
-        return false;
-    }
-    if last_token.is_punct_with("}") {
-        return false;
-    }
-    if last_token.is_punct_with(")") && token.is_punct_with("{") {
+    if last_token.matches_punct(Punct::Colon) {
         return true;
     }
-    if last_token.is_punct_with("[") {
+    if token.matches_keyword(Keyword::This) {
         return false;
     }
-    if last_token.is_punct_with("(") {
+    if token.matches_punct(Punct::OpenParen) {
         return false;
     }
-    if token.is_punct_with(";") {
+    if token.matches_punct(Punct::CloseParen) {
         return false;
     }
-    if token.is_punct_with(".") {
+    if token.matches_punct(Punct::CloseBracket) {
         return false;
     }
-    if last_token.is_punct_with(".") {
+    if token.matches_punct(Punct::OpenBracket) {
         return false;
     }
-    if token.is_punct_with(",") {
+    if token.matches_punct(Punct::CloseBrace) {
         return false;
     }
-    if token.is_punct_with(":") {
+    if last_token.matches_punct(Punct::OpenBrace) {
         return false;
     }
-    if last_token.is_punct_with("!") {
+    if last_token.matches_punct(Punct::CloseBrace) {
         return false;
     }
-    if last_token.is_punct_with(",") {
+    if last_token.matches_punct(Punct::CloseParen) && token.matches_punct(Punct::OpenBrace) {
         return true;
     }
-    if token.is_punct_with("!") {
+    if last_token.matches_punct(Punct::OpenBracket) {
         return false;
     }
-    if last_token.is_keyword_with("function") && token.is_punct_with("{") {
+    if last_token.matches_punct(Punct::OpenParen) {
         return false;
     }
-    if last_token.is_keyword_with("in") ||
-        last_token.is_keyword_with("of") ||
-        last_token.is_keyword_with("for") {
+    if token.matches_punct(Punct::SemiColon) {
+        return false;
+    }
+    if token.matches_punct(Punct::Period) {
+        return false;
+    }
+    if last_token.matches_punct(Punct::Period) {
+        return false;
+    }
+    if token.matches_punct(Punct::Comma) {
+        return false;
+    }
+    if token.matches_punct(Punct::Colon) {
+        return false;
+    }
+    if last_token.matches_punct(Punct::Not) {
+        return false;
+    }
+    if last_token.matches_punct(Punct::Comma) {
         return true;
     }
-    if token.is_keyword_with("in") {
+    if token.matches_punct(Punct::Not) {
+        return false;
+    }
+    if last_token.matches_keyword(Keyword::Function) && token.matches_punct(Punct::OpenBrace) {
+        return false;
+    }
+    if last_token.matches_keyword(Keyword::In) ||
+        last_token.matches_keyword(Keyword::Of) ||
+        last_token.matches_keyword(Keyword::For) {
+        return true;
+    }
+    if token.matches_keyword(Keyword::In) ||
+        token.matches_keyword(Keyword::Of) {
         return true;
     }
     if last_token.is_keyword() {
         return true;
     }
-    if last_token.is_punct_with(";") {
+    if last_token.matches_punct(Punct::SemiColon) {
         return false;
     }
     if token.is_punct() || last_token.is_punct() {
@@ -227,42 +233,43 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
 
 fn token_to_string(t: &Token) -> String {
     match t {
-        &Token::Boolean(ref t) => if *t {
+        &Token::Boolean(ref t) => if t == &Boolean::True {
             "true"
         } else {
             "false"
         }.to_string(),
-        &Token::Comment(ref info) => if info.contains('\n') {
-            format!("/*\n{}\n*/", info)
+        &Token::Comment(ref comment) => if comment.is_multi_line() {
+            format!("/*\n{}\n*/", comment.content)
         } else {
-            format!("//{}", info)
+            format!("//{}", comment.content)
         },
         &Token::Ident(ref name) => name.to_string(),
         &Token::Keyword(ref key) => key.to_string(),
         &Token::Null => "null".to_string(),
         &Token::Numeric(ref number) => number.to_string(),
-        &Token::Punct(ref c) => c.to_string(),
-        &Token::RegEx(ref body, ref flags) => match flags {
-            Some(ref f) => format!("/{}/{}", body, f),
-            None => format!("/{}/", body),
+        &Token::Punct(ref p) => p.to_string(),
+        &Token::RegEx(ref regex) => match regex.flags {
+            Some(ref f) => format!("/{}/{}", regex.body, f),
+            None => format!("/{}/", regex.body),
         },
-        &Token::String(ref s) => format!("'{}'", s),
+        &Token::String(ref s) => format!("{}", s.into_simple()),
         &Token::Template(ref tokens) => {
             let mut open = false;
-            let mut ret = String::new();
+            let mut ret = String::from("`");
             for token in tokens {
                 if let Token::String(ref s) = token {
                     if open {
                         open = false;
-                        ret.push_str(&format!("}}{}", s))
+                        ret.push_str(&format!("}}{}", &s.content))
                     } else {
                         open = true;
-                        ret.push_str(&format!("{}${{", s))
+                        ret.push_str(&format!("{}${{", &s.content))
                     }
                 } else {
                     ret.push_str(&token_to_string(token))
                 }
             }
+            ret.push('`');
             ret
         },
         _ => String::new()
@@ -274,4 +281,3 @@ struct Opts {
     arg_in_path: PathBuf,
     arg_out_path: PathBuf,
 }
-
