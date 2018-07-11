@@ -3,7 +3,7 @@
 //! Essentially this is reading in the file and writing it out
 //! with no comments. It successfully stripped all of the comments
 //! out of a webpack output file though it cannot handle object literals
-//! very well. It does a pretty good job of how you might use the Scanner.
+//! very well. It does a pretty good job of showing how you might use the Scanner.
 extern crate docopt;
 extern crate ress;
 extern crate serde;

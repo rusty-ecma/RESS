@@ -1,6 +1,9 @@
 //! This example is primarily for illustrating the
-//! project's abilities. It is a good example of how
-//! the `tokenize` function works.
+//! project's performance w/o waiting for the current
+//! set of benches. It simply pulls down some major
+//! JS libraries and attempts to tokenize them with
+//! both methods and then reports the size, time and method
+//! for each lib.
 extern crate ress;
 extern crate reqwest;
 use std::time::{SystemTime, Duration};
