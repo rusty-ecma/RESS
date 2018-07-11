@@ -11,7 +11,6 @@ mod numeric;
 mod punct;
 mod keywords;
 mod comments;
-use tokens::token;
 pub use tokens::{TokenData, Token, BooleanLiteral};
 pub use punct::Token as Punct;
 pub use keywords::Token as Keyword;
@@ -19,8 +18,8 @@ pub use numeric::Token as Number;
 
 /// Send over the complete text and get back
 /// the completely parsed result
-pub fn tokenize(text: &str) -> Vec<Token> {
-    Scanner::new(text).collect()
+pub fn tokenize(text: &str) -> Vec<TokenData> {
+    tokens::tokens().easy_parse(text).expect("failed to tokenize text").0
 }
 
 /// An iterator over a token stream built
@@ -52,7 +51,7 @@ impl Iterator for Scanner {
         if self.eof {
             return None;
         };
-        match token().easy_parse(&self.stream[self.cursor..]) {
+        match tokens::token().easy_parse(&self.stream[self.cursor..]) {
             Ok(pair) => {
                 if pair.0 == TokenData::EoF {
                     self.eof = true;

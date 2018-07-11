@@ -1,7 +1,7 @@
 use combine::{
     choice, eof, error::ParseError, many,
     parser::{
-        char::{char as c_char, string},
+        char::{char as c_char, string, spaces},
     },
     try, Parser, Stream,
 };
@@ -310,6 +310,14 @@ impl TokenData {
             comments::Kind::Single
         }))
     }
+}
+
+pub fn tokens<I>() -> impl Parser<Input = I, Output = Vec<TokenData>>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    many(token_not_eof().skip(spaces()))
 }
 
 pub fn token<I>() -> impl Parser<Input = I, Output = TokenData>

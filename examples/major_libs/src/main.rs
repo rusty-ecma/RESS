@@ -21,12 +21,7 @@ fn main() {
 fn jquery() {
     match get_js("https://code.jquery.com/jquery-3.3.1.js") {
         Ok(ref js) => {
-            let size = js.len();
-            let now = SystemTime::now();
-            let _ = ress::tokenize(js);
-            if let Ok(elapsed) = now.elapsed() {
-                report(size, elapsed);
-            }
+            test_js(js, "jquery");
         },
         Err(e) => eprintln!("{:?}", e),
     }
@@ -35,12 +30,7 @@ fn jquery() {
 fn angular1() {
     match get_js("https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.js") {
         Ok(ref js) => {
-            let size = js.len();
-            let now = SystemTime::now();
-            let _ = ress::tokenize(js);
-            if let Ok(elapsed) = now.elapsed() {
-                report(size, elapsed);
-            }
+            test_js(js, "angular1");
         },
         Err(e) => eprintln!("{:?}", e),
     }
@@ -49,12 +39,7 @@ fn angular1() {
 fn react() {
     match get_js("https://unpkg.com/react@16/umd/react.development.js") {
         Ok(ref js) => {
-            let size = js.len();
-            let now = SystemTime::now();
-            let _ = ress::tokenize(js);
-            if let Ok(elapsed) = now.elapsed() {
-                report(size, elapsed);
-            }
+            test_js(js, "react");
         },
         Err(e) => eprintln!("{:?}", e),
     }
@@ -63,12 +48,7 @@ fn react() {
 fn react_dom() {
     match get_js("https://unpkg.com/react-dom@16/umd/react-dom.development.js") {
         Ok(ref js) => {
-            let size = js.len();
-            let now = SystemTime::now();
-            let _ = ress::tokenize(js);
-            if let Ok(elapsed) = now.elapsed() {
-                report(size, elapsed);
-            }
+            test_js(js, "react-dom");
         },
         Err(e) => eprintln!("{:?}", e),
     }
@@ -77,12 +57,7 @@ fn react_dom() {
 fn vue() {
     match get_js("https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js") {
         Ok(ref js) => {
-            let size = js.len();
-            let now = SystemTime::now();
-            let _ = ress::tokenize(js);
-            if let Ok(elapsed) = now.elapsed() {
-                report(size, elapsed);
-            }
+            test_js(js, "vue");
         },
         Err(e) => eprintln!("{:?}", e),
     }
@@ -99,9 +74,29 @@ fn get_js(url: &str) -> Result<String, String> {
     }
 }
 
-fn report(bytes: usize, elapsed: Duration) {
+fn test_js(text: &str, name: &str) {
+    let size = text.len();
+    let now = SystemTime::now();
+    let _ = ress::tokenize(text);
+    if let Ok(e) = now.elapsed() {
+        report(size, e, "tokenize", name)
+    } else {
+        println!("error capturing tokenize duration for {}", name);
+    }
+
+    let now = SystemTime::now();
+    let s = ress::Scanner::new(text);
+    let _: Vec<ress::Token> = s.collect();
+    if let Ok(e) = now.elapsed() {
+        report(size, e, "scanner", name)
+    } else {
+        println!("error capturing scanner duration for {}", name);
+    }
+}
+
+fn report(bytes: usize, elapsed: Duration, method: &str, name: &str) {
     let size = get_size(bytes);
-    println!("tokenized {} in {}s {:.2}ms", size, elapsed.as_secs(), elapsed.subsec_millis())
+    println!("{} ({}) using {} in {}s {:.2}ms", name, size, method, elapsed.as_secs(), elapsed.subsec_millis())
 }
 
 fn get_size(b: usize) -> String {
