@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -19,8 +19,8 @@ combine = "3.3"
 [dev-dependencies]
 reqwest = "0.8"
 docopt = "0.9"
-serde = "1.0" # if you're using `derive(Deserialize)`
-serde_derive = "1.0" # if you're using `derive(Deserialize)`
+serde = "1.0"
+serde_derive = "1.0"
 
 [[example]]
 name = "major_libs"
