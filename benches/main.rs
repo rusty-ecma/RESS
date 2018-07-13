@@ -15,7 +15,7 @@ fn jquery_scanner(b: &mut Bencher) {
     let js = get_js("https://code.jquery.com/jquery-3.3.1.js").unwrap();
     b.iter(move || {
         let s = ress::Scanner::new(js.as_str());
-        let _: Vec<ress::Token> = s.collect();
+        let _: Vec<ress::Item> = s.collect();
     });
 }
 
@@ -29,7 +29,7 @@ fn angular1_scanner(b: &mut Bencher) {
     let js = get_js("https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.js").unwrap();
     b.iter(|| {
         let s = ress::Scanner::new(js.as_str());
-        let _: Vec<ress::Token> = s.collect();
+        let _: Vec<ress::Item> = s.collect();
     });
 }
 
@@ -43,7 +43,7 @@ fn react_scanner(b: &mut Bencher) {
     let js = get_js("https://unpkg.com/react@16/umd/react.development.js").unwrap();
     b.iter(|| {
         let s = ress::Scanner::new(js.as_str());
-        let _: Vec<ress::Token> = s.collect();
+        let _: Vec<ress::Item> = s.collect();
     });
 }
 
@@ -57,7 +57,7 @@ fn react_dom_scanner(b: &mut Bencher) {
     let js = get_js("https://unpkg.com/react-dom@16/umd/react-dom.development.js").unwrap();
     b.iter(|| {
         let s = ress::Scanner::new(js.as_str());
-        let _: Vec<ress::Token> = s.collect();
+        let _: Vec<ress::Item> = s.collect();
     });
 }
 
@@ -71,7 +71,7 @@ fn vue_scanner(b: &mut Bencher) {
     let js = get_js("https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js").unwrap();
     b.iter(|| {
         let s = ress::Scanner::new(js.as_str());
-        let _: Vec<ress::Token> = s.collect();
+        let _: Vec<ress::Item> = s.collect();
     });
 }
 
