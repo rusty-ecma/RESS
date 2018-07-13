@@ -21,13 +21,10 @@ pub struct Item {
 }
 
 impl Item {
-    pub fn new(token: Token, start: usize, end: usize) -> Item {
+    pub fn new(token: Token, span: Span) -> Item {
         Item {
             token,
-            span: Span {
-                start,
-                end,
-            }
+            span,
         }
     }
 }
@@ -35,6 +32,15 @@ impl Item {
 pub struct Span {
     pub start: usize,
     pub end: usize,
+}
+
+impl Span {
+    pub fn new(start: usize, end: usize) -> Self {
+        Span {
+            start,
+            end,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -371,14 +377,6 @@ impl Token {
     }
 }
 
-pub fn tokens<I>() -> impl Parser<Input = I, Output = Vec<Token>>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    many(token_not_eof().skip(spaces()))
-}
-
 pub fn token<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -402,7 +400,6 @@ where
         try(ident()),
         try(null_literal()),
         try(numeric::literal()),
-        try(regex::literal()),
         try(strings::literal()),
         try(punct::punctuation()),
         try(strings::template()),

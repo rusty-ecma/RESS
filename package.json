@@ -1,0 +1,26 @@
+{
+  "name": "js_parser",
+  "version": "1.0.0",
+  "description": "> Rusty EcmaScript Scanner",
+  "main": "out.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FreeMasen/ress.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FreeMasen/ress/issues"
+  },
+  "homepage": "https://github.com/FreeMasen/ress#readme",
+  "dependencies": {
+    "esprima": "^4.0.1",
+    "jquery": "^3.3.1"
+  }
+}

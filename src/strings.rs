@@ -254,18 +254,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (choice((
-        try(comments::comment()),
-        try(tokens::boolean_literal()),
-        try(keywords::literal()),
-        try(tokens::ident()),
-        try(tokens::null_literal()),
-        try(numeric::literal()),
-        try(regex::literal()),
-        try(template()),
-        try(punct::punctuation_not_close_brace()),
-        try(literal()),
-    ))).map(|t| t)
+    tokens::token_not_eof()
 }
 
 parser!{

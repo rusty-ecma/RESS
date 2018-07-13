@@ -41,6 +41,18 @@ where
         Token::RegEx(RegEx::from_parts(&body, flags))
     })
 }
+
+pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        try(regex_body()),
+        c_char('/'),
+        optional(try(regex_flags()))
+    ).map(|(body, _, flags): (String, _, Option<String>)| Token::RegEx(RegEx::from_parts(&body, flags)))
+}
 /// Parse the body portion of the regex literal
 fn regex_body<I>() -> impl Parser<Input = I, Output = String>
 where
