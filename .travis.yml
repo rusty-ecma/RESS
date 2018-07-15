@@ -5,6 +5,9 @@ matrix:
     - rust: stable
       install: true
       cache: cargo
-      script: cargo test && cargo run --example major_libs --release
+      before-install: npm i
+      script:
+        - cargo test
+        - cargo run --example major_libs --release
 notifications:
   email: never

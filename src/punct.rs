@@ -194,13 +194,6 @@ where
 {
     choice((try(multi_punct()), try(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
 }
-pub(crate) fn punctuation_not_close_brace<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(multi_punct()), try(single_punct_not_close_brace()))).map(|t: String| Token::Punct(Punct::from(t)))
-}
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
 where
@@ -209,16 +202,6 @@ where
 {
     choice((try(normal_punct()), try(div_punct()))).map(|c| c.to_string())
 }
-
-fn single_punct_not_close_brace<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(normal_punct_not_close_brace()), try(div_punct()))).map(|c| c.to_string())
-}
-
-
 
 fn normal_punct<I>() -> impl Parser<Input = I, Output = char>
 where

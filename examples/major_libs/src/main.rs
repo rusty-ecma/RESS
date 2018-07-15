@@ -5,8 +5,14 @@
 //! both methods and then reports the size, time and method
 //! for each lib.
 extern crate ress;
-extern crate reqwest;
-use std::time::{SystemTime, Duration};
+use std::{
+    time::{
+        SystemTime,
+        Duration
+    },
+    path::PathBuf,
+    fs::read_to_string,
+};
 
 fn main() {
     println!("trying jquery");
@@ -22,58 +28,32 @@ fn main() {
 }
 
 fn jquery() {
-    match get_js("https://code.jquery.com/jquery-3.3.1.js") {
-        Ok(ref js) => {
-            test_js(js, "jquery");
-        },
-        Err(e) => eprintln!("{:?}", e),
+    if let Ok(ref js) = get_js(Lib::Jquery) {
+        test_js(js, "jquery");
     }
 }
 
 fn angular1() {
-    match get_js("https://ajax.googleapis.com/ajax/libs/angularjs/1.5.6/angular.js") {
-        Ok(ref js) => {
-            test_js(js, "angular1");
-        },
-        Err(e) => eprintln!("{:?}", e),
+    if let Ok(ref js) = get_js(Lib::Angular) {
+        test_js(js, "angular");
     }
 }
 
 fn react() {
-    match get_js("https://unpkg.com/react@16/umd/react.development.js") {
-        Ok(ref js) => {
-            test_js(js, "react");
-        },
-        Err(e) => eprintln!("{:?}", e),
+    if let Ok(ref js) = get_js(Lib::React) {
+        test_js(js, "react");
     }
 }
 
 fn react_dom() {
-    match get_js("https://unpkg.com/react-dom@16/umd/react-dom.development.js") {
-        Ok(ref js) => {
-            test_js(js, "react-dom");
-        },
-        Err(e) => eprintln!("{:?}", e),
+    if let Ok(ref js) = get_js(Lib::ReactDom) {
+        test_js(js, "react-dom");
     }
 }
 
 fn vue() {
-    match get_js("https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js") {
-        Ok(ref js) => {
-            test_js(js, "vue");
-        },
-        Err(e) => eprintln!("{:?}", e),
-    }
-}
-
-fn get_js(url: &str) -> Result<String, String> {
-    let c = reqwest::Client::new();
-    match c.get(url.clone()).send() {
-        Ok(mut res) => match res.text() {
-            Ok(js) => Ok(js.to_string()),
-            Err(e) => Err(format!("Error getting js: {:?}", e))
-        },
-        Err(e) => Err(format!("Error getting js: {:?}", e)),
+    if let Ok(ref js) = get_js(Lib::Vue) {
+        test_js(js, "vue");
     }
 }
 
@@ -120,4 +100,40 @@ fn get_size(b: usize) -> String {
         _ => "tb",
     };
     format!("{:.2}{}", size, bytes)
+}
+
+
+fn npm_install() -> Result<(), ::std::io::Error> {
+    let mut c = ::std::process::Command::new("npm");
+    c.arg("i");
+    c.output()?;
+    Ok(())
+}
+
+enum Lib {
+    Jquery,
+    Angular,
+    React,
+    ReactDom,
+    Vue,
+}
+
+impl Lib {
+    fn path(&self) -> String {
+        match self {
+            &Lib::Jquery => "node_modules/jquery/dist/jquery.js".into(),
+            &Lib::Angular => "node_modules/angular/angular.js".into(),
+            &Lib::React => "node_modules/react/umd/react.development.js".into(),
+            &Lib::ReactDom => "node_modules/react-dom/umd/react-dom.development.js".into(),
+            &Lib::Vue => "node_modules/vue/dist/vue.js".into(),
+        }
+    }
+}
+
+fn get_js(l: Lib) -> Result<String, ::std::io::Error> {
+    let path = PathBuf::from(l.path());
+    if !path.exists() {
+        npm_install()?;
+    }
+    read_to_string(path)
 }

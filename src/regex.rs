@@ -27,21 +27,7 @@ impl RegEx {
         }
     }
 }
-
-/// Parse a regex literal
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        between(c_char('/'), c_char('/'), regex_body()),
-        optional(regex_flags()),
-    ).map(|(body, flags): (String, Option<String>)| {
-        Token::RegEx(RegEx::from_parts(&body, flags))
-    })
-}
-
+/// Parse a regex literal starting after the first /
 pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -177,27 +163,27 @@ mod test {
     use super::*;
     #[test]
     fn regex_test() {
-        let simple = r#"/[a-zA-Z]/"#;
-        let s_r = super::literal().parse(simple.clone()).unwrap();
-        assert_eq!(s_r, (Token::RegEx(super::RegEx::from_parts(&simple[1..9], None)), ""));
-        let flagged = r#"/[0-9]+/g"#;
-        let f_r = super::literal().parse(flagged).unwrap();
+        let simple = r#"[a-zA-Z]/"#;
+        let s_r = super::regex_tail().easy_parse(simple.clone()).unwrap();
+        assert_eq!(s_r, (Token::RegEx(super::RegEx::from_parts("[a-zA-Z]", None)), ""));
+        let flagged = r#"[0-9]+/g"#;
+        let f_r = super::regex_tail().easy_parse(flagged).unwrap();
         assert_eq!(
             f_r,
             (
-                Token::RegEx(super::RegEx::from_parts(&flagged[1..7], Some("g".to_string()))),
+                Token::RegEx(super::RegEx::from_parts("[0-9]+", Some("g".to_string()))),
                 ""
             )
         );
-        let complex = r#"/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g"#;
-        super::literal().parse(complex.clone()).unwrap();
-        let escaped = r#"/\D/"#;
-        super::literal().parse(escaped).unwrap();
+        let complex = r#"^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g"#;
+        super::regex_tail().easy_parse(complex.clone()).unwrap();
+        let escaped = r#"\D/"#;
+        super::regex_tail().easy_parse(escaped).unwrap();
     }
 
     #[test]
     fn url_regex() {
-        let url = r#"/^[a-z][a-z\d.+-]*:\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+\])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i"#;
-        let _u_r = super::literal().parse(url).unwrap();
+        let url = r#"^[a-z][a-z\d.+-]*:\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+\])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i"#;
+        let _u_r = super::regex_tail().easy_parse(url).unwrap();
     }
 }

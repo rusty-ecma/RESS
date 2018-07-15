@@ -1,6 +1,5 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
-#[macro_use]
 extern crate combine;
 use combine::{Parser, Stream, parser::char::char as c_char, error::ParseError};
 mod comments;

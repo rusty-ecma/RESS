@@ -1,7 +1,7 @@
 use combine::{
     choice, eof, error::ParseError, many,
     parser::{
-        char::{char as c_char, string, spaces},
+        char::{char as c_char, string},
     },
     try, Parser, Stream,
 };
@@ -69,9 +69,6 @@ pub enum Token {
     /// A regex literal (`/[a-fA-F0-9]+/g`) the first associated value
     /// will be the pattern, the second will be the optional flags
     RegEx(regex::RegEx),
-    /// A template string literal
-    /// note: This is not yet implemented
-    Template(Vec<Token>),
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
     /// and multi-line comments
@@ -273,37 +270,48 @@ impl Token {
         }
     }
 
-    pub fn is_string_with_content(&self, s: &str) -> bool {
-        match self {
-            Token::String(ref t) => t.content == s,
-            _ => false,
-        }
-    }
-
     pub fn is_double_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => s.quote == strings::Quote::Double,
-            _ => false
+            Token::String(ref s) => match s {
+                strings::StringLit::Double(_) => true,
+                _ => false
+            },
+            _ => false,
         }
     }
 
     pub fn is_single_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => s.quote == strings::Quote::Double,
+            Token::String(ref s) => match s {
+                strings::StringLit::Single(_) => true,
+                _ => false
+            },
             _ => false,
         }
     }
 
     pub fn double_quoted_string(s: &str) -> Token {
-        Token::String(strings::StringLit::from_parts(strings::Quote::Double, s))
+        Token::String(strings::StringLit::Double(s.into()))
     }
 
     pub fn single_quoted_string(s: &str) -> Token {
-        Token::String(strings::StringLit::from_parts(strings::Quote::Single, s))
+        Token::String(strings::StringLit::Single(s.into()))
     }
 
-    pub fn string(s: &str, quote: strings::Quote) -> Token {
-        Token::String(strings::StringLit::from_parts(quote, s))
+    pub fn no_sub_template(s: &str) -> Token {
+        Token::String(strings::StringLit::NoSubTemplate(s.into()))
+    }
+
+    pub fn template_head(s: &str) -> Token {
+        Token::String(strings::StringLit::TemplateHead(s.into()))
+    }
+
+    pub fn template_middle(s: &str) -> Token {
+        Token::String(strings::StringLit::TemplateMiddle(s.into()))
+    }
+
+    pub fn template_tail(s: &str) -> Token {
+        Token::String(strings::StringLit::TemplateTail(s.into()))
     }
 
     pub fn is_regex(&self) -> bool {
@@ -326,14 +334,37 @@ impl Token {
     }
 
     pub fn is_template(&self) -> bool {
-        match self {
-            &Token::Template(_) => true,
-            _ => false,
-        }
+        self.is_template_head() ||
+        self.is_template_middle() ||
+        self.is_template_tail()
     }
 
-    pub fn template(value: impl Iterator<Item = Token>) -> Token {
-        Token::Template(value.collect())
+    pub fn is_template_head(&self) -> bool {
+        match self {
+            &Token::String(ref s) => match s {
+                &strings::StringLit::TemplateHead(_) => true,
+                _ => false,
+            },
+            _ => false
+        }
+    }
+    pub fn is_template_middle(&self) -> bool {
+        match self {
+            &Token::String(ref s) => match s {
+                &strings::StringLit::TemplateMiddle(_) => true,
+                _ => false,
+            },
+            _ => false
+        }
+    }
+    pub fn is_template_tail(&self) -> bool {
+        match self {
+            &Token::String(ref s) => match s {
+                &strings::StringLit::TemplateTail(_) => true,
+                _ => false,
+            },
+            _ => false
+        }
     }
 
     pub fn is_comment(&self) -> bool {

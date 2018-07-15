@@ -96,13 +96,18 @@ Ideally this project will be the starting point for building a full JS Abstract 
 I am sure there are a lot of low hanging fruit in this area.
 The below stats are from running `cargo +nightly bench` on a 13" MBP Late 2013 with a 2.4GHz i5 and 8gb Ram.
 
-|Lib|Size|Time|+/-|
-|---|---|---|---|
-|Angular 1.5.6|1.16mb|2.81s|9.23ms|
-|jquery|271.75kb|1.53s|61.42ms|
-|React|59.09kb|0.23s|17.31ms|
-|React-dom|641.51kb|2.47s|10.61ms|
-|Vue|289.30kb|1.69s|4.98ms|
+|Lib           |Method   |Size     |Time  |+/-      |
+|---           |---      |---      |---   |---      |
+|Angular 1.5.6 |Scanner  |1.16mb   |2.86s |23.68ms  |
+|              |tokenize |         |2.90s |255.72ms |
+|jquery        |Scanner  |271.75kb |1.53s |152.55ms |
+|              |tokenize |         |1.59s |88.92ms  |
+|React         |Scanner  |59.09kb  |0.24s |56.96ms  |
+|              |tokenize |59.09kb  |0.24s |27.83ms  |
+|React-dom     |Scanner  |641.51kb |2.54s |267.29ms |
+|              |tokenize |641.51kb |2.51s |279.62ms |
+|Vue           |Scanner  |289.30kb |1.74s |238.30ms |
+|              |tokenize |289.30kb |1.76s |48.03ms  |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 

@@ -53,6 +53,7 @@ fn main() {
     let mut if_parens = 0;
     let mut unbraced_if = false;
     for item in s {
+        println!("{:?}", item);
         let token = item.token;
         if token.matches_keyword(Keyword::If) {
             in_if = true;
@@ -252,26 +253,7 @@ fn token_to_string(t: &Token) -> String {
             Some(ref f) => format!("/{}/{}", regex.body, f),
             None => format!("/{}/", regex.body),
         },
-        &Token::String(ref s) => format!("{}", s.into_simple()),
-        &Token::Template(ref tokens) => {
-            let mut open = false;
-            let mut ret = String::from("`");
-            for token in tokens {
-                if let Token::String(ref s) = token {
-                    if open {
-                        open = false;
-                        ret.push_str(&format!("}}{}", &s.content))
-                    } else {
-                        open = true;
-                        ret.push_str(&format!("{}${{", &s.content))
-                    }
-                } else {
-                    ret.push_str(&token_to_string(token))
-                }
-            }
-            ret.push('`');
-            ret
-        },
+        &Token::String(ref s) => format!("{}", s.to_string()),
         _ => String::new()
     }
 }
