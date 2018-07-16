@@ -1,5 +1,5 @@
 use combine::{
-    between, choice, error::ParseError, many,
+    between, choice, error::ParseError, many, optional,
     parser::{
         char::{char as c_char, string, spaces},
         item::satisfy,
@@ -209,8 +209,15 @@ where
     between(
         string("}"),
         string("`"),
-        many(template_char())
-    ).map(|s: String| StringLit::TemplateTail(s))
+        optional(many(template_char())),
+    ).map(|s: Option<String>| {
+        let s = if let Some(s) = s {
+            s
+        } else {
+            String::new()
+        };
+        StringLit::TemplateTail(s)
+    })
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>

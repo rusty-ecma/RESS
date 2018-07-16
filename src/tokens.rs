@@ -432,8 +432,8 @@ where
         try(null_literal()),
         try(numeric::literal()),
         try(strings::literal()),
-        try(punct::punctuation()),
         try(strings::template()),
+        try(punct::punctuation()),
     ))).map(|t| t)
 }
 
