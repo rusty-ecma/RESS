@@ -1,10 +1,10 @@
 # RESS
 > Rusty EcmaScript Scanner
 
-![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)
-![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)
-![crates.io](https://img.shields.io/crates/v/ress.svg)
-![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)
+[![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)](https://travis-ci.org/FreeMasen/RESS)
+[![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)](https://ci.appveyor.com/project/FreeMasen/sitebuilder)
+[![crates.io](https://img.shields.io/crates/v/ress.svg)](https://crates.io/crates/ress)
+[![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)](https://github.com/FreeMasen/RESS/commits/master)
 
 A scanner/tokenizer for JS written in Rust
 
@@ -37,7 +37,7 @@ extern crate ress;
 
 use ress::{Scanner};
 
-static &str JS = include_str!("index.js");
+const &str JS = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 11 different tokens defined in the ECMAScript specification.
+In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
 
 ### ES Tokens
 - Boolean Literal
@@ -62,7 +62,6 @@ In either method the major construct that you would be dealing with is a `Token`
 - Punctuation
 - String Literal
 - Regular Expression Literal
-- Template
 - Comment
 
 In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner not-context aware this should be dealt with at a higher level.
