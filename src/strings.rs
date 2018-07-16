@@ -1,5 +1,5 @@
 use combine::{
-    between, choice, error::ParseError, many, optional,
+    between, choice, error::ParseError, many,
     parser::{
         char::{char as c_char, string, spaces},
         item::satisfy,
@@ -50,6 +50,36 @@ impl StringLit {
     }
     pub fn template_tail(content: &str) -> Self {
         StringLit::TemplateTail(content.into())
+    }
+    pub fn is_single(&self) -> bool {
+        match self {
+            &StringLit::Single(_) => true,
+            _ => false, 
+        }
+    }
+    pub fn is_double(&self) -> bool {
+        match self {
+            &StringLit::Double(_) => true,
+            _ => false, 
+        }
+    }
+    pub fn is_template_head(&self) -> bool {
+        match self {
+            &StringLit::TemplateHead(_) => true,
+            _ => false, 
+        }
+    }
+    pub fn is_template_middle(&self) -> bool {
+        match self {
+            &StringLit::TemplateMiddle(_) => true,
+            _ => false, 
+        }
+    }
+    pub fn is_template_tail(&self) -> bool {
+        match self {
+            &StringLit::TemplateTail(_) => true,
+            _ => false, 
+        }
     }
 }
 
@@ -176,18 +206,6 @@ where
     ).map(|s: String| StringLit::NoSubTemplate(s))
 }
 
-fn template_middle<I>() -> impl Parser<Input = I, Output = StringLit>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    between(
-        string("}"),
-        string("${"),
-        many(template_char()),
-    ).map(|s: String| StringLit::TemplateMiddle(s))
-}
-
 fn template_head<I>() -> impl Parser<Input = I, Output = StringLit>
 where
     I: Stream<Item = char>,
@@ -201,23 +219,26 @@ where
     .map(|s: String| StringLit::TemplateHead(s))
 }
 
+fn template_middle<I>() -> impl Parser<Input = I, Output = StringLit>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        many(template_char()),
+        string("${"),
+    ).map(|(s, _): (String, _)| StringLit::TemplateMiddle(s))
+}
+
 fn template_tail<I>() -> impl Parser<Input = I, Output = StringLit>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(
-        string("}"),
-        string("`"),
-        optional(many(template_char())),
-    ).map(|s: Option<String>| {
-        let s = if let Some(s) = s {
-            s
-        } else {
-            String::new()
-        };
-        StringLit::TemplateTail(s)
-    })
+    (
+        many(template_char()),
+        c_char('`'),
+    ).map(|(s, _): (String, _)| StringLit::TemplateTail(s))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>
@@ -276,50 +297,23 @@ mod test {
     }
 
     #[test]
-    fn template_one_sub() {
-        let one_sub = "`things and stuff times ${x}`";
-        let r = (
-            token(),
-            token(),
-            token(),
-        ).easy_parse(one_sub).unwrap();
-        let expected = ((Token::template_head("things and stuff times "),
-                Token::ident("x"),
-                Token::template_tail("")), "");
-        assert_eq!(r, expected);
+    fn template_head() {
+        let h = "`things and stuff times ${";
+        let r = token().easy_parse(h).unwrap();
+        assert_eq!(r, (Token::template_head("things and stuff times "), ""));
     }
 
     #[test]
-    fn template_two_subs() {
-        let two_subs = "`things and stuff times ${x} divided by ${y}`";
-        let t_r = (
-            token(),
-            token(),
-            token(),
-            token(),
-            token(),
-        ).parse(two_subs).unwrap();
-        assert_eq!(t_r, ((
-            Token::String(super::StringLit::template_head("things and stuff times ")),
-            Token::Ident("x".into()),
-            Token::String(super::StringLit::template_middle(" divided by ")),
-            Token::Ident("y".into()),
-            Token::String(super::StringLit::template_tail(""))
-        ), ""))
+    fn template_middle() {
+        let m = " and places and people ${";
+        let r = super::template().easy_parse(m).unwrap();
+        assert_eq!(r, (Token::template_middle(" and places and people "), ""));
     }
+
     #[test]
-    fn multi_template() {
-        let plain = "`things and
-        stuff`";
-        let p_r = token().parse(plain).unwrap();
-        assert_eq!(p_r, (Token::no_sub_template(&plain[1..plain.len() - 1]), ""));
-        let subbed = "`things and
-        stuff times ${x}`";
-        let s_r = (
-            token(),
-            token(),
-            token(),
-        ).parse(subbed).unwrap();
-        println!("{:?}", s_r);
+    fn template_tail() {
+        let t = " and animals and minerals`";
+        let r = super::template().easy_parse(t).unwrap();
+        assert_eq!(r, (Token::template_tail(" and animals and minerals"), ""))
     }
 }

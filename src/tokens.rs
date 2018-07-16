@@ -289,6 +289,26 @@ impl Token {
             _ => false,
         }
     }
+    pub fn is_template_head(&self) -> bool {
+        match self {
+            Token::String(ref s) => s.is_template_head(),
+            _ => false,
+        }
+    }
+
+    pub fn is_template_middle(&self) -> bool {
+        match self {
+            Token::String(ref s) => s.is_template_middle(),
+            _ => false,
+        }
+    }
+
+    pub fn is_template_tail(&self) -> bool {
+        match self {
+            Token::String(ref s) => s.is_template_tail(),
+            _ => false,
+        }
+    }
 
     pub fn double_quoted_string(s: &str) -> Token {
         Token::String(strings::StringLit::Double(s.into()))
@@ -337,34 +357,6 @@ impl Token {
         self.is_template_head() ||
         self.is_template_middle() ||
         self.is_template_tail()
-    }
-
-    pub fn is_template_head(&self) -> bool {
-        match self {
-            &Token::String(ref s) => match s {
-                &strings::StringLit::TemplateHead(_) => true,
-                _ => false,
-            },
-            _ => false
-        }
-    }
-    pub fn is_template_middle(&self) -> bool {
-        match self {
-            &Token::String(ref s) => match s {
-                &strings::StringLit::TemplateMiddle(_) => true,
-                _ => false,
-            },
-            _ => false
-        }
-    }
-    pub fn is_template_tail(&self) -> bool {
-        match self {
-            &Token::String(ref s) => match s {
-                &strings::StringLit::TemplateTail(_) => true,
-                _ => false,
-            },
-            _ => false
-        }
     }
 
     pub fn is_comment(&self) -> bool {
@@ -432,8 +424,8 @@ where
         try(null_literal()),
         try(numeric::literal()),
         try(strings::literal()),
-        try(strings::template()),
         try(punct::punctuation()),
+        try(strings::template()),
     ))).map(|t| t)
 }
 

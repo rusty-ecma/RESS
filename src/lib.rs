@@ -32,6 +32,8 @@ pub struct Scanner {
     cursor: usize,
     spans: Vec<Span>,
     last_open_paren_idx: usize,
+    in_template: bool,
+    in_replacement: bool,
 }
 
 impl Scanner {
@@ -45,6 +47,8 @@ impl Scanner {
             cursor,
             spans: vec![],
             last_open_paren_idx: 0,
+            in_template: false,
+            in_replacement: false,
         }
     }
 
@@ -57,11 +61,13 @@ impl Iterator for Scanner {
         if self.eof {
             return None;
         };
-        match tokens::token().easy_parse(&self.stream[self.cursor..]) {
+        let result = if self.in_template && !self.in_replacement {
+            strings::template().easy_parse(&self.stream[self.cursor..])
+        } else {
+            tokens::token().easy_parse(&self.stream[self.cursor..])
+        };
+        match result {
             Ok(pair) => {
-                let debug = pair.0.matches_punct(Punct::ForwardSlash);
-                if debug {
-                }
                 if pair.0.matches_punct(Punct::ForwardSlash) && self.is_regex_start() {
                     match regex::regex_tail().easy_parse(pair.1) {
                         Ok(pair) => {
@@ -75,14 +81,33 @@ impl Iterator for Scanner {
                         }
                         Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
                     }
-                } else {
-                    if debug {
+                } else if self.in_replacement && pair.0.matches_punct(Punct::CloseBrace) {
+                    match strings::template().easy_parse(pair.1) {
+                        Ok(pair) => {
+                            if pair.0.is_template_tail() {
+                                self.in_replacement = false;
+                                self.in_template = false;
+                            }
+                            let full_len = self.stream.len();
+                            let span_end = full_len - pair.1.len();
+                            let span = Span::new(self.cursor, span_end);
+                            self.spans.push(span);
+                            let ret = Some(Item::new(pair.0, Span::new(self.cursor, span_end)));
+                            self.cursor = self.stream.len() - pair.1.trim_left().len();
+                            ret
+                        },
+                        Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
                     }
+                } else {
                     if pair.0.matches_punct(Punct::OpenParen) {
                         self.last_open_paren_idx = self.spans.len();
                     }
                     if pair.0.is_eof() {
                         self.eof = true;
+                    }
+                    if pair.0.is_template_head() {
+                        self.in_template = true;
+                        self.in_replacement = true;
                     }
                     let full_len = self.stream.len();
                     let span_end = full_len - pair.1.len();
@@ -333,6 +358,54 @@ this.y = 0;
         ];
         for test in s.zip(expectation.into_iter()) {
             assert_eq!(test.0.token, test.1);
+        }
+    }
+
+    #[test]
+    fn template_one_sub() {
+        let one_sub = "`things and stuff times ${x}`";
+        let s = Scanner::new(one_sub);
+        let expected = vec![
+            Token::template_head("things and stuff times "),
+            Token::ident("x"),
+            Token::template_tail(""),
+        ];
+        for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            assert_eq!((i, lhs.token), (i, rhs));
+        }
+    }
+
+    #[test]
+    fn template_two_subs() {
+        let two_subs = "`things and stuff times ${x} divided by ${y}`";
+        let s = Scanner::new(two_subs);
+        let expected = vec![
+            Token::template_head("things and stuff times "),
+            Token::ident("x"),
+            Token::template_middle(" divided by "),
+            Token::ident("y"),
+            Token::template_tail(""),
+        ];
+        for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            assert_eq!((i, lhs.token), (i, rhs));
+        }
+    }
+    #[test]
+    fn multiline_template() {
+        let plain = "`things and
+        stuff`";
+        let p_r = tokens::token().parse(plain).unwrap();
+        assert_eq!(p_r, (Token::no_sub_template(&plain[1..plain.len() - 1]), ""));
+        let subbed = "`things and
+        stuff times ${x}`";
+        let s = Scanner::new(subbed);
+        let expected = vec![
+            Token::template_head("things and\n        stuff times "),
+            Token::ident("x"),
+            Token::template_tail("")
+        ];
+        for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            assert_eq!((i, lhs.token),(i, rhs));
         }
     }
 }
