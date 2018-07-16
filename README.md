@@ -1,10 +1,10 @@
 # RESS
 > Rusty EcmaScript Scanner
 
-![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)
-![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)
-![crates.io](https://img.shields.io/crates/v/ress.svg)
-![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)
+[![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)](https://travis-ci.org/FreeMasen/RESS)
+[![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)](https://ci.appveyor.com/project/FreeMasen/sitebuilder)
+[![crates.io](https://img.shields.io/crates/v/ress.svg)](https://crates.io/crates/ress)
+[![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)](https://github.com/FreeMasen/RESS/commits/master)
 
 A scanner/tokenizer for JS written in Rust
 
@@ -37,7 +37,7 @@ extern crate ress;
 
 use ress::{Scanner};
 
-static &str JS = include_str!("index.js");
+const &str JS = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
@@ -50,7 +50,7 @@ fn main() {
 }
 ```
 
-In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 11 different tokens defined in the ECMAScript specification.
+In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
 
 ### ES Tokens
 - Boolean Literal
@@ -62,7 +62,6 @@ In either method the major construct that you would be dealing with is a `Token`
 - Punctuation
 - String Literal
 - Regular Expression Literal
-- Template
 - Comment
 
 In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner not-context aware this should be dealt with at a higher level.
@@ -96,13 +95,18 @@ Ideally this project will be the starting point for building a full JS Abstract 
 I am sure there are a lot of low hanging fruit in this area.
 The below stats are from running `cargo +nightly bench` on a 13" MBP Late 2013 with a 2.4GHz i5 and 8gb Ram.
 
-|Lib|Size|Time|+/-|
-|---|---|---|---|
-|Angular 1.5.6|1.16mb|2.81s|9.23ms|
-|jquery|271.75kb|1.53s|61.42ms|
-|React|59.09kb|0.23s|17.31ms|
-|React-dom|641.51kb|2.47s|10.61ms|
-|Vue|289.30kb|1.69s|4.98ms|
+|Lib           |Method   |Size     |Time  |+/-      |
+|---           |---      |---      |---   |---      |
+|Angular 1.5.6 |Scanner  |1.16mb   |2.86s |23.68ms  |
+|              |tokenize |         |2.90s |255.72ms |
+|jquery        |Scanner  |271.75kb |1.53s |152.55ms |
+|              |tokenize |         |1.59s |88.92ms  |
+|React         |Scanner  |59.09kb  |0.24s |56.96ms  |
+|              |tokenize |59.09kb  |0.24s |27.83ms  |
+|React-dom     |Scanner  |641.51kb |2.54s |267.29ms |
+|              |tokenize |641.51kb |2.51s |279.62ms |
+|Vue           |Scanner  |289.30kb |1.74s |238.30ms |
+|              |tokenize |289.30kb |1.76s |48.03ms  |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 
