@@ -3,9 +3,8 @@ sudo: false
 matrix:
   include:
     - rust: stable
-      install: true
+      install: npm i
       cache: cargo
-      before-install: npm i
       script:
         - cargo test
         - cargo run --example major_libs --release
