@@ -4,5 +4,5 @@
 **/.DS_Store
 **/node_modules
 Cargo.lock
-*.js
 *.log
+*.js
