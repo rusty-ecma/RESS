@@ -134,6 +134,32 @@ impl<'a> Into<bool> for &'a BooleanLiteral {
     }
 }
 
+pub struct Ident(String);
+
+impl<'a> From<&'a str> for Ident {
+    fn from(s: &'a str) -> Self {
+        Ident(s.into())
+    }
+}
+
+impl From<String> for Ident {
+    fn from(s: String) -> Self {
+        Self::from(s.as_str())
+    }
+}
+
+impl ToString for Ident {
+    fn to_string(&self) -> String {
+        self.0.clone()
+    }
+}
+
+impl Into<String> for Ident {
+    fn into(self) -> String {
+        self.0
+    }
+}
+
 impl Token {
     pub fn is_punct(&self) -> bool {
         if let Token::Punct(ref _p) = self {
