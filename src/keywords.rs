@@ -49,7 +49,8 @@ pub enum Keyword {
     Let,
     Eval,
     Arguments,
-    Of
+    Of,
+    Const,
 }
 
 impl<'a> From<&'a str> for Keyword {
