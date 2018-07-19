@@ -51,6 +51,7 @@ pub enum Keyword {
     Arguments,
     Of,
     Const,
+    Class,
 }
 
 impl<'a> From<&'a str> for Keyword {
@@ -98,6 +99,8 @@ impl<'a> From<&'a str> for Keyword {
             "eval" => Keyword::Eval,
             "arguments" => Keyword::Arguments,
             "of" => Keyword::Of,
+            "const" => Keyword::Const,
+            "class" => Keyword::Class,
             _ => panic!("Unknown Keyword, `{}`", s)
         }
     }
@@ -153,7 +156,9 @@ impl ::std::string::ToString for Keyword {
             Keyword::Let => "let".into(),
             Keyword::Eval => "eval".into(),
             Keyword::Arguments => "arguments".into(),
-            Keyword::Of => "of".into()
+            Keyword::Of => "of".into(),
+            Keyword::Const => "const".into(),
+            Keyword::Class => "class".into(),
         }
     }
 }
