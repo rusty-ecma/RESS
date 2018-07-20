@@ -181,7 +181,7 @@ where
     )).map(|s: String| s)
 }
 
-pub(crate) fn template<I>() -> impl Parser<Input = I, Output = Token>
+pub(crate) fn template_start<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -189,6 +189,15 @@ where
     choice((
         try(no_sub_template()),
         try(template_head()),
+    )).map(|s: StringLit| Token::String(s))
+}
+
+pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
         try(template_middle()),
         try(template_tail()),
     )).map(|s: StringLit| Token::String(s))
@@ -236,7 +245,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        many(template_char()),
+        try(many(template_char())),
         c_char('`'),
     ).map(|(s, _): (String, _)| StringLit::TemplateTail(s))
 }
@@ -306,14 +315,20 @@ mod test {
     #[test]
     fn template_middle() {
         let m = " and places and people ${";
-        let r = super::template().easy_parse(m).unwrap();
+        let r = super::template_continuation().easy_parse(m).unwrap();
         assert_eq!(r, (Token::template_middle(" and places and people "), ""));
     }
 
     #[test]
     fn template_tail() {
         let t = " and animals and minerals`";
-        let r = super::template().easy_parse(t).unwrap();
-        assert_eq!(r, (Token::template_tail(" and animals and minerals"), ""))
+        let r = super::template_continuation().easy_parse(t).unwrap();
+        assert_eq!(r, (Token::template_tail(" and animals and minerals"), ""));
+    }
+    #[test]
+    fn double_tail() {
+        let e = "`}`";
+        let r = super::template_continuation().easy_parse(e).unwrap();
+        assert_eq!(r, (Token::template_tail(""), "}`"));
     }
 }

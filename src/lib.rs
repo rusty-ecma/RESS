@@ -32,8 +32,8 @@ pub struct Scanner {
     cursor: usize,
     spans: Vec<Span>,
     last_open_paren_idx: usize,
-    in_template: bool,
-    in_replacement: bool,
+    template: usize,
+    replacement: usize,
 }
 
 impl Scanner {
@@ -47,12 +47,10 @@ impl Scanner {
             cursor,
             spans: vec![],
             last_open_paren_idx: 0,
-            in_template: false,
-            in_replacement: false,
+            template: 0,
+            replacement: 0,
         }
     }
-
-    //TODO: Implement construction from a reader
 }
 
 impl Iterator for Scanner {
@@ -61,8 +59,8 @@ impl Iterator for Scanner {
         if self.eof {
             return None;
         };
-        let result = if self.in_template && !self.in_replacement {
-            strings::template().easy_parse(&self.stream[self.cursor..])
+        let result = if self.template > 0 && self.template < self.replacement {
+            strings::template_continuation().easy_parse(&self.stream[self.cursor..])
         } else {
             tokens::token().easy_parse(&self.stream[self.cursor..])
         };
@@ -74,27 +72,29 @@ impl Iterator for Scanner {
                             let full_len = self.stream.len();
                             let span_end = full_len - pair.1.len();
                             let span = Span::new(self.cursor, span_end);
-                            self.spans.push(span);
-                            let ret = Some(Item::new(pair.0, Span::new(self.cursor, span_end)));
-                            self.cursor = self.stream.len() - pair.1.trim_left().len();
-                            ret
+                            if advance_cursor {
+                                self.spans.push(span.clone());
+                                self.cursor = self.stream.len() - pair.1.trim_left().len();
+                            }
+                            Some(Item::new(pair.0, span))
                         }
                         Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
                     }
-                } else if self.in_replacement && pair.0.matches_punct(Punct::CloseBrace) {
-                    match strings::template().easy_parse(pair.1) {
+                } else if self.template > 0 && self.replacement == self.template && pair.0.matches_punct(Punct::CloseBrace) {
+                    match strings::template_continuation().easy_parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() {
-                                self.in_replacement = false;
-                                self.in_template = false;
+                                self.replacement = self.replacement.saturating_sub(1);
+                                self.template = self.template.saturating_sub(1);
                             }
                             let full_len = self.stream.len();
                             let span_end = full_len - pair.1.len();
                             let span = Span::new(self.cursor, span_end);
-                            self.spans.push(span);
-                            let ret = Some(Item::new(pair.0, Span::new(self.cursor, span_end)));
-                            self.cursor = self.stream.len() - pair.1.trim_left().len();
-                            ret
+                            if advance_cursor {
+                                self.spans.push(span.clone());
+                                self.cursor = self.stream.len() - pair.1.trim_left().len();
+                            }
+                            Some(Item::new(pair.0, span))
                         },
                         Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
                     }
@@ -106,16 +106,17 @@ impl Iterator for Scanner {
                         self.eof = true;
                     }
                     if pair.0.is_template_head() {
-                        self.in_template = true;
-                        self.in_replacement = true;
+                        self.template += 1;
+                        self.replacement += 1;
                     }
                     let full_len = self.stream.len();
                     let span_end = full_len - pair.1.len();
                     let span = Span::new(self.cursor, span_end);
-                    self.spans.push(span);
-                    let ret = Some(Item::new(pair.0, Span::new(self.cursor, span_end)));
-                    self.cursor = self.stream.len() - pair.1.trim_left().len();
-                    ret
+                    if advance_cursor {
+                        self.spans.push(span.clone());
+                        self.cursor = self.stream.len() - pair.1.trim_left().len();
+                    }
+                    Some(Item::new(pair.0, span))
                 }
             },
             Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
@@ -331,7 +332,7 @@ this.x = 100;
 this.y = 0;
 })();",
         );
-        let expectation = vec![
+        let expected = vec![
             Token::punct("("),
             Token::keyword("function"),
             Token::punct("("),
@@ -356,9 +357,7 @@ this.y = 0;
             Token::punct(";"),
             Token::EoF,
         ];
-        for test in s.zip(expectation.into_iter()) {
-            assert_eq!(test.0.token, test.1);
-        }
+        validate(s, expected);
     }
 
     #[test]
@@ -370,9 +369,7 @@ this.y = 0;
             Token::ident("x"),
             Token::template_tail(""),
         ];
-        for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
-            assert_eq!((i, lhs.token), (i, rhs));
-        }
+        validate(s, expected);
     }
 
     #[test]
@@ -386,9 +383,7 @@ this.y = 0;
             Token::ident("y"),
             Token::template_tail(""),
         ];
-        for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
-            assert_eq!((i, lhs.token), (i, rhs));
-        }
+        validate(s, expected);
     }
     #[test]
     fn multiline_template() {
@@ -404,7 +399,25 @@ this.y = 0;
             Token::ident("x"),
             Token::template_tail("")
         ];
+        validate(s, expected);
+    }
+    #[test]
+    fn nested_template() {
+        let test = "`outer ${`inner ${0}`}`";
+        let expected = vec![
+            Token::template_head("outer "),
+            Token::template_head("inner "),
+            Token::numeric("0"),
+            Token::template_tail(""),
+            Token::template_tail(""),
+        ];
+        let s = Scanner::new(test);
+        validate(s, expected);
+    }
+
+    fn validate(s: Scanner, expected: Vec<Token>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            println!("{}: {:?}", i, lhs.token);
             assert_eq!((i, lhs.token),(i, rhs));
         }
     }
