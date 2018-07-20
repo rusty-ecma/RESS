@@ -1,30 +1,90 @@
 use combine::{
-    choice, error::ParseError, not_followed_by,
-    parser::{
-        char::string,
-    },
-    try, Parser, Stream,
+    choice, error::ParseError, not_followed_by, parser::char::string, try, Parser, Stream,
 };
 use tokens::{ident_part, Token};
 #[derive(Debug, PartialEq, Clone)]
+/// A JS Keyword
+///
+/// #Standard
+/// await
+/// break
+/// case
+/// catch
+/// class
+/// const
+/// continue
+/// debugger
+/// default
+/// delete (10)
+/// do
+/// else
+/// export
+/// extends
+/// finally
+/// for
+/// function
+/// if
+/// import
+/// in (20)
+/// instanceof
+/// new
+/// return
+/// super
+/// switch
+/// this
+/// throw
+/// try
+/// typeof
+/// var (30)
+/// void
+/// while
+/// with
+/// yield
+/// # Future Reserved
+/// enum
+/// # Strict Mode Future Reserved
+/// implements
+/// package
+/// protected
+/// interface
+/// private (40)
+/// public
 pub enum Keyword {
+    Await,
+    Arguments,
     Break,
     Case,
     Catch,
+    Class,
+    Const,
     Continue,
     Debugger,
     Default,
-    Delete,
+    Delete, //10
     Do,
     Else,
+    Enum,
+    Eval,
+    Export,
     Finally,
     For,
     Function,
     If,
-    InstanceOf,
+    Implements,
+    Import,
     In,
+    InstanceOf,
+    Interface,
+    Let,
     New,
+    Of,
+    Package,
+    Private,
+    Protected,
+    Public,
     Return,
+    Static,
+    Super,
     Switch,
     This,
     Throw,
@@ -34,24 +94,7 @@ pub enum Keyword {
     Void,
     While,
     With,
-    Export,
-    Import,
-    Super,
-    Enum,
-    Implements,
-    Interface,
-    Package,
-    Private,
-    Protected,
-    Public,
-    Static,
     Yield,
-    Let,
-    Eval,
-    Arguments,
-    Of,
-    Const,
-    Class,
 }
 
 impl<'a> From<&'a str> for Keyword {
@@ -101,7 +144,7 @@ impl<'a> From<&'a str> for Keyword {
             "of" => Keyword::Of,
             "const" => Keyword::Const,
             "class" => Keyword::Class,
-            _ => panic!("Unknown Keyword, `{}`", s)
+            _ => panic!("Unknown Keyword, `{}`", s),
         }
     }
 }
@@ -115,61 +158,62 @@ impl From<String> for Keyword {
 impl ::std::string::ToString for Keyword {
     fn to_string(&self) -> String {
         match self {
-            Keyword::Break => "break".into(),
-            Keyword::Case => "case".into(),
-            Keyword::Catch => "catch".into(),
-            Keyword::Continue => "continue".into(),
-            Keyword::Debugger => "debugger".into(),
-            Keyword::Default => "default".into(),
-            Keyword::Delete => "delete".into(),
-            Keyword::Do => "do".into(),
-            Keyword::Else => "else".into(),
-            Keyword::Finally => "finally".into(),
-            Keyword::For => "for".into(),
-            Keyword::Function => "function".into(),
-            Keyword::If => "if".into(),
-            Keyword::InstanceOf => "instanceof".into(),
-            Keyword::In => "in".into(),
-            Keyword::New => "new".into(),
-            Keyword::Return => "return".into(),
-            Keyword::Switch => "switch".into(),
-            Keyword::This => "this".into(),
-            Keyword::Throw => "throw".into(),
-            Keyword::Try => "try".into(),
-            Keyword::TypeOf => "typeof".into(),
-            Keyword::Var => "var".into(),
-            Keyword::Void => "void".into(),
-            Keyword::While => "while".into(),
-            Keyword::With => "with".into(),
-            Keyword::Export => "export".into(),
-            Keyword::Import => "import".into(),
-            Keyword::Super => "super".into(),
-            Keyword::Enum => "enum".into(),
-            Keyword::Implements => "implements".into(),
-            Keyword::Interface => "interface".into(),
-            Keyword::Package => "package".into(),
-            Keyword::Private => "private".into(),
-            Keyword::Protected => "protected".into(),
-            Keyword::Public => "public".into(),
-            Keyword::Static => "static".into(),
-            Keyword::Yield => "yield".into(),
-            Keyword::Let => "let".into(),
-            Keyword::Eval => "eval".into(),
-            Keyword::Arguments => "arguments".into(),
-            Keyword::Of => "of".into(),
-            Keyword::Const => "const".into(),
-            Keyword::Class => "class".into(),
-        }
+            Keyword::Arguments => "arguments",
+            Keyword::Await => "await",
+            Keyword::Break => "break",
+            Keyword::Case => "case",
+            Keyword::Catch => "catch",
+            Keyword::Class => "class",
+            Keyword::Const => "const",
+            Keyword::Continue => "continue",
+            Keyword::Debugger => "debugger",
+            Keyword::Default => "default",
+            Keyword::Import => "import",
+            Keyword::Delete => "delete",
+            Keyword::Do => "do",
+            Keyword::Else => "else",
+            Keyword::Enum => "enum",
+            Keyword::Eval => "eval",
+            Keyword::Export => "export",
+            Keyword::Finally => "finally",
+            Keyword::For => "for",
+            Keyword::Function => "function",
+            Keyword::If => "if",
+            Keyword::In => "in",
+            Keyword::Implements => "implements",
+            Keyword::InstanceOf => "instanceof",
+            Keyword::Interface => "interface",
+            Keyword::Let => "let",
+            Keyword::New => "new",
+            Keyword::Of => "of",
+            Keyword::Package => "package",
+            Keyword::Private => "private",
+            Keyword::Protected => "protected",
+            Keyword::Public => "public",
+            Keyword::Static => "static",
+            Keyword::Return => "return",
+            Keyword::Super => "super",
+            Keyword::Switch => "switch",
+            Keyword::This => "this",
+            Keyword::Throw => "throw",
+            Keyword::Try => "try",
+            Keyword::TypeOf => "typeof",
+            Keyword::Var => "var",
+            Keyword::Void => "void",
+            Keyword::While => "while",
+            Keyword::With => "with",
+            Keyword::Yield => "yield",
+        }.into()
     }
 }
 
 impl Keyword {
     pub fn is_future_reserved(&self) -> bool {
         match self {
+            &Keyword::Enum => true,
             &Keyword::Export => true,
             &Keyword::Implements => true,
             &Keyword::Super => true,
-            &Keyword::Enum => true,
             _ => false,
         }
     }
@@ -184,7 +228,7 @@ impl Keyword {
             &Keyword::Static => true,
             &Keyword::Yield => true,
             &Keyword::Let => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_restricted(&self) -> bool {
@@ -222,15 +266,14 @@ impl Keyword {
             &Keyword::Void => true,
             &Keyword::While => true,
             &Keyword::With => true,
-            _ => false
+            _ => false,
         }
     }
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
         try(future_reserved()),
@@ -242,9 +285,8 @@ where
 }
 
 pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice([
         try(string("break")),
@@ -277,9 +319,8 @@ where
 }
 
 pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
         try(string("export")),
@@ -290,9 +331,8 @@ where
 }
 
 pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
         try(string("implements")),
@@ -308,18 +348,18 @@ where
 }
 
 pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    choice((try(string("eval")), try(string("arguments")))).map(|t| Token::Keyword(Keyword::from(t)))
+    choice((try(string("eval")), try(string("arguments")))).map(|t| {
+                                                                    Token::Keyword(Keyword::from(t))
+                                                                })
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use tokens::token;
-    use tokens::Token;
+    use tokens::{token, Token};
     #[test]
     fn future_reserved() {
         let keywords = ["enum", "export", "import", "super"];
@@ -335,20 +375,17 @@ mod test {
 
     #[test]
     fn strict_mode_reserved() {
-        let keywords = [
-            "implements",
-            "interface",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "static",
-            "yield",
-            "let",
-        ];
+        let keywords = ["implements",
+                        "interface",
+                        "package",
+                        "private",
+                        "protected",
+                        "public",
+                        "static",
+                        "yield",
+                        "let"];
         for keyword in keywords.iter() {
-            let k = token().parse(keyword.clone())
-                .unwrap();
+            let k = token().parse(keyword.clone()).unwrap();
             assert_eq!(k, (Token::keyword(*keyword), ""));
         }
         match super::strict_mode_reserved().parse("junk") {
@@ -367,34 +404,32 @@ mod test {
 
     #[test]
     fn reserved_keywords() {
-        let keys = vec![
-            "break",
-            "case",
-            "catch",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "instanceof",
-            "in",
-            "new",
-            "return",
-            "switch",
-            "this",
-            "throw",
-            "try",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-        ];
+        let keys = vec!["break",
+                        "case",
+                        "catch",
+                        "continue",
+                        "debugger",
+                        "default",
+                        "delete",
+                        "do",
+                        "else",
+                        "finally",
+                        "for",
+                        "function",
+                        "if",
+                        "instanceof",
+                        "in",
+                        "new",
+                        "return",
+                        "switch",
+                        "this",
+                        "throw",
+                        "try",
+                        "typeof",
+                        "var",
+                        "void",
+                        "while",
+                        "with",];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
             assert_eq!(k, (Token::keyword(key), ""));
@@ -403,48 +438,46 @@ mod test {
 
     #[test]
     fn keywords_test() {
-        let keys = vec![
-            "enum",
-            "export",
-            "import",
-            "super",
-            "implements",
-            "interface",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "static",
-            "yield",
-            "let",
-            "eval",
-            "break",
-            "case",
-            "catch",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "instanceof",
-            "in",
-            "new",
-            "return",
-            "switch",
-            "this",
-            "throw",
-            "try",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-        ];
+        let keys = vec!["enum",
+                        "export",
+                        "import",
+                        "super",
+                        "implements",
+                        "interface",
+                        "package",
+                        "private",
+                        "protected",
+                        "public",
+                        "static",
+                        "yield",
+                        "let",
+                        "eval",
+                        "break",
+                        "case",
+                        "catch",
+                        "continue",
+                        "debugger",
+                        "default",
+                        "delete",
+                        "do",
+                        "else",
+                        "finally",
+                        "for",
+                        "function",
+                        "if",
+                        "instanceof",
+                        "in",
+                        "new",
+                        "return",
+                        "switch",
+                        "this",
+                        "throw",
+                        "try",
+                        "typeof",
+                        "var",
+                        "void",
+                        "while",
+                        "with",];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
             assert_eq!(k, (Token::keyword(key), ""));

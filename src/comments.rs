@@ -1,13 +1,11 @@
 use combine::{
-    choice, eof, error::ParseError,
-    parser::{
-        char::{string},
-        repeat::take_until
-    },
+    choice, eof,
+    error::ParseError,
+    parser::{char::string, repeat::take_until},
     try, Parser, Stream,
 };
-use tokens::Token;
 use strings;
+use tokens::Token;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Comment {
@@ -17,15 +15,13 @@ pub struct Comment {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Kind {
     Single,
-    Multi
+    Multi,
 }
 
 impl Comment {
     pub fn from_parts(content: String, kind: Kind) -> Self {
-        Comment {
-            content,
-            kind,
-        }
+        Comment { content,
+                  kind, }
     }
 
     pub fn is_multi_line(&self) -> bool {
@@ -38,30 +34,28 @@ impl Comment {
 }
 
 pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (choice((try(multi_comment()), try(single_comment()))).map(|t: Comment| Token::Comment(t)))
 }
 
 pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    (string("//"), take_until(
-        choice((
+    (
+        string("//"),
+        take_until(choice((
             try(strings::line_terminator_sequence()),
             try(eof().map(|_| String::new())),
-            ))))
-        .map(|(_, content): (_, String)| Comment::from_parts(content, Kind::Single))
+        ))),
+    ).map(|(_, content): (_, String)| Comment::from_parts(content, Kind::Single))
 }
 
 pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Comment>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (
         multi_line_comment_start(),
@@ -77,32 +71,30 @@ where
 }
 
 fn multi_line_comment_start<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (string("/*")).map(|s| s.to_string())
 }
 
 fn multi_line_comment_end<I>() -> impl Parser<Input = I, Output = String>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (string("*/")).map(|s| s.to_string())
 }
 
 #[cfg(test)]
 mod test {
-    use tokens::token;
     use super::*;
+    use tokens::token;
     #[test]
     fn comments_test() {
         let tests = vec![
-            "//single line comments",
-            "// another one with a space",
-            "/*inline multi comments*/",
-            "/*multi line comments
+                         "//single line comments",
+                         "// another one with a space",
+                         "/*inline multi comments*/",
+                         "/*multi line comments
             * that have extra decoration
             * to help with readability
             */",
@@ -111,14 +103,14 @@ mod test {
             let is_multi = test.starts_with("/*");
             let p = token().parse(test.clone()).unwrap();
             let comment_contents = test.lines()
-                .map(|l| {
-                    l.trim()
-                        .replace("//", "")
-                        .replace("/*", "")
-                        .replace("*/", "")
-                })
-                .collect::<Vec<String>>()
-                .join("\n");
+                                       .map(|l| {
+                                                l.trim()
+                                                 .replace("//", "")
+                                                 .replace("/*", "")
+                                                 .replace("*/", "")
+                                            })
+                                       .collect::<Vec<String>>()
+                                       .join("\n");
             assert_eq!(p, (Token::comment(&comment_contents, is_multi), ""));
         }
     }

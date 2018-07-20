@@ -1,7 +1,7 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
 extern crate combine;
-use combine::{Parser, Stream, parser::char::char as c_char, error::ParseError};
+use combine::{error::ParseError, parser::char::char as c_char, Parser, Stream};
 mod comments;
 mod keywords;
 mod numeric;
@@ -16,16 +16,15 @@ pub use numeric::Number;
 pub use punct::Punct;
 pub use regex::RegEx;
 pub use strings::StringLit;
-pub use tokens::{Token, Item, BooleanLiteral as Boolean, Span};
+pub use tokens::{BooleanLiteral as Boolean, Item, Span, Token};
 
-/// Send over the complete text and get back
-/// the completely parsed result
+/// a convince function for collecting a scanner into
+/// a `Vec<Token>`
 pub fn tokenize(text: &str) -> Vec<Token> {
     Scanner::new(text).map(|i| i.token).collect()
 }
 
-/// An iterator over a token stream built
-/// from raw js text
+/// An iterator over a js token stream
 pub struct Scanner {
     stream: String,
     eof: bool,
@@ -41,15 +40,13 @@ impl Scanner {
     pub fn new(text: impl Into<String>) -> Self {
         let text = text.into();
         let cursor = text.len() - text.trim_left().len();
-        Scanner {
-            stream: text,
-            eof: false,
-            cursor,
-            spans: vec![],
-            last_open_paren_idx: 0,
-            template: 0,
-            replacement: 0,
-        }
+        Scanner { stream: text,
+                  eof: false,
+                  cursor,
+                  spans: vec![],
+                  last_open_paren_idx: 0,
+                  template: 0,
+                  replacement: 0, }
     }
 }
 
@@ -61,7 +58,24 @@ impl Iterator for Scanner {
 }
 
 impl Scanner {
-    pub fn peek(&mut self) -> Option<Item> {
+    /// Attempts to look ahead 1 token
+    ///
+    /// Similar to how `Peekable::peek` works however the
+    /// returned value will not be a borrowed `Item`. Since
+    /// there isn't a borrow happening this essentially duplicates
+    /// the cost of calling `next`.
+    ///
+    /// ```
+    /// # extern crate ress;
+    /// # use ress::Scanner;
+    /// # main() {
+    /// let js = "function thing() { return; }";
+    /// let mut s = Scanner::new(js);
+    /// assert_eq!(s.peek().unwrap().token, Token::keyword("function"));
+    /// assert_eq!(s.next().unwrap().token, Token::keyword("function"));
+    /// # }
+    /// ```
+    pub fn look_ahead(&mut self) -> Option<Item> {
         self.get_next_token(false)
     }
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
@@ -86,10 +100,16 @@ impl Scanner {
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                             }
                             Some(Item::new(pair.0, span))
-                        }
-                        Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
+                        },
+                        Err(e) => panic!(
+                            "Failed to parse token last successful parse ended {}\nError: {:?}",
+                            self.cursor, e,
+                        ),
                     }
-                } else if self.template > 0 && self.replacement == self.template && pair.0.matches_punct(Punct::CloseBrace) {
+                } else if self.template > 0
+                          && self.replacement == self.template
+                          && pair.0.matches_punct(Punct::CloseBrace)
+                {
                     match strings::template_continuation().easy_parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() && advance_cursor {
@@ -105,7 +125,10 @@ impl Scanner {
                             }
                             Some(Item::new(pair.0, span))
                         },
-                        Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
+                        Err(e) => panic!(
+                            "Failed to parse token last successful parse ended {}\nError: {:?}",
+                            self.cursor, e,
+                        ),
                     }
                 } else {
                     if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
@@ -128,7 +151,8 @@ impl Scanner {
                     Some(Item::new(pair.0, span))
                 }
             },
-            Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
+            Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}",
+                             self.cursor, e,),
         }
     }
 
@@ -136,7 +160,9 @@ impl Scanner {
         if let Some(last_token) = self.last_token() {
             if !last_token.is_keyword() && !last_token.is_punct() {
                 false
-            } else if last_token.matches_keyword(Keyword::This) || last_token.matches_punct(Punct::CloseBrace) {
+            } else if last_token.matches_keyword(Keyword::This)
+                      || last_token.matches_punct(Punct::CloseBrace)
+            {
                 false
             } else if last_token.matches_punct(Punct::CloseParen) {
                 self.check_for_conditional()
@@ -157,13 +183,12 @@ impl Scanner {
         self.token_for(&self.spans[self.spans.len() - 1])
     }
 
-
     fn check_for_conditional(&self) -> bool {
         if let Some(before) = self.nth_before_last_open_paren(1) {
-            before.matches_keyword(Keyword::If) ||
-            before.matches_keyword(Keyword::For) ||
-            before.matches_keyword(Keyword::While) ||
-            before.matches_keyword(Keyword::With)
+            before.matches_keyword(Keyword::If)
+            || before.matches_keyword(Keyword::For)
+            || before.matches_keyword(Keyword::While)
+            || before.matches_keyword(Keyword::With)
         } else {
             true
         }
@@ -173,11 +198,11 @@ impl Scanner {
         if let Some(before) = self.nth_before_last_open_paren(1) {
             if before.is_ident() {
                 if let Some(three_before) = self.nth_before_last_open_paren(3) {
-                    return Self::check_for_expression(three_before)
+                    return Self::check_for_expression(three_before);
                 }
             } else if before.matches_keyword(Keyword::Function) {
                 if let Some(two_before) = self.nth_before_last_open_paren(2) {
-                    return Self::check_for_expression(two_before)
+                    return Self::check_for_expression(two_before);
                 } else {
                     return false;
                 }
@@ -245,7 +270,7 @@ impl Scanner {
 
     fn nth_before_last_open_paren(&self, n: usize) -> Option<Token> {
         if self.spans.len() < n {
-            return None
+            return None;
         }
         self.token_for(&self.spans[self.last_open_paren_idx - n])
     }
@@ -260,13 +285,10 @@ impl Scanner {
 }
 
 pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    c_char('\\')
-        .and(c_char(q))
-        .map(|(_slash, c): (char, char)| c)
+    c_char('\\').and(c_char(q)).map(|(_slash, c): (char, char)| c)
 }
 
 pub mod error {
@@ -278,7 +300,7 @@ pub mod error {
     impl ::std::fmt::Display for Error {
         fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
             match self {
-                &Error::DataMismatch(ref msg) => msg.fmt(f)
+                &Error::DataMismatch(ref msg) => msg.fmt(f),
             }
         }
     }
@@ -303,29 +325,27 @@ function thing() {
     let x = 0;
     console.log('stuff');
 }";
-        let expectation = vec![
-            Token::single_quoted_string("use strict"),
-            Token::punct(";"),
-            Token::keyword("function"),
-            Token::ident("thing"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct("{"),
-            Token::keyword("let"),
-            Token::ident("x"),
-            Token::punct("="),
-            Token::numeric("0"),
-            Token::punct(";"),
-            Token::ident("console"),
-            Token::punct("."),
-            Token::ident("log"),
-            Token::punct("("),
-            Token::single_quoted_string("stuff"),
-            Token::punct(")"),
-            Token::punct(";"),
-            Token::punct("}"),
-            Token::EoF,
-        ];
+        let expectation = vec![Token::single_quoted_string("use strict"),
+                               Token::punct(";"),
+                               Token::keyword("function"),
+                               Token::ident("thing"),
+                               Token::punct("("),
+                               Token::punct(")"),
+                               Token::punct("{"),
+                               Token::keyword("let"),
+                               Token::ident("x"),
+                               Token::punct("="),
+                               Token::numeric("0"),
+                               Token::punct(";"),
+                               Token::ident("console"),
+                               Token::punct("."),
+                               Token::ident("log"),
+                               Token::punct("("),
+                               Token::single_quoted_string("stuff"),
+                               Token::punct(")"),
+                               Token::punct(";"),
+                               Token::punct("}"),
+                               Token::EoF,];
         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
             assert_eq!(tok.0, tok.1);
         }
@@ -334,36 +354,34 @@ function thing() {
     #[test]
     fn scanner() {
         let s = super::Scanner::new(
-            "(function() {
+                                    "(function() {
 this.x = 100;
 this.y = 0;
 })();",
         );
-        let expected = vec![
-            Token::punct("("),
-            Token::keyword("function"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct("{"),
-            Token::keyword("this"),
-            Token::punct("."),
-            Token::ident("x"),
-            Token::punct("="),
-            Token::numeric("100"),
-            Token::punct(";"),
-            Token::keyword("this"),
-            Token::punct("."),
-            Token::ident("y"),
-            Token::punct("="),
-            Token::numeric("0"),
-            Token::punct(";"),
-            Token::punct("}"),
-            Token::punct(")"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct(";"),
-            Token::EoF,
-        ];
+        let expected = vec![Token::punct("("),
+                            Token::keyword("function"),
+                            Token::punct("("),
+                            Token::punct(")"),
+                            Token::punct("{"),
+                            Token::keyword("this"),
+                            Token::punct("."),
+                            Token::ident("x"),
+                            Token::punct("="),
+                            Token::numeric("100"),
+                            Token::punct(";"),
+                            Token::keyword("this"),
+                            Token::punct("."),
+                            Token::ident("y"),
+                            Token::punct("="),
+                            Token::numeric("0"),
+                            Token::punct(";"),
+                            Token::punct("}"),
+                            Token::punct(")"),
+                            Token::punct("("),
+                            Token::punct(")"),
+                            Token::punct(";"),
+                            Token::EoF,];
         validate(s, expected);
     }
 
@@ -371,11 +389,9 @@ this.y = 0;
     fn template_one_sub() {
         let one_sub = "`things and stuff times ${x}`";
         let s = Scanner::new(one_sub);
-        let expected = vec![
-            Token::template_head("things and stuff times "),
-            Token::ident("x"),
-            Token::template_tail(""),
-        ];
+        let expected = vec![Token::template_head("things and stuff times "),
+                            Token::ident("x"),
+                            Token::template_tail(""),];
         validate(s, expected);
     }
 
@@ -383,13 +399,11 @@ this.y = 0;
     fn template_two_subs() {
         let two_subs = "`things and stuff times ${x} divided by ${y}`";
         let s = Scanner::new(two_subs);
-        let expected = vec![
-            Token::template_head("things and stuff times "),
-            Token::ident("x"),
-            Token::template_middle(" divided by "),
-            Token::ident("y"),
-            Token::template_tail(""),
-        ];
+        let expected = vec![Token::template_head("things and stuff times "),
+                            Token::ident("x"),
+                            Token::template_middle(" divided by "),
+                            Token::ident("y"),
+                            Token::template_tail(""),];
         validate(s, expected);
     }
     #[test]
@@ -401,34 +415,29 @@ this.y = 0;
         let subbed = "`things and
         stuff times ${x}`";
         let s = Scanner::new(subbed);
-        let expected = vec![
-            Token::template_head("things and\n        stuff times "),
-            Token::ident("x"),
-            Token::template_tail("")
-        ];
+        let expected = vec![Token::template_head("things and\n        stuff times "),
+                            Token::ident("x"),
+                            Token::template_tail(""),];
         validate(s, expected);
     }
     #[test]
     fn nested_template() {
         let test = "`outer ${`inner ${0}`}`";
-        let expected = vec![
-            Token::template_head("outer "),
-            Token::template_head("inner "),
-            Token::numeric("0"),
-            Token::template_tail(""),
-            Token::template_tail(""),
-        ];
+        let expected = vec![Token::template_head("outer "),
+                            Token::template_head("inner "),
+                            Token::numeric("0"),
+                            Token::template_tail(""),
+                            Token::template_tail(""),];
         let s = Scanner::new(test);
         validate(s, expected);
     }
     #[test]
-    fn peek() {
+    fn look_ahead() {
         let js = "function() { return; }";
         let mut s = Scanner::new(js);
         loop {
-            let peek = s.peek();
+            let peek = s.look_ahead();
             let next = s.next();
-            println!("----------\npeek: {:?}\nnext: {:?}", peek, next);
             assert_eq!(peek, next);
             if peek.is_none() {
                 break;
@@ -438,7 +447,7 @@ this.y = 0;
 
     fn validate(s: Scanner, expected: Vec<Token>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
-            assert_eq!((i, lhs.token),(i, rhs));
+            assert_eq!((i, lhs.token), (i, rhs));
         }
     }
 }

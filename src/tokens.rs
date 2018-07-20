@@ -1,18 +1,18 @@
 use combine::{
-    choice, eof, error::ParseError, many,
-    parser::{
-        char::{char as c_char, string},
-    },
+    choice, eof,
+    error::ParseError,
+    many,
+    parser::char::{char as c_char, string},
     try, Parser, Stream,
 };
 
+use comments;
+use keywords;
+use numeric;
+use punct;
 use regex;
 use strings;
 use unicode;
-use numeric;
-use punct;
-use keywords;
-use comments;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Item {
@@ -22,10 +22,8 @@ pub struct Item {
 
 impl Item {
     pub fn new(token: Token, span: Span) -> Item {
-        Item {
-            token,
-            span,
-        }
+        Item { token,
+               span, }
     }
 }
 #[derive(Debug, PartialEq, Clone)]
@@ -36,10 +34,8 @@ pub struct Span {
 
 impl Span {
     pub fn new(start: usize, end: usize) -> Self {
-        Span {
-            start,
-            end,
-        }
+        Span { start,
+               end, }
     }
 }
 
@@ -129,7 +125,7 @@ impl<'a> Into<bool> for &'a BooleanLiteral {
     fn into(self) -> bool {
         match self {
             &BooleanLiteral::True => true,
-            &BooleanLiteral::False => false
+            &BooleanLiteral::False => false,
         }
     }
 }
@@ -184,7 +180,7 @@ impl Token {
     pub fn is_boolean(&self) -> bool {
         match self {
             &Token::Boolean(_) => true,
-            _ => false
+            _ => false,
         }
     }
     pub fn is_boolean_true(&self) -> bool {
@@ -300,7 +296,7 @@ impl Token {
         match self {
             Token::String(ref s) => match s {
                 strings::StringLit::Double(_) => true,
-                _ => false
+                _ => false,
             },
             _ => false,
         }
@@ -310,7 +306,7 @@ impl Token {
         match self {
             Token::String(ref s) => match s {
                 strings::StringLit::Single(_) => true,
-                _ => false
+                _ => false,
             },
             _ => false,
         }
@@ -380,9 +376,7 @@ impl Token {
     }
 
     pub fn is_template(&self) -> bool {
-        self.is_template_head() ||
-        self.is_template_middle() ||
-        self.is_template_tail()
+        self.is_template_head() || self.is_template_middle() || self.is_template_tail()
     }
 
     pub fn is_comment(&self) -> bool {
@@ -399,14 +393,14 @@ impl Token {
     pub fn matches_comment_str(&self, comment: &str) -> bool {
         match self {
             &Token::Comment(ref t) => t.content == comment,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn is_multi_line_comment(&self) -> bool {
         match self {
             &Token::Comment(ref t) => t.kind == comments::Kind::Multi,
-            _ => false
+            _ => false,
         }
     }
 
@@ -418,29 +412,25 @@ impl Token {
     }
 
     pub fn comment(comment: &str, multi: bool) -> Token {
-        Token::Comment(comments::Comment::from_parts(comment.into(), if multi {
-            comments::Kind::Multi
-        } else {
-            comments::Kind::Single
-        }))
+        Token::Comment(comments::Comment::from_parts(comment.into(),
+                                                     if multi {
+                                                         comments::Kind::Multi
+                                                     } else {
+                                                         comments::Kind::Single
+                                                     }))
     }
 }
 
 pub fn token<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    (choice((
-        try(token_not_eof()),
-        try(end_of_input()),
-    ))).map(|t| t)
+    (choice((try(token_not_eof()), try(end_of_input())))).map(|t| t)
 }
 
 pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (choice((
         try(comments::comment()),
@@ -456,46 +446,41 @@ where
 }
 
 pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((string("true"), string("false"))).map(|t: &str| Token::Boolean(BooleanLiteral::from(t)))
 }
 
 pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     eof().map(|_| Token::EoF)
 }
 
 pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (ident_start(), many(ident_part())).map(|(start, body): (char, String)| {
-        let mut ret = String::new();
-        ret.push(start);
-        ret.push_str(&body);
-        Token::Ident(ret)
-    })
+                                                let mut ret = String::new();
+                                                ret.push(start);
+                                                ret.push_str(&body);
+                                                Token::Ident(ret)
+                                            })
 }
 
 pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     string("null").map(|_| Token::Null)
 }
 
 fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
         try(unicode::lu()),
@@ -508,9 +493,8 @@ where
 }
 
 fn ident_start<I>() -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
         try(unicode_char()),
@@ -521,19 +505,15 @@ where
 }
 
 pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    choice((
-        try(ident_start()),
-        try(unicode::mn()),
-        try(unicode::mc()),
-        try(unicode::nd()),
-        try(unicode::pc()),
-    ))
+    choice((try(ident_start()),
+           try(unicode::mn()),
+           try(unicode::mc()),
+           try(unicode::nd()),
+           try(unicode::pc())))
 }
-
 
 #[cfg(test)]
 mod test {
@@ -554,22 +534,20 @@ mod test {
 
     #[test]
     fn ident_tests() {
-        let idents = vec![
-            "$",
-            "x",
-            "thing",
-            "num",
-            "stuff",
-            "anotherThing",
-            "snake_thing",
-            "junk",
-            "_",
-            "_private",
-        ];
+        let idents = vec!["$",
+                          "x",
+                          "thing",
+                          "num",
+                          "stuff",
+                          "anotherThing",
+                          "snake_thing",
+                          "junk",
+                          "_",
+                          "_private",];
         for i in idents {
             let t = token().parse(i.clone()).unwrap();
             assert_eq!(t, (Token::Ident(i.to_owned()), ""))
         }
     }
-    
+
 }

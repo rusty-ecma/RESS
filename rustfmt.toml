@@ -1,0 +1,5 @@
+indent_style = "Visual"
+use_small_heuristics = "off"
+merge_imports = true
+match_block_trailing_comma = true
+newline_style = "Unix"

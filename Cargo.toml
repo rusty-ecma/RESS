@@ -17,9 +17,10 @@ appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github
 combine = "3.3"
 
 [dev-dependencies]
-docopt = "0.9"
+docopt = "1.0.0"
 serde = "1.0"
 serde_derive = "1.0"
+proptest = "0.8.3"
 
 [[example]]
 name = "major_libs"

@@ -2,11 +2,16 @@ language: rust
 sudo: false
 matrix:
   include:
-    - rust: stable
-      install: npm i
+    - rust:
+      - stable
+      - nightly
+      install:
+        - npm i
+        - rustup component add rustfmt-preview
       cache: cargo
       script:
         - cargo test
         - cargo run --example major_libs --release
+        - cargo +nightly fmt --all -- --check
 notifications:
   email: never

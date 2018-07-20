@@ -11,15 +11,15 @@ extern crate serde;
 extern crate serde_derive;
 
 use std::{
-    path::PathBuf,
     fs::{read_to_string, File},
-    io::{Write, BufWriter},
+    io::{BufWriter, Write},
+    path::PathBuf,
     string::ToString,
 };
 
 use docopt::Docopt;
 
-use ress::{Token, Scanner, Boolean, Keyword, Punct};
+use ress::{Boolean, Keyword, Punct, Scanner, Token};
 
 const USAGE: &'static str = "
 clear-comments
@@ -29,12 +29,12 @@ Usage:
 ";
 
 fn main() {
-    let opts: Opts = Docopt::new(USAGE)
-                        .and_then(|d| d.deserialize())
-                        .unwrap_or_else(|e| {
-                            println!("error: {:?}", e);
-                            e.exit()
-                        });
+    let opts: Opts =
+        Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| {
+                                                                            println!("error: {:?}",
+                                                                                     e);
+                                                                            e.exit()
+                                                                        });
     let js = if let Ok(s) = read_to_string(opts.arg_in_path) {
         s
     } else {
@@ -67,7 +67,8 @@ fn main() {
         if last_token.matches_keyword(Keyword::For) {
             in_loop = true;
         }
-        if last_token.matches_keyword(Keyword::Case) || last_token.matches_keyword(Keyword::Default) {
+        if last_token.matches_keyword(Keyword::Case) || last_token.matches_keyword(Keyword::Default)
+        {
             in_case = true;
         }
         if last_token.matches_punct(Punct::Colon) && in_case {
@@ -83,7 +84,11 @@ fn main() {
             indent += 1;
             new_line = true;
         }
-        if in_if && if_parens == 0 && last_token.matches_punct(Punct::CloseParen) && !token.is_punct() {
+        if in_if
+           && if_parens == 0
+           && last_token.matches_punct(Punct::CloseParen)
+           && !token.is_punct()
+        {
             unbraced_if = true;
             new_line = true;
             indent += 1;
@@ -105,7 +110,8 @@ fn main() {
             new_line = true;
         }
         if new_line {
-            out.write(format!("\n{}","    ".repeat(indent)).as_bytes()).expect("error writing indent");
+            out.write(format!("\n{}", "    ".repeat(indent)).as_bytes())
+                .expect("error writing indent");
             new_line = false;
             in_if = false;
             if_parens = 0;
@@ -127,11 +133,15 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
     if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Assign) {
         return true;
     }
-    if last_token.matches_punct(Punct::Period) && (token.is_ident() || token.matches_keyword(Keyword::This)) {
+    if last_token.matches_punct(Punct::Period)
+       && (token.is_ident() || token.matches_keyword(Keyword::This))
+    {
         return false;
     }
-    if (last_token.is_ident() || last_token.matches_keyword(Keyword::This)) && token.matches_punct(Punct::Period) {
-        return false
+    if (last_token.is_ident() || last_token.matches_keyword(Keyword::This))
+       && token.matches_punct(Punct::Period)
+    {
+        return false;
     }
     if token.matches_keyword(Keyword::If) {
         return false;
@@ -211,13 +221,13 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
     if last_token.matches_keyword(Keyword::Function) && token.matches_punct(Punct::OpenBrace) {
         return false;
     }
-    if last_token.matches_keyword(Keyword::In) ||
-        last_token.matches_keyword(Keyword::Of) ||
-        last_token.matches_keyword(Keyword::For) {
+    if last_token.matches_keyword(Keyword::In)
+       || last_token.matches_keyword(Keyword::Of)
+       || last_token.matches_keyword(Keyword::For)
+    {
         return true;
     }
-    if token.matches_keyword(Keyword::In) ||
-        token.matches_keyword(Keyword::Of) {
+    if token.matches_keyword(Keyword::In) || token.matches_keyword(Keyword::Of) {
         return true;
     }
     if last_token.is_keyword() {
@@ -234,27 +244,33 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
 
 fn token_to_string(t: &Token) -> String {
     match t {
-        &Token::Boolean(ref t) => if t == &Boolean::True {
-            "true"
-        } else {
-            "false"
-        }.to_string(),
-        &Token::Comment(ref comment) => if comment.is_multi_line() {
-            format!("/*\n{}\n*/", comment.content)
-        } else {
-            format!("//{}", comment.content)
+        &Token::Boolean(ref t) => {
+            if t == &Boolean::True {
+                "true"
+            } else {
+                "false"
+            }.to_string()
+        },
+        &Token::Comment(ref comment) => {
+            if comment.is_multi_line() {
+                format!("/*\n{}\n*/", comment.content)
+            } else {
+                format!("//{}", comment.content)
+            }
         },
         &Token::Ident(ref name) => name.to_string(),
         &Token::Keyword(ref key) => key.to_string(),
         &Token::Null => "null".to_string(),
         &Token::Numeric(ref number) => number.to_string(),
         &Token::Punct(ref p) => p.to_string(),
-        &Token::RegEx(ref regex) => match regex.flags {
-            Some(ref f) => format!("/{}/{}", regex.body, f),
-            None => format!("/{}/", regex.body),
+        &Token::RegEx(ref regex) => {
+            match regex.flags {
+                Some(ref f) => format!("/{}/{}", regex.body, f),
+                None => format!("/{}/", regex.body),
+            }
         },
         &Token::String(ref s) => format!("{}", s.to_string()),
-        _ => String::new()
+        _ => String::new(),
     }
 }
 

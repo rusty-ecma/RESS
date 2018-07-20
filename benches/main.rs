@@ -5,88 +5,85 @@ extern crate test;
 use test::Bencher;
 extern crate ress;
 
-use std::{
-    path::PathBuf,
-    fs::read_to_string,
-};
+use std::{fs::read_to_string, path::PathBuf};
 
 #[bench]
 fn jquery_tokenize(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Jquery) {
-        b.iter(||ress::tokenize(js));
+        b.iter(|| ress::tokenize(js));
     }
 }
 #[bench]
 fn jquery_scanner(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Jquery) {
         b.iter(move || {
-            let s = ress::Scanner::new(js.as_str());
-            let _: Vec<ress::Item> = s.collect();
-        });
+                   let s = ress::Scanner::new(js.as_str());
+                   let _: Vec<ress::Item> = s.collect();
+               });
     }
 }
 
 #[bench]
 fn angular1_tokenize(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Angular) {
-        b.iter(||ress::tokenize(js));
+        b.iter(|| ress::tokenize(js));
     }
 }
 #[bench]
 fn angular1_scanner(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Angular) {
         b.iter(move || {
-            let s = ress::Scanner::new(js.as_str());
-            let _: Vec<ress::Item> = s.collect();
-        });
+                   let s = ress::Scanner::new(js.as_str());
+                   let _: Vec<ress::Item> = s.collect();
+               });
     }
 }
 
 #[bench]
 fn react_tokenize(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::React) {
-        b.iter(||ress::tokenize(js));
+        b.iter(|| ress::tokenize(js));
     }
 }
 #[bench]
 fn react_scanner(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::React) {
         b.iter(move || {
-            let s = ress::Scanner::new(js.as_str());
-            let _: Vec<ress::Item> = s.collect();
-        });
+                   let s = ress::Scanner::new(js.as_str());
+                   let _: Vec<ress::Item> = s.collect();
+               });
     }
 }
 
 #[bench]
 fn react_dom_tokenize(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::ReactDom) {
-        b.iter(||ress::tokenize(js));
+        b.iter(|| ress::tokenize(js));
     }
 }
 #[bench]
 fn react_dom_scanner(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::ReactDom) {
         b.iter(move || {
-            let s = ress::Scanner::new(js.as_str());
-            let _: Vec<ress::Item> = s.collect();
-        });
+                   let s = ress::Scanner::new(js.as_str());
+                   let _: Vec<ress::Item> = s.collect();
+               });
     }
 }
 
 #[bench]
 fn vue_tokenize(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Vue) {
-        b.iter(||ress::tokenize(js));
+        b.iter(|| ress::tokenize(js));
     }
 }
 #[bench]
 fn vue_scanner(b: &mut Bencher) {
     if let Ok(ref js) = get_js(Lib::Vue) {
         b.iter(move || {
-            let s = ress::Scanner::new(js.as_str());
-            let _: Vec<ress::Item> = s.collect();
-        });
+                   let s = ress::Scanner::new(js.as_str());
+                   let _: Vec<ress::Item> = s.collect();
+               });
     }
 }
 
