@@ -56,6 +56,15 @@ impl Scanner {
 impl Iterator for Scanner {
     type Item = Item;
     fn next(&mut self) -> Option<Item> {
+        self.get_next_token(true)
+    }
+}
+
+impl Scanner {
+    pub fn peek(&mut self) -> Option<Item> {
+        self.get_next_token(false)
+    }
+    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
         if self.eof {
             return None;
         };
@@ -83,7 +92,7 @@ impl Iterator for Scanner {
                 } else if self.template > 0 && self.replacement == self.template && pair.0.matches_punct(Punct::CloseBrace) {
                     match strings::template_continuation().easy_parse(pair.1) {
                         Ok(pair) => {
-                            if pair.0.is_template_tail() {
+                            if pair.0.is_template_tail() && advance_cursor {
                                 self.replacement = self.replacement.saturating_sub(1);
                                 self.template = self.template.saturating_sub(1);
                             }
@@ -99,13 +108,13 @@ impl Iterator for Scanner {
                         Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
                     }
                 } else {
-                    if pair.0.matches_punct(Punct::OpenParen) {
+                    if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
                         self.last_open_paren_idx = self.spans.len();
                     }
-                    if pair.0.is_eof() {
+                    if pair.0.is_eof() && advance_cursor {
                         self.eof = true;
                     }
-                    if pair.0.is_template_head() {
+                    if pair.0.is_template_head() && advance_cursor {
                         self.template += 1;
                         self.replacement += 1;
                     }
@@ -122,9 +131,7 @@ impl Iterator for Scanner {
             Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}", self.cursor, e,),
         }
     }
-}
 
-impl Scanner {
     fn is_regex_start(&self) -> bool {
         if let Some(last_token) = self.last_token() {
             if !last_token.is_keyword() && !last_token.is_punct() {
@@ -414,10 +421,23 @@ this.y = 0;
         let s = Scanner::new(test);
         validate(s, expected);
     }
+    #[test]
+    fn peek() {
+        let js = "function() { return; }";
+        let mut s = Scanner::new(js);
+        loop {
+            let peek = s.peek();
+            let next = s.next();
+            println!("----------\npeek: {:?}\nnext: {:?}", peek, next);
+            assert_eq!(peek, next);
+            if peek.is_none() {
+                break;
+            }
+        }
+    }
 
     fn validate(s: Scanner, expected: Vec<Token>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
-            println!("{}: {:?}", i, lhs.token);
             assert_eq!((i, lhs.token),(i, rhs));
         }
     }
