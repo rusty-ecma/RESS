@@ -2,8 +2,7 @@ language: rust
 sudo: false
 matrix:
   include:
-    - rust:
-      - stable
+    - rust: stable
       install:
         - npm i
         - rustup toolchain install nightly
