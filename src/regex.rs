@@ -151,4 +151,12 @@ mod test {
         let url = r#"^[a-z][a-z\d.+-]*:\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+\])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i"#;
         let _u_r = super::regex_tail().easy_parse(url).unwrap();
     }
+
+    proptest! {
+        #[test]
+        fn regex_prop(s in r#"[a-zA-Z0-9][a-zA-Z0-9\*\?\.\+@!#$%^&*\(\)-]+/[a-zA-Z]+"#) {
+            let r = super::regex_tail().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_regex(), r.0.matches_regex_str(&s));
+        }
+    }
 }

@@ -1,0 +1,12 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+xs 919913896 2883734430 3354605609 1554838978 # shrinks to s = "//i"
+xs 3256384021 627040095 2127382704 1475438757 # shrinks to s = "*/i"
+xs 2627294730 3442124659 1611555692 1486966766 # shrinks to s = "([)/i"
+xs 526392280 1180277379 3516634806 4260267833 # shrinks to s = "?\\/A"
+xs 2045013785 354495369 2786121027 1334793481 # shrinks to s = "/A/A"
+xs 3043448367 3896913540 2883388277 3685927156 # shrinks to s = "\\A\\/a"

@@ -114,4 +114,23 @@ mod test {
             assert_eq!(p, (Token::comment(&comment_contents, is_multi), ""));
         }
     }
+    proptest!{
+        #[test]
+        fn comments_prop(s in r#"((//.*)+|(/\*(.+[\n\r*])+\*/))"#) {
+            let r = token().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s)));
+        }
+    }
+
+    fn format_test_comment(s: &str) -> String {
+        s.lines()
+            .map(|l| {
+                    l.trim()
+                        .trim_left_matches("//")
+                        .trim_left_matches("/*")
+                        .trim_right_matches("*/")
+                })
+            .collect::<Vec<&str>>()
+            .join("\n")
+    }
 }

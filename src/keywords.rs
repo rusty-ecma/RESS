@@ -100,9 +100,12 @@ pub enum Keyword {
 impl<'a> From<&'a str> for Keyword {
     fn from(s: &'a str) -> Self {
         match s {
+            "await" => Keyword::Await,
             "break" => Keyword::Break,
             "case" => Keyword::Case,
             "catch" => Keyword::Catch,
+            "class" => Keyword::Class,
+            "const" => Keyword::Const,
             "continue" => Keyword::Continue,
             "debugger" => Keyword::Debugger,
             "default" => Keyword::Default,
@@ -116,6 +119,7 @@ impl<'a> From<&'a str> for Keyword {
             "instanceof" => Keyword::InstanceOf,
             "in" => Keyword::In,
             "new" => Keyword::New,
+            "of" => Keyword::Of,
             "return" => Keyword::Return,
             "switch" => Keyword::Switch,
             "this" => Keyword::This,
@@ -141,9 +145,6 @@ impl<'a> From<&'a str> for Keyword {
             "let" => Keyword::Let,
             "eval" => Keyword::Eval,
             "arguments" => Keyword::Arguments,
-            "of" => Keyword::Of,
-            "const" => Keyword::Const,
-            "class" => Keyword::Class,
             _ => panic!("Unknown Keyword, `{}`", s),
         }
     }
@@ -289,9 +290,12 @@ pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice([
+        try(string("await")),
         try(string("break")),
         try(string("case")),
         try(string("catch")),
+        try(string("class")),
+        try(string("const")),
         try(string("continue")),
         try(string("debugger")),
         try(string("default")),
@@ -305,6 +309,7 @@ pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
         try(string("instanceof")),
         try(string("in")),
         try(string("new")),
+        try(string("of")),
         try(string("return")),
         try(string("switch")),
         try(string("this")),
@@ -481,6 +486,14 @@ mod test {
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
             assert_eq!(k, (Token::keyword(key), ""));
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn keyword_prop(s in r#"arguments|await|break|case|catch|class|const|continue|debugger|default|import|delete|do|else|enum|eval|export|finally|for|function|if|in|implements|instanceof|interface|let|new|of|package|private|protected|public|static|return|super|switch|this|throw|try|typeof|var|void|while|with|yield"#) {
+            let r = token().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_keyword() && r.0.matches_keyword_str(&s));
         }
     }
 }

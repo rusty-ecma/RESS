@@ -276,4 +276,12 @@ mod test {
         let r = super::template_continuation().easy_parse(e).unwrap();
         assert_eq!(r, (Token::template_tail(""), "}`"));
     }
+
+    proptest! {
+        #[test]
+        fn string_prop(s in r#"("((\\n)|(\\")|[^\n\r"\\])")|('((\\n)|(\\')|[^\n\r\\])')"#) {
+            let r = token().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_string())
+        }
+    }
 }

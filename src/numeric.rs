@@ -372,4 +372,12 @@ mod test {
             _ => (),
         }
     }
+
+    proptest! {
+        #[test]
+        fn normal_decimal(s in r#"[+-]?((0[oO][0-7]+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+)|(([0-9]+)(\.[0-9]+)?([eE][0-9]+)?)|((\.[0-9])([eE][0-9]+)?))"#) {
+            let r = tokens::token().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_numeric() && r.0.matches_numeric_str(&s))
+        }
+    }
 }

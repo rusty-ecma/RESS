@@ -1,5 +1,7 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
+#[cfg(test)]
+#[macro_use] extern crate proptest;
 #[macro_use]
 extern crate combine;
 use combine::{error::ParseError, parser::char::char as c_char, Parser, Stream};
@@ -68,11 +70,11 @@ impl Scanner {
     ///
     /// ```
     /// # extern crate ress;
-    /// # use ress::Scanner;
-    /// # main() {
+    /// # use ress::{Scanner,Token};
+    /// # fn main() {
     /// let js = "function thing() { return; }";
     /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.peek().unwrap().token, Token::keyword("function"));
+    /// assert_eq!(s.look_ahead().unwrap().token, Token::keyword("function"));
     /// assert_eq!(s.next().unwrap().token, Token::keyword("function"));
     /// # }
     /// ```

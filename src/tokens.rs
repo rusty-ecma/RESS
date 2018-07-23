@@ -2,6 +2,7 @@ use combine::{
     choice, eof,
     error::ParseError,
     many,
+    not_followed_by,
     parser::char::{char as c_char, string},
     try, Parser, Stream,
 };
@@ -90,6 +91,12 @@ impl<'a> From<&'a str> for BooleanLiteral {
         } else {
             panic!(r#"BooleanLiteral can only be created for "true" or "false"."#)
         }
+    }
+}
+
+impl From<String> for BooleanLiteral {
+    fn from(s: String) -> Self {
+        BooleanLiteral::from(s.as_str())
     }
 }
 
@@ -367,11 +374,21 @@ impl Token {
         self == &Token::RegEx(regex)
     }
 
-    pub fn matches_regex_str(&self, body: &str, flags: Option<&str>) -> bool {
-        self == &Token::regex(body, flags)
+    pub fn matches_regex_str(&self, regex: &str) -> bool {
+        if let Some(idx) = regex.rfind('/') {
+            let parts = regex.split_at(idx);
+            let flags = if parts.1.len() == 0 {
+                None
+            } else {
+                Some(parts.1[1..].to_string())
+            };
+            self == &Token::regex(&parts.0[1..], flags)
+        } else {
+            false
+        }
     }
 
-    pub fn regex(body: &str, flags: Option<impl Into<String>>) -> Token {
+    pub fn regex(body: &str, flags: Option<String>) -> Token {
         Token::RegEx(regex::RegEx::from_parts(body, flags.map(|s| s.into())))
     }
 
@@ -449,7 +466,24 @@ pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    choice((try(string("true")), try(string("false")))).map(|t: &str| Token::Boolean(BooleanLiteral::from(t)))
+    choice((
+        try(true_literal()), 
+        try(false_literal()),
+    )).map(|t: String| Token::Boolean(BooleanLiteral::from(t)))
+}
+
+fn true_literal<I>() -> impl Parser<Input = I, Output = String>
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
+{
+    string("true").skip(not_followed_by(ident_part())).map(|s: &str| s.to_string())
+}
+
+fn false_literal<I>() -> impl Parser<Input = I, Output = String>
+    where I: Stream<Item = char>,
+          I::Error: ParseError<I::Item, I::Range, I::Position>
+{
+    string("false").skip(not_followed_by(ident_part())).map(|s: &str| s.to_string())
 }
 
 pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
@@ -475,7 +509,7 @@ pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    string("null").map(|_| Token::Null)
+    string("null").skip(not_followed_by(ident_part())).map(|_| Token::Null)
 }
 
 fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
