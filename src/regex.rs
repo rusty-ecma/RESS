@@ -1,9 +1,9 @@
+use super::{is_line_term, is_source_char};
 use combine::{
-    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, try,
-    Parser, Stream,
+    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, try, Parser,
+    Stream,
 };
 use tokens::{ident_part, Token};
-use super::{is_line_term, is_source_char};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RegEx {
@@ -66,7 +66,12 @@ fn regex_body_first_source_char<I>() -> impl Parser<Input = I, Output = String>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     satisfy(|c: char| {
-                is_source_char(c) && !is_line_term(c) && c != '*' && c != '\\' && c != '/' && c != '['
+                is_source_char(c)
+                && !is_line_term(c)
+                && c != '*'
+                && c != '\\'
+                && c != '/'
+                && c != '['
             }).map(|c: char| c.to_string())
 }
 
@@ -125,8 +130,6 @@ fn regular_expression_backslash_sequence<I>() -> impl Parser<Input = I, Output =
     c_char('\\').and(source_char_not_line_term())
                 .map(|(slash, c): (char, char)| format!("{}{}", slash, c))
 }
-
-
 
 #[cfg(test)]
 mod test {

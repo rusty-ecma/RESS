@@ -37,10 +37,8 @@ impl Number {
     }
     pub fn has_exponent(&self) -> bool {
         match self.kind() {
-            Kind::Decimal => {
-                self.0.contains(|c| c == 'e' || c == 'E')
-            },
-            _ => false
+            Kind::Decimal => self.0.contains(|c| c == 'e' || c == 'E'),
+            _ => false,
         }
     }
 }

@@ -74,4 +74,3 @@ fn get_js(l: Lib) -> Result<String, ::std::io::Error> {
     }
     read_to_string(path)
 }
-

@@ -1,7 +1,8 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
 #[cfg(test)]
-#[macro_use] extern crate proptest;
+#[macro_use]
+extern crate proptest;
 #[macro_use]
 extern crate combine;
 use combine::{error::ParseError, parser::char::char as c_char, Parser, Stream};

@@ -1,8 +1,7 @@
 use combine::{
     choice, eof,
     error::ParseError,
-    many,
-    not_followed_by,
+    many, not_followed_by,
     parser::char::{char as c_char, string},
     try, Parser, Stream,
 };
@@ -467,7 +466,7 @@ pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     choice((
-        try(true_literal()), 
+        try(true_literal()),
         try(false_literal()),
     )).map(|t: String| Token::Boolean(BooleanLiteral::from(t)))
 }
