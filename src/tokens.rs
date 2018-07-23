@@ -253,21 +253,21 @@ impl Token {
 
     pub fn is_hex_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.kind == numeric::Kind::Hex,
+            &Token::Numeric(ref n) => n.is_hex(),
             _ => false,
         }
     }
 
     pub fn is_bin_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.kind == numeric::Kind::Bin,
+            &Token::Numeric(ref n) => n.is_bin(),
             _ => false,
         }
     }
 
     pub fn is_oct_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.kind == numeric::Kind::Octal,
+            &Token::Numeric(ref n) => n.is_oct(),
             _ => false,
         }
     }
@@ -420,21 +420,21 @@ impl Token {
                                                      }))
     }
 }
-
-pub fn token<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
-{
-    (choice((try(token_not_eof()), try(end_of_input())))).map(|t| t)
+parser!{
+    pub fn token[I]()(I) -> Token
+        where [I: Stream<Item = char>]
+    {
+        choice((token_not_eof(), end_of_input())).map(|t| t)
+    }
 }
 
 pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = Token>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    (choice((
-        try(comments::comment()),
-        try(boolean_literal()),
+    choice((
+        comments::comment(),
+        boolean_literal(),
         try(keywords::literal()),
         try(ident()),
         try(null_literal()),
@@ -442,14 +442,14 @@ pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = Token>
         try(strings::literal()),
         try(punct::punctuation()),
         try(strings::template_start()),
-    ))).map(|t| t)
+    )).map(|t| t)
 }
 
 pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    choice((string("true"), string("false"))).map(|t: &str| Token::Boolean(BooleanLiteral::from(t)))
+    choice((try(string("true")), try(string("false")))).map(|t: &str| Token::Boolean(BooleanLiteral::from(t)))
 }
 
 pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
