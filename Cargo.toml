@@ -21,6 +21,7 @@ docopt = "1.0.0"
 serde = "1.0"
 serde_derive = "1.0"
 proptest = "0.8.3"
+criterion = "0.2"
 
 [[example]]
 name = "major_libs"
@@ -29,3 +30,8 @@ path = "examples/major_libs/src/main.rs"
 [[example]]
 name = "clear-comments"
 path = "examples/clear-comments/src/main.rs"
+
+[[bench]]
+name = "major_libs"
+harness = false
+path = "benches/main.rs"

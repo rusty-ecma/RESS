@@ -110,13 +110,13 @@ Ideally this project will be the starting point for building a full JS Abstract 
 I am sure there are a lot of low hanging fruit in this area.
 The below stats are from running `cargo +nightly bench` on a 13" MBP Late 2013 with a 2.4GHz i5 and 8gb Ram.
 
-|Lib           |Size     |Time  |+/-      |
-|---           |---      |---   |---      |
-|Angular 1.5.6 |1.16mb   |2.86s |23.68ms  |
-|jquery        |271.75kb |1.53s |152.55ms |
-|React         |59.09kb  |0.24s |56.96ms  |
-|React-dom     |641.51kb |2.54s |267.29ms |
-|Vue           |289.30kb |1.74s |238.30ms |
+|Lib           |Size     |Time     |+/-     |
+|---           |---      |---      |---     |
+|Angular 1.5.6 |1.16mb   |333.33ms |17.29ms |
+|jquery        |271.75kb |171.48ms |73.16ms |
+|React         |59.09kb  | 24.60ms | 4,83ms |
+|React-dom     |641.51kb |288.60ms |25.61ms |
+|Vue           |289.30kb |187.04ms |60.05ms |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 

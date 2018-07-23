@@ -1,91 +1,44 @@
 #![feature(test)]
+#[macro_use]
+extern crate criterion;
 
-extern crate test;
-
-use test::Bencher;
+use criterion::Criterion;
 extern crate ress;
 
 use std::{fs::read_to_string, path::PathBuf};
 
-#[bench]
-fn jquery_tokenize(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Jquery) {
-        b.iter(|| ress::tokenize(js));
-    }
-}
-#[bench]
-fn jquery_scanner(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Jquery) {
-        b.iter(move || {
-                   let s = ress::Scanner::new(js.as_str());
-                   let _: Vec<ress::Item> = s.collect();
-               });
+fn jquery(c: &mut Criterion) {
+    if let Ok(js) = get_js(Lib::Jquery) {
+        c.bench_function("jquery", move |b| b.iter(|| ress::tokenize(&js)));
     }
 }
 
-#[bench]
-fn angular1_tokenize(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Angular) {
-        b.iter(|| ress::tokenize(js));
-    }
-}
-#[bench]
-fn angular1_scanner(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Angular) {
-        b.iter(move || {
-                   let s = ress::Scanner::new(js.as_str());
-                   let _: Vec<ress::Item> = s.collect();
-               });
+fn angular1(c: &mut Criterion) {
+    if let Ok(js) = get_js(Lib::Angular) {
+        c.bench_function("angular1", move |b| b.iter(|| ress::tokenize(&js)));
     }
 }
 
-#[bench]
-fn react_tokenize(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::React) {
-        b.iter(|| ress::tokenize(js));
-    }
-}
-#[bench]
-fn react_scanner(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::React) {
-        b.iter(move || {
-                   let s = ress::Scanner::new(js.as_str());
-                   let _: Vec<ress::Item> = s.collect();
-               });
+fn react(c: &mut Criterion) {
+    if let Ok(js) = get_js(Lib::React) {
+        c.bench_function("react", move |b| b.iter(|| ress::tokenize(&js)));
     }
 }
 
-#[bench]
-fn react_dom_tokenize(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::ReactDom) {
-        b.iter(|| ress::tokenize(js));
-    }
-}
-#[bench]
-fn react_dom_scanner(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::ReactDom) {
-        b.iter(move || {
-                   let s = ress::Scanner::new(js.as_str());
-                   let _: Vec<ress::Item> = s.collect();
-               });
+fn react_dom(c: &mut Criterion) {
+    if let Ok(js) = get_js(Lib::ReactDom) {
+        c.bench_function("react_dom", move |b| b.iter(|| ress::tokenize(&js)));
     }
 }
 
-#[bench]
-fn vue_tokenize(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Vue) {
-        b.iter(|| ress::tokenize(js));
+fn vue(c: &mut Criterion) {
+    if let Ok(js) = get_js(Lib::Vue) {
+        c.bench_function("vue", move |b| b.iter(|| ress::tokenize(&js)));
     }
 }
-#[bench]
-fn vue_scanner(b: &mut Bencher) {
-    if let Ok(ref js) = get_js(Lib::Vue) {
-        b.iter(move || {
-                   let s = ress::Scanner::new(js.as_str());
-                   let _: Vec<ress::Item> = s.collect();
-               });
-    }
-}
+
+criterion_group!(benches, jquery, angular1, react, react_dom, vue);
+criterion_main!(benches);
 
 fn npm_install() -> Result<(), ::std::io::Error> {
     let mut c = ::std::process::Command::new("npm");
@@ -121,3 +74,4 @@ fn get_js(l: Lib) -> Result<String, ::std::io::Error> {
     }
     read_to_string(path)
 }
+
