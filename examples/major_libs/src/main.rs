@@ -9,19 +9,42 @@ use std::{
     fs::read_to_string,
     path::PathBuf,
     time::{Duration, SystemTime},
+    env::args,
 };
 
 fn main() {
-    println!("trying jquery");
-    jquery();
-    println!("trying angular1");
-    angular1();
-    println!("trying react");
-    react();
-    println!("trying react_dom");
-    react_dom();
-    println!("trying vue");
-    vue();
+    let mut i = 0;
+    for arg in args() {
+        i += 1;
+        if arg == "jquery" || arg == "jq" {
+            println!("trying jquery");
+            jquery();
+        } else if arg == "angular" || arg == "ng" {
+            println!("trying angular1");
+            angular1();
+        } else if arg == "react" {
+            println!("trying react");
+            react();
+        } else if arg == "react-dom" || arg == "rd" {
+            println!("trying react_dom");
+            react_dom();
+        } else if arg == "vue" {
+            println!("trying vue");
+            vue();
+        }
+    }
+    if i == 0 {
+        println!("trying jquery");
+        jquery();
+        println!("trying angular1");
+        angular1();
+        println!("trying react");
+        react();
+        println!("trying react_dom");
+        react_dom();
+        println!("trying vue");
+        vue();
+    }
 }
 
 fn jquery() {
