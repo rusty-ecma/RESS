@@ -108,7 +108,7 @@ Ideally this project will be the starting point for building a full JS Abstract 
 
 # Performance
 I am sure there are a lot of low hanging fruit in this area.
-The below stats are from running `cargo +nightly bench` on a 13" MBP Late 2013 with a 2.4GHz i5 and 8gb Ram.
+The below stats are from running `cargo +nightly bench` on a Dell XPS 13 9350 (2.3ghz i5-6200U & 8bg RAM).
 
 |Lib           |Size     |Time     |+/-     |
 |---           |---      |---      |---     |
