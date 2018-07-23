@@ -1,8 +1,9 @@
 use combine::{
-    between, choice, error::ParseError, many, optional, parser::char::char as c_char, satisfy, try,
+    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, try,
     Parser, Stream,
 };
 use tokens::{ident_part, Token};
+use super::{is_line_term, is_source_char};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct RegEx {
@@ -30,8 +31,13 @@ pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    (try(regex_body()), c_char('/'), optional(try(regex_flags()))).map(
-        |(body, _, flags): (String, _, Option<String>)| {
+    (try(regex_body()), c_char('/'), many(ident_part())).map(
+        |(body, _, flags): (String, _, String)| {
+            let flags = if flags.len() == 0 {
+                None
+            } else {
+                Some(flags)
+            };
             Token::RegEx(RegEx::from_parts(&body, flags))
         },
     )
@@ -42,13 +48,6 @@ fn regex_body<I>() -> impl Parser<Input = I, Output = String>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     (regex_first_char(), many(regex_char())).map(|(c, s): (String, String)| format!("{}{}", c, s))
-}
-
-fn regex_flags<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
-{
-    many(ident_part()).map(|s: String| s)
 }
 
 fn regex_first_char<I>() -> impl Parser<Input = I, Output = String>
@@ -67,7 +66,7 @@ fn regex_body_first_source_char<I>() -> impl Parser<Input = I, Output = String>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     satisfy(|c: char| {
-                c as u32 <= 4095 && c != '\n' && c != '*' && c != '\\' && c != '/' && c != '['
+                is_source_char(c) && !is_line_term(c) && c != '*' && c != '\\' && c != '/' && c != '['
             }).map(|c: char| c.to_string())
 }
 
@@ -75,7 +74,7 @@ fn regex_body_source_char<I>() -> impl Parser<Input = I, Output = String>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    satisfy(|c: char| c as u32 <= 4095 && c != '\n' && c != '\\' && c != '/' && c != '[')
+    satisfy(|c: char| is_source_char(c) && !is_line_term(c) && c != '\\' && c != '/' && c != '[')
         .map(|c: char| c.to_string())
 }
 
@@ -106,7 +105,7 @@ fn regular_expression_class_char<I>() -> impl Parser<Input = I, Output = String>
 {
     choice((
         try(
-            satisfy(|c: char| c as u32 <= 4095 && c != '\n' && c != '\u{005C}' && c != '\u{005D}')
+            satisfy(|c: char| is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}')
                 .map(|c: char| c.to_string()),
         ),
         try(regular_expression_backslash_sequence()),
@@ -127,13 +126,7 @@ fn regular_expression_backslash_sequence<I>() -> impl Parser<Input = I, Output =
                 .map(|(slash, c): (char, char)| format!("{}{}", slash, c))
 }
 
-fn is_source_char(c: char) -> bool {
-    c as u32 <= 4095
-}
 
-fn is_line_term(c: char) -> bool {
-    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
-}
 
 #[cfg(test)]
 mod test {

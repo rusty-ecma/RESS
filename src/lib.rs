@@ -1,5 +1,6 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
+#[macro_use]
 extern crate combine;
 use combine::{error::ParseError, parser::char::char as c_char, Parser, Stream};
 mod comments;
@@ -83,14 +84,14 @@ impl Scanner {
             return None;
         };
         let result = if self.template > 0 && self.template < self.replacement {
-            strings::template_continuation().easy_parse(&self.stream[self.cursor..])
+            strings::template_continuation().parse(&self.stream[self.cursor..])
         } else {
-            tokens::token().easy_parse(&self.stream[self.cursor..])
+            tokens::token().parse(&self.stream[self.cursor..])
         };
         match result {
             Ok(pair) => {
                 if pair.0.matches_punct(Punct::ForwardSlash) && self.is_regex_start() {
-                    match regex::regex_tail().easy_parse(pair.1) {
+                    match regex::regex_tail().parse(pair.1) {
                         Ok(pair) => {
                             let full_len = self.stream.len();
                             let span_end = full_len - pair.1.len();
@@ -110,7 +111,7 @@ impl Scanner {
                           && self.replacement == self.template
                           && pair.0.matches_punct(Punct::CloseBrace)
                 {
-                    match strings::template_continuation().easy_parse(pair.1) {
+                    match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() && advance_cursor {
                                 self.replacement = self.replacement.saturating_sub(1);
@@ -289,6 +290,14 @@ pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
     c_char('\\').and(c_char(q)).map(|(_slash, c): (char, char)| c)
+}
+
+pub(crate) fn is_source_char(c: char) -> bool {
+    c as u32 <= 4095
+}
+
+pub(crate) fn is_line_term(c: char) -> bool {
+    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
 }
 
 pub mod error {

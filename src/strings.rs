@@ -9,7 +9,7 @@ use combine::{
     try, Parser, Stream,
 };
 
-use super::escaped;
+use super::{escaped, is_line_term};
 use tokens::Token;
 #[derive(Debug, PartialEq, Clone)]
 pub enum StringLit {
@@ -108,7 +108,7 @@ fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
         try(escaped('\'').map(|c: char| c.to_string())),
         try(escaped('\\').map(|c: char| c.to_string())),
         try(string_continuation()),
-        try(satisfy(|c: char| c != '\'' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
+        try(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|s: String| s)
 }
 
@@ -136,7 +136,7 @@ fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
         try(escaped('"').map(|c: char| c.to_string())),
         try(escaped('\\').map(|c: char| c.to_string())),
         try(string_continuation()),
-        try(satisfy(|c: char| c != '"' && c != '\n' && c != '\r').map(|c: char| c.to_string())),
+        try(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|c: String| c)
 }
 
@@ -144,12 +144,7 @@ fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
     where I: Stream<Item = char>,
           I::Error: ParseError<I::Item, I::Range, I::Position>
 {
-    choice([
-        try(c_char('\u{000A}')),
-        try(c_char('\u{000D}')),
-        try(c_char('\u{2028}')),
-        try(c_char('\u{2029}')),
-    ]).map(|c: char| c)
+    satisfy(|c| is_line_term(c)).map(|c: char| c)
 }
 
 pub(crate) fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
