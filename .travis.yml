@@ -7,7 +7,10 @@ matrix:
         - npm i
         - rustup toolchain install nightly
         - rustup +nightly component add rustfmt-preview
-      cache: cargo
+      cache:
+        - cargo: true
+        - directories:
+          - node_modules
       script:
         - cargo test
         - cargo run --example major_libs --release
