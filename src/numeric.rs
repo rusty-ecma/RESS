@@ -1,9 +1,6 @@
 use combine::{
-    choice,
-    error::ParseError,
-    many, many1, optional,
-    parser::char::{char as c_char, digit, hex_digit, oct_digit},
-    try, Parser, Stream,
+    choice, error::ParseError, many, many1, optional,
+    parser::char::{char as c_char, digit, hex_digit, oct_digit}, try, Parser, Stream,
 };
 
 use tokens::Token;
@@ -70,8 +67,9 @@ pub enum Kind {
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(bin_literal()),
@@ -82,15 +80,17 @@ pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 }
 
 fn decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(full_decimal_literal()), try(no_leading_decimal()))).map(|t| t)
 }
 
 fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         optional(choice([c_char('-'), c_char('+')])),
@@ -126,8 +126,9 @@ fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
 }
 
 fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         optional(choice([c_char('-'), c_char('+')])),
@@ -135,19 +136,14 @@ fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
         many1(digit()),
         optional((choice([c_char('e'), c_char('E')]), many1(digit()))),
     ).map(
-        |(sign, dot, remainder, exponent): (
-            Option<char>,
-            char,
-            String,
-            Option<(char, String)>,
-        )| {
+        |(sign, dot, remainder, exponent): (Option<char>, char, String, Option<(char, String)>)| {
             let mut ret = String::new();
             if let Some(sign) = sign {
                 ret.push(sign);
             }
             ret.push(dot);
             ret.push_str(&remainder);
-            if let Some((e, ex)) = exponent{
+            if let Some((e, ex)) = exponent {
                 ret.push(e);
                 ret.push_str(&ex);
             }
@@ -157,8 +153,9 @@ fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
 }
 
 fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         optional(choice([c_char('-'), c_char('+')])),
@@ -175,12 +172,14 @@ fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>
             ret.push(x);
             ret.push_str(&integer);
             Number(ret)
-    })
+        },
+    )
 }
 
 fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         optional(choice([c_char('-'), c_char('+')])),
@@ -197,12 +196,14 @@ fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
             ret.push(b);
             ret.push_str(&integer);
             Number(ret)
-        })
+        },
+    )
 }
 
 fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         optional(choice([c_char('-'), c_char('+')])),
@@ -219,7 +220,8 @@ fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
             ret.push(o);
             ret.push_str(&integer);
             Number(ret)
-        })
+        },
+    )
 }
 
 #[cfg(test)]
@@ -228,15 +230,17 @@ mod test {
     use tokens;
     #[test]
     fn full_decimal() {
-        let vals = vec!["0.1",
-                        "1.1",
-                        "888888888.88888888888",
-                        "+8",
-                        "-6",
-                        "+1E5",
-                        "-1E2",
-                        "1.8876e2",
-                        "-1.009987e87",];
+        let vals = vec![
+            "0.1",
+            "1.1",
+            "888888888.88888888888",
+            "+8",
+            "-6",
+            "+1E5",
+            "-1E2",
+            "1.8876e2",
+            "-1.009987e87",
+        ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(Number::from(val)), ""));
@@ -248,7 +252,9 @@ mod test {
 
     #[test]
     fn no_leading() {
-        let vals = vec![".2", "-.2", ".2E1", "+.8", "+.2E4", ".7e34", "-.7e2", "+.4e5",];
+        let vals = vec![
+            ".2", "-.2", ".2E1", "+.8", "+.2E4", ".7e34", "-.7e2", "+.4e5",
+        ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(Number::from(val)), ""))
@@ -260,7 +266,9 @@ mod test {
 
     #[test]
     fn hex() {
-        let vals = vec!["0x123", "0X456", "-0x789", "+0X0abc", "0xdef", "0xABC", "0xDEF",];
+        let vals = vec![
+            "0x123", "0X456", "-0x789", "+0X0abc", "0xdef", "0xABC", "0xDEF",
+        ];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
@@ -298,23 +306,25 @@ mod test {
 
     #[test]
     fn decimal() {
-        let vals = vec!["0.1",
-                        "1.1",
-                        "888888888.88888888888",
-                        "+8",
-                        "-6",
-                        "+1E5",
-                        "-1E2",
-                        "1.8876e2",
-                        "-1.009987e87",
-                        ".2",
-                        "-.2",
-                        ".2E1",
-                        "+.8",
-                        "+.2E4",
-                        ".7e34",
-                        "-.7e2",
-                        "+.4e5",];
+        let vals = vec![
+            "0.1",
+            "1.1",
+            "888888888.88888888888",
+            "+8",
+            "-6",
+            "+1E5",
+            "-1E2",
+            "1.8876e2",
+            "-1.009987e87",
+            ".2",
+            "-.2",
+            ".2E1",
+            "+.8",
+            "+.2E4",
+            ".7e34",
+            "-.7e2",
+            "+.4e5",
+        ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(Number::from(val)), ""));
@@ -329,38 +339,40 @@ mod test {
 
     #[test]
     fn number() {
-        let vals = vec!["0.1",
-                        "1.1",
-                        "888888888.88888888888",
-                        "+8",
-                        "-6",
-                        "+1E5",
-                        "-1E2",
-                        "1.8876e2",
-                        "-1.009987e87",
-                        ".2",
-                        "-.2",
-                        ".2E1",
-                        "+.8",
-                        "+.2E4",
-                        ".7e34",
-                        "-.7e2",
-                        "+.4e5",
-                        "0x123",
-                        "0X456",
-                        "-0x789",
-                        "+0X0abc",
-                        "0xdef",
-                        "0xABC",
-                        "0xDEF",
-                        "0o7",
-                        "0O554",
-                        "-0o12345670",
-                        "+0O12345670",
-                        "0b000",
-                        "0B111",
-                        "-0B0101",
-                        "+0b1010",];
+        let vals = vec![
+            "0.1",
+            "1.1",
+            "888888888.88888888888",
+            "+8",
+            "-6",
+            "+1E5",
+            "-1E2",
+            "1.8876e2",
+            "-1.009987e87",
+            ".2",
+            "-.2",
+            ".2E1",
+            "+.8",
+            "+.2E4",
+            ".7e34",
+            "-.7e2",
+            "+.4e5",
+            "0x123",
+            "0X456",
+            "-0x789",
+            "+0X0abc",
+            "0xdef",
+            "0xABC",
+            "0xDEF",
+            "0o7",
+            "0O554",
+            "-0o12345670",
+            "+0O12345670",
+            "0b000",
+            "0B111",
+            "-0B0101",
+            "+0b1010",
+        ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(d, (Token::Numeric(Number::from(val)), ""));

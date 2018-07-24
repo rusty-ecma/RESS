@@ -1,8 +1,5 @@
 use combine::{
-    choice, eof,
-    error::ParseError,
-    many, not_followed_by,
-    parser::char::{char as c_char, string},
+    choice, eof, error::ParseError, many, not_followed_by, parser::char::{char as c_char, string},
     try, Parser, Stream,
 };
 
@@ -22,8 +19,7 @@ pub struct Item {
 
 impl Item {
     pub fn new(token: Token, span: Span) -> Item {
-        Item { token,
-               span, }
+        Item { token, span }
     }
 }
 #[derive(Debug, PartialEq, Clone)]
@@ -34,8 +30,7 @@ pub struct Span {
 
 impl Span {
     pub fn new(start: usize, end: usize) -> Self {
-        Span { start,
-               end, }
+        Span { start, end }
     }
 }
 
@@ -200,7 +195,7 @@ impl Token {
             &Token::Boolean(ref b) => {
                 let b: bool = b.into();
                 !b
-            },
+            }
             _ => false,
         }
     }
@@ -300,11 +295,9 @@ impl Token {
 
     pub fn is_double_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => {
-                match s {
-                    strings::StringLit::Double(_) => true,
-                    _ => false,
-                }
+            Token::String(ref s) => match s {
+                strings::StringLit::Double(_) => true,
+                _ => false,
             },
             _ => false,
         }
@@ -312,11 +305,9 @@ impl Token {
 
     pub fn is_single_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => {
-                match s {
-                    strings::StringLit::Single(_) => true,
-                    _ => false,
-                }
+            Token::String(ref s) => match s {
+                strings::StringLit::Single(_) => true,
+                _ => false,
             },
             _ => false,
         }
@@ -432,12 +423,14 @@ impl Token {
     }
 
     pub fn comment(comment: &str, multi: bool) -> Token {
-        Token::Comment(comments::Comment::from_parts(comment.into(),
-                                                     if multi {
-                                                         comments::Kind::Multi
-                                                     } else {
-                                                         comments::Kind::Single
-                                                     }))
+        Token::Comment(comments::Comment::from_parts(
+            comment.into(),
+            if multi {
+                comments::Kind::Multi
+            } else {
+                comments::Kind::Single
+            },
+        ))
     }
 }
 parser!{
@@ -449,8 +442,9 @@ parser!{
 }
 
 pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         comments::comment(),
@@ -466,58 +460,69 @@ pub(crate) fn token_not_eof<I>() -> impl Parser<Input = I, Output = Token>
 }
 
 pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        try(true_literal()),
-        try(false_literal()),
-    )).map(|t: String| Token::Boolean(BooleanLiteral::from(t)))
+    choice((try(true_literal()), try(false_literal())))
+        .map(|t: String| Token::Boolean(BooleanLiteral::from(t)))
 }
 
 fn true_literal<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string("true").skip(not_followed_by(ident_part())).map(|s: &str| s.to_string())
+    string("true")
+        .skip(not_followed_by(ident_part()))
+        .map(|s: &str| s.to_string())
 }
 
 fn false_literal<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string("false").skip(not_followed_by(ident_part())).map(|s: &str| s.to_string())
+    string("false")
+        .skip(not_followed_by(ident_part()))
+        .map(|s: &str| s.to_string())
 }
 
 pub(crate) fn end_of_input<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     eof().map(|_| Token::EoF)
 }
 
 pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (ident_start(), many(ident_part())).map(|(start, body): (char, String)| {
-                                                let mut ret = String::new();
-                                                ret.push(start);
-                                                ret.push_str(&body);
-                                                Token::Ident(ret)
-                                            })
+        let mut ret = String::new();
+        ret.push(start);
+        ret.push_str(&body);
+        Token::Ident(ret)
+    })
 }
 
 pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    string("null").skip(not_followed_by(ident_part())).map(|_| Token::Null)
+    string("null")
+        .skip(not_followed_by(ident_part()))
+        .map(|_| Token::Null)
 }
 
 fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(unicode::lu()),
@@ -530,8 +535,9 @@ fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
 }
 
 fn ident_start<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(unicode_char()),
@@ -542,14 +548,17 @@ fn ident_start<I>() -> impl Parser<Input = I, Output = char>
 }
 
 pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(ident_start()),
-           try(unicode::mn()),
-           try(unicode::mc()),
-           try(unicode::nd()),
-           try(unicode::pc())))
+    choice((
+        try(ident_start()),
+        try(unicode::mn()),
+        try(unicode::mc()),
+        try(unicode::nd()),
+        try(unicode::pc()),
+    ))
 }
 
 #[cfg(test)]
@@ -571,16 +580,18 @@ mod test {
 
     #[test]
     fn ident_tests() {
-        let idents = vec!["$",
-                          "x",
-                          "thing",
-                          "num",
-                          "stuff",
-                          "anotherThing",
-                          "snake_thing",
-                          "junk",
-                          "_",
-                          "_private",];
+        let idents = vec![
+            "$",
+            "x",
+            "thing",
+            "num",
+            "stuff",
+            "anotherThing",
+            "snake_thing",
+            "junk",
+            "_",
+            "_private",
+        ];
         for i in idents {
             let t = token().parse(i.clone()).unwrap();
             assert_eq!(t, (Token::Ident(i.to_owned()), ""))

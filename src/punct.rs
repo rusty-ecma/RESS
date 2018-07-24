@@ -1,9 +1,6 @@
 use combine::{
-    choice,
-    error::ParseError,
-    not_followed_by,
-    parser::char::{char as c_char, string},
-    try, Parser, Stream,
+    choice, error::ParseError, not_followed_by, parser::char::{char as c_char, string}, try,
+    Parser, Stream,
 };
 use tokens::Token;
 #[derive(Debug, PartialEq, Clone)]
@@ -187,29 +184,33 @@ impl ::std::string::ToString for Punct {
     }
 }
 pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(multi_punct()), try(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(normal_punct()), try(div_punct()))).map(|c| c.to_string())
 }
 
 fn normal_punct<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(c_char('}')), try(normal_punct_not_close_brace()))).map(|c: char| c)
 }
 
 fn normal_punct_not_close_brace<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice([
         try(c_char('{')),
@@ -238,15 +239,17 @@ fn normal_punct_not_close_brace<I>() -> impl Parser<Input = I, Output = char>
 }
 
 fn div_punct<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     c_char('/').skip(not_followed_by(c_char('*'))).map(|c| c)
 }
 
 fn multi_punct<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice([
         //4 char
@@ -289,16 +292,44 @@ mod test {
     use tokens::token;
     #[test]
     fn punct() {
-        let single = vec!["{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<",
-                          "=", "!", "+", "-", "/", "*", "%", "&", "|", "^",];
+        let single = vec![
+            "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+",
+            "-", "/", "*", "%", "&", "|", "^",
+        ];
         for p in single.clone() {
             let t = token().parse(p.clone()).unwrap();
             assert_eq!(t, (Token::punct(p), ""));
         }
-        let multi = vec![">>>=", //3 char
-                         "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
-                         "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>",
-                         "&=", "|=", "^=", "%=", "<=", ">=", "=>", "**",];
+        let multi = vec![
+            ">>>=", //3 char
+            "...",
+            "===",
+            "!==",
+            ">>>",
+            "<<=",
+            ">>=",
+            "**=", //2 char
+            "&&",
+            "||",
+            "==",
+            "!=",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "++",
+            "--",
+            "<<",
+            ">>",
+            "&=",
+            "|=",
+            "^=",
+            "%=",
+            "<=",
+            ">=",
+            "=>",
+            "**",
+        ];
         for p in multi.clone() {
             let t = token().parse(p.clone()).unwrap();
             assert_eq!(t, (Token::punct(p), ""));

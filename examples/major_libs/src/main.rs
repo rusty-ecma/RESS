@@ -6,10 +6,7 @@
 //! for each lib.
 extern crate ress;
 use std::{
-    env::args,
-    fs::read_to_string,
-    path::PathBuf,
-    time::{Duration, SystemTime},
+    env::args, fs::read_to_string, path::PathBuf, time::{Duration, SystemTime},
 };
 
 fn main() {
@@ -99,12 +96,14 @@ fn test_js(text: &str, name: &str) {
 
 fn report(bytes: usize, elapsed: Duration, method: &str, name: &str) {
     let size = get_size(bytes);
-    println!("{} ({}) using {} in {}s {:.2}ms",
-             name,
-             size,
-             method,
-             elapsed.as_secs(),
-             elapsed.subsec_millis())
+    println!(
+        "{} ({}) using {} in {}s {:.2}ms",
+        name,
+        size,
+        method,
+        elapsed.as_secs(),
+        elapsed.subsec_millis()
+    )
 }
 
 fn get_size(b: usize) -> String {

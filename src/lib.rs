@@ -44,13 +44,15 @@ impl Scanner {
     pub fn new(text: impl Into<String>) -> Self {
         let text = text.into();
         let cursor = text.len() - text.trim_left().len();
-        Scanner { stream: text,
-                  eof: false,
-                  cursor,
-                  spans: vec![],
-                  last_open_paren_idx: 0,
-                  template: 0,
-                  replacement: 0, }
+        Scanner {
+            stream: text,
+            eof: false,
+            cursor,
+            spans: vec![],
+            last_open_paren_idx: 0,
+            template: 0,
+            replacement: 0,
+        }
     }
 }
 
@@ -104,17 +106,15 @@ impl Scanner {
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                             }
                             Some(Item::new(pair.0, span))
-                        },
-                        Err(e) => {
-                            panic!(
+                        }
+                        Err(e) => panic!(
                             "Failed to parse token last successful parse ended {}\nError: {:?}",
                             self.cursor, e,
-                        )
-                        },
+                        ),
                     }
                 } else if self.template > 0
-                          && self.replacement == self.template
-                          && pair.0.matches_punct(Punct::CloseBrace)
+                    && self.replacement == self.template
+                    && pair.0.matches_punct(Punct::CloseBrace)
                 {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
@@ -130,13 +130,11 @@ impl Scanner {
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                             }
                             Some(Item::new(pair.0, span))
-                        },
-                        Err(e) => {
-                            panic!(
+                        }
+                        Err(e) => panic!(
                             "Failed to parse token last successful parse ended {}\nError: {:?}",
                             self.cursor, e,
-                        )
-                        },
+                        ),
                     }
                 } else {
                     if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
@@ -158,11 +156,11 @@ impl Scanner {
                     }
                     Some(Item::new(pair.0, span))
                 }
-            },
-            Err(e) => {
-                panic!("Failed to parse token last successful parse ended {}\nError: {:?}",
-                       self.cursor, e,)
-            },
+            }
+            Err(e) => panic!(
+                "Failed to parse token last successful parse ended {}\nError: {:?}",
+                self.cursor, e,
+            ),
         }
     }
 
@@ -171,7 +169,7 @@ impl Scanner {
             if !last_token.is_keyword() && !last_token.is_punct() {
                 false
             } else if last_token.matches_keyword(Keyword::This)
-                      || last_token.matches_punct(Punct::CloseBrace)
+                || last_token.matches_punct(Punct::CloseBrace)
             {
                 false
             } else if last_token.matches_punct(Punct::CloseParen) {
@@ -196,9 +194,9 @@ impl Scanner {
     fn check_for_conditional(&self) -> bool {
         if let Some(before) = self.nth_before_last_open_paren(1) {
             before.matches_keyword(Keyword::If)
-            || before.matches_keyword(Keyword::For)
-            || before.matches_keyword(Keyword::While)
-            || before.matches_keyword(Keyword::With)
+                || before.matches_keyword(Keyword::For)
+                || before.matches_keyword(Keyword::While)
+                || before.matches_keyword(Keyword::With)
         } else {
             true
         }
@@ -223,59 +221,59 @@ impl Scanner {
 
     fn check_for_expression(token: Token) -> bool {
         token.matches_punct(Punct::OpenParen)
-        && !token.matches_punct(Punct::OpenBrace)
-        && !token.matches_punct(Punct::OpenBracket)
-        && !token.matches_punct(Punct::Assign)
-        && !token.matches_punct(Punct::AddAssign)
-        && !token.matches_punct(Punct::SubtractAssign)
-        && !token.matches_punct(Punct::MultiplyAssign)
-        && !token.matches_punct(Punct::ExponentAssign)
-        && !token.matches_punct(Punct::DivideAssign)
-        && !token.matches_punct(Punct::ModuloAssign)
-        && !token.matches_punct(Punct::LeftShiftAssign)
-        && !token.matches_punct(Punct::RightShiftAssign)
-        && !token.matches_punct(Punct::UnsignedRightShiftAssign)
-        && !token.matches_punct(Punct::BitwiseAndAssign)
-        && !token.matches_punct(Punct::BitwiseOrAssign)
-        && !token.matches_punct(Punct::BitwiseXOrAssign)
-        && !token.matches_punct(Punct::Comma)
-        && !token.matches_punct(Punct::Plus)
-        && !token.matches_punct(Punct::Minus)
-        && !token.matches_punct(Punct::Asterisk)
-        && !token.matches_punct(Punct::Exponent)
-        && !token.matches_punct(Punct::ForwardSlash)
-        && !token.matches_punct(Punct::Modulo)
-        && !token.matches_punct(Punct::Increment)
-        && !token.matches_punct(Punct::Decrement)
-        && !token.matches_punct(Punct::LeftShift)
-        && !token.matches_punct(Punct::RightShift)
-        && !token.matches_punct(Punct::UnsignedRightShift)
-        && !token.matches_punct(Punct::And)
-        && !token.matches_punct(Punct::Pipe)
-        && !token.matches_punct(Punct::Caret)
-        && !token.matches_punct(Punct::Not)
-        && !token.matches_punct(Punct::BitwiseNot)
-        && !token.matches_punct(Punct::LogicalAnd)
-        && !token.matches_punct(Punct::LogicalOr)
-        && !token.matches_punct(Punct::QuestionMark)
-        && !token.matches_punct(Punct::Colon)
-        && !token.matches_punct(Punct::StrictEquals)
-        && !token.matches_punct(Punct::Equal)
-        && !token.matches_punct(Punct::GreaterThanEqual)
-        && !token.matches_punct(Punct::LessThanEqual)
-        && !token.matches_punct(Punct::LessThan)
-        && !token.matches_punct(Punct::GreaterThan)
-        && !token.matches_punct(Punct::NotEqual)
-        && !token.matches_punct(Punct::StrictNotEquals)
-        && !token.matches_keyword(Keyword::In)
-        && !token.matches_keyword(Keyword::TypeOf)
-        && !token.matches_keyword(Keyword::InstanceOf)
-        && !token.matches_keyword(Keyword::New)
-        && !token.matches_keyword(Keyword::Return)
-        && !token.matches_keyword(Keyword::Case)
-        && !token.matches_keyword(Keyword::Delete)
-        && !token.matches_keyword(Keyword::Throw)
-        && !token.matches_keyword(Keyword::Void)
+            && !token.matches_punct(Punct::OpenBrace)
+            && !token.matches_punct(Punct::OpenBracket)
+            && !token.matches_punct(Punct::Assign)
+            && !token.matches_punct(Punct::AddAssign)
+            && !token.matches_punct(Punct::SubtractAssign)
+            && !token.matches_punct(Punct::MultiplyAssign)
+            && !token.matches_punct(Punct::ExponentAssign)
+            && !token.matches_punct(Punct::DivideAssign)
+            && !token.matches_punct(Punct::ModuloAssign)
+            && !token.matches_punct(Punct::LeftShiftAssign)
+            && !token.matches_punct(Punct::RightShiftAssign)
+            && !token.matches_punct(Punct::UnsignedRightShiftAssign)
+            && !token.matches_punct(Punct::BitwiseAndAssign)
+            && !token.matches_punct(Punct::BitwiseOrAssign)
+            && !token.matches_punct(Punct::BitwiseXOrAssign)
+            && !token.matches_punct(Punct::Comma)
+            && !token.matches_punct(Punct::Plus)
+            && !token.matches_punct(Punct::Minus)
+            && !token.matches_punct(Punct::Asterisk)
+            && !token.matches_punct(Punct::Exponent)
+            && !token.matches_punct(Punct::ForwardSlash)
+            && !token.matches_punct(Punct::Modulo)
+            && !token.matches_punct(Punct::Increment)
+            && !token.matches_punct(Punct::Decrement)
+            && !token.matches_punct(Punct::LeftShift)
+            && !token.matches_punct(Punct::RightShift)
+            && !token.matches_punct(Punct::UnsignedRightShift)
+            && !token.matches_punct(Punct::And)
+            && !token.matches_punct(Punct::Pipe)
+            && !token.matches_punct(Punct::Caret)
+            && !token.matches_punct(Punct::Not)
+            && !token.matches_punct(Punct::BitwiseNot)
+            && !token.matches_punct(Punct::LogicalAnd)
+            && !token.matches_punct(Punct::LogicalOr)
+            && !token.matches_punct(Punct::QuestionMark)
+            && !token.matches_punct(Punct::Colon)
+            && !token.matches_punct(Punct::StrictEquals)
+            && !token.matches_punct(Punct::Equal)
+            && !token.matches_punct(Punct::GreaterThanEqual)
+            && !token.matches_punct(Punct::LessThanEqual)
+            && !token.matches_punct(Punct::LessThan)
+            && !token.matches_punct(Punct::GreaterThan)
+            && !token.matches_punct(Punct::NotEqual)
+            && !token.matches_punct(Punct::StrictNotEquals)
+            && !token.matches_keyword(Keyword::In)
+            && !token.matches_keyword(Keyword::TypeOf)
+            && !token.matches_keyword(Keyword::InstanceOf)
+            && !token.matches_keyword(Keyword::New)
+            && !token.matches_keyword(Keyword::Return)
+            && !token.matches_keyword(Keyword::Case)
+            && !token.matches_keyword(Keyword::Delete)
+            && !token.matches_keyword(Keyword::Throw)
+            && !token.matches_keyword(Keyword::Void)
     }
 
     fn nth_before_last_open_paren(&self, n: usize) -> Option<Token> {
@@ -295,10 +293,13 @@ impl Scanner {
 }
 
 pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    c_char('\\').and(c_char(q)).map(|(_slash, c): (char, char)| c)
+    c_char('\\')
+        .and(c_char(q))
+        .map(|(_slash, c): (char, char)| c)
 }
 
 pub(crate) fn is_source_char(c: char) -> bool {
@@ -343,27 +344,29 @@ function thing() {
     let x = 0;
     console.log('stuff');
 }";
-        let expectation = vec![Token::single_quoted_string("use strict"),
-                               Token::punct(";"),
-                               Token::keyword("function"),
-                               Token::ident("thing"),
-                               Token::punct("("),
-                               Token::punct(")"),
-                               Token::punct("{"),
-                               Token::keyword("let"),
-                               Token::ident("x"),
-                               Token::punct("="),
-                               Token::numeric("0"),
-                               Token::punct(";"),
-                               Token::ident("console"),
-                               Token::punct("."),
-                               Token::ident("log"),
-                               Token::punct("("),
-                               Token::single_quoted_string("stuff"),
-                               Token::punct(")"),
-                               Token::punct(";"),
-                               Token::punct("}"),
-                               Token::EoF,];
+        let expectation = vec![
+            Token::single_quoted_string("use strict"),
+            Token::punct(";"),
+            Token::keyword("function"),
+            Token::ident("thing"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct("{"),
+            Token::keyword("let"),
+            Token::ident("x"),
+            Token::punct("="),
+            Token::numeric("0"),
+            Token::punct(";"),
+            Token::ident("console"),
+            Token::punct("."),
+            Token::ident("log"),
+            Token::punct("("),
+            Token::single_quoted_string("stuff"),
+            Token::punct(")"),
+            Token::punct(";"),
+            Token::punct("}"),
+            Token::EoF,
+        ];
         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
             assert_eq!(tok.0, tok.1);
         }
@@ -372,34 +375,36 @@ function thing() {
     #[test]
     fn scanner() {
         let s = super::Scanner::new(
-                                    "(function() {
+            "(function() {
 this.x = 100;
 this.y = 0;
 })();",
         );
-        let expected = vec![Token::punct("("),
-                            Token::keyword("function"),
-                            Token::punct("("),
-                            Token::punct(")"),
-                            Token::punct("{"),
-                            Token::keyword("this"),
-                            Token::punct("."),
-                            Token::ident("x"),
-                            Token::punct("="),
-                            Token::numeric("100"),
-                            Token::punct(";"),
-                            Token::keyword("this"),
-                            Token::punct("."),
-                            Token::ident("y"),
-                            Token::punct("="),
-                            Token::numeric("0"),
-                            Token::punct(";"),
-                            Token::punct("}"),
-                            Token::punct(")"),
-                            Token::punct("("),
-                            Token::punct(")"),
-                            Token::punct(";"),
-                            Token::EoF,];
+        let expected = vec![
+            Token::punct("("),
+            Token::keyword("function"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct("{"),
+            Token::keyword("this"),
+            Token::punct("."),
+            Token::ident("x"),
+            Token::punct("="),
+            Token::numeric("100"),
+            Token::punct(";"),
+            Token::keyword("this"),
+            Token::punct("."),
+            Token::ident("y"),
+            Token::punct("="),
+            Token::numeric("0"),
+            Token::punct(";"),
+            Token::punct("}"),
+            Token::punct(")"),
+            Token::punct("("),
+            Token::punct(")"),
+            Token::punct(";"),
+            Token::EoF,
+        ];
         validate(s, expected);
     }
 
@@ -407,9 +412,11 @@ this.y = 0;
     fn template_one_sub() {
         let one_sub = "`things and stuff times ${x}`";
         let s = Scanner::new(one_sub);
-        let expected = vec![Token::template_head("things and stuff times "),
-                            Token::ident("x"),
-                            Token::template_tail(""),];
+        let expected = vec![
+            Token::template_head("things and stuff times "),
+            Token::ident("x"),
+            Token::template_tail(""),
+        ];
         validate(s, expected);
     }
 
@@ -417,11 +424,13 @@ this.y = 0;
     fn template_two_subs() {
         let two_subs = "`things and stuff times ${x} divided by ${y}`";
         let s = Scanner::new(two_subs);
-        let expected = vec![Token::template_head("things and stuff times "),
-                            Token::ident("x"),
-                            Token::template_middle(" divided by "),
-                            Token::ident("y"),
-                            Token::template_tail(""),];
+        let expected = vec![
+            Token::template_head("things and stuff times "),
+            Token::ident("x"),
+            Token::template_middle(" divided by "),
+            Token::ident("y"),
+            Token::template_tail(""),
+        ];
         validate(s, expected);
     }
     #[test]
@@ -429,23 +438,30 @@ this.y = 0;
         let plain = "`things and
         stuff`";
         let p_r = tokens::token().parse(plain).unwrap();
-        assert_eq!(p_r, (Token::no_sub_template(&plain[1..plain.len() - 1]), ""));
+        assert_eq!(
+            p_r,
+            (Token::no_sub_template(&plain[1..plain.len() - 1]), "")
+        );
         let subbed = "`things and
         stuff times ${x}`";
         let s = Scanner::new(subbed);
-        let expected = vec![Token::template_head("things and\n        stuff times "),
-                            Token::ident("x"),
-                            Token::template_tail(""),];
+        let expected = vec![
+            Token::template_head("things and\n        stuff times "),
+            Token::ident("x"),
+            Token::template_tail(""),
+        ];
         validate(s, expected);
     }
     #[test]
     fn nested_template() {
         let test = "`outer ${`inner ${0}`}`";
-        let expected = vec![Token::template_head("outer "),
-                            Token::template_head("inner "),
-                            Token::numeric("0"),
-                            Token::template_tail(""),
-                            Token::template_tail(""),];
+        let expected = vec![
+            Token::template_head("outer "),
+            Token::template_head("inner "),
+            Token::numeric("0"),
+            Token::template_tail(""),
+            Token::template_tail(""),
+        ];
         let s = Scanner::new(test);
         validate(s, expected);
     }

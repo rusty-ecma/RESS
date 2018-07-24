@@ -273,8 +273,9 @@ impl Keyword {
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(future_reserved()),
@@ -286,8 +287,9 @@ pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 }
 
 pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice([
         try(string("await")),
@@ -324,8 +326,9 @@ pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
 }
 
 pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(string("export")),
@@ -336,8 +339,9 @@ pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
 }
 
 pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(string("implements")),
@@ -353,12 +357,12 @@ pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token
 }
 
 pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(string("eval")), try(string("arguments")))).map(|t| {
-                                                                    Token::Keyword(Keyword::from(t))
-                                                                })
+    choice((try(string("eval")), try(string("arguments"))))
+        .map(|t| Token::Keyword(Keyword::from(t)))
 }
 
 #[cfg(test)]
@@ -380,15 +384,17 @@ mod test {
 
     #[test]
     fn strict_mode_reserved() {
-        let keywords = ["implements",
-                        "interface",
-                        "package",
-                        "private",
-                        "protected",
-                        "public",
-                        "static",
-                        "yield",
-                        "let"];
+        let keywords = [
+            "implements",
+            "interface",
+            "package",
+            "private",
+            "protected",
+            "public",
+            "static",
+            "yield",
+            "let",
+        ];
         for keyword in keywords.iter() {
             let k = token().parse(keyword.clone()).unwrap();
             assert_eq!(k, (Token::keyword(*keyword), ""));
@@ -409,32 +415,34 @@ mod test {
 
     #[test]
     fn reserved_keywords() {
-        let keys = vec!["break",
-                        "case",
-                        "catch",
-                        "continue",
-                        "debugger",
-                        "default",
-                        "delete",
-                        "do",
-                        "else",
-                        "finally",
-                        "for",
-                        "function",
-                        "if",
-                        "instanceof",
-                        "in",
-                        "new",
-                        "return",
-                        "switch",
-                        "this",
-                        "throw",
-                        "try",
-                        "typeof",
-                        "var",
-                        "void",
-                        "while",
-                        "with",];
+        let keys = vec![
+            "break",
+            "case",
+            "catch",
+            "continue",
+            "debugger",
+            "default",
+            "delete",
+            "do",
+            "else",
+            "finally",
+            "for",
+            "function",
+            "if",
+            "instanceof",
+            "in",
+            "new",
+            "return",
+            "switch",
+            "this",
+            "throw",
+            "try",
+            "typeof",
+            "var",
+            "void",
+            "while",
+            "with",
+        ];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
             assert_eq!(k, (Token::keyword(key), ""));
@@ -443,46 +451,48 @@ mod test {
 
     #[test]
     fn keywords_test() {
-        let keys = vec!["enum",
-                        "export",
-                        "import",
-                        "super",
-                        "implements",
-                        "interface",
-                        "package",
-                        "private",
-                        "protected",
-                        "public",
-                        "static",
-                        "yield",
-                        "let",
-                        "eval",
-                        "break",
-                        "case",
-                        "catch",
-                        "continue",
-                        "debugger",
-                        "default",
-                        "delete",
-                        "do",
-                        "else",
-                        "finally",
-                        "for",
-                        "function",
-                        "if",
-                        "instanceof",
-                        "in",
-                        "new",
-                        "return",
-                        "switch",
-                        "this",
-                        "throw",
-                        "try",
-                        "typeof",
-                        "var",
-                        "void",
-                        "while",
-                        "with",];
+        let keys = vec![
+            "enum",
+            "export",
+            "import",
+            "super",
+            "implements",
+            "interface",
+            "package",
+            "private",
+            "protected",
+            "public",
+            "static",
+            "yield",
+            "let",
+            "eval",
+            "break",
+            "case",
+            "catch",
+            "continue",
+            "debugger",
+            "default",
+            "delete",
+            "do",
+            "else",
+            "finally",
+            "for",
+            "function",
+            "if",
+            "instanceof",
+            "in",
+            "new",
+            "return",
+            "switch",
+            "this",
+            "throw",
+            "try",
+            "typeof",
+            "var",
+            "void",
+            "while",
+            "with",
+        ];
         for key in keys {
             let k = token().parse(key.clone()).unwrap();
             assert_eq!(k, (Token::keyword(key), ""));

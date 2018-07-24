@@ -11,10 +11,7 @@ extern crate serde;
 extern crate serde_derive;
 
 use std::{
-    fs::{read_to_string, File},
-    io::{BufWriter, Write},
-    path::PathBuf,
-    string::ToString,
+    fs::{read_to_string, File}, io::{BufWriter, Write}, path::PathBuf, string::ToString,
 };
 
 use docopt::Docopt;
@@ -29,12 +26,12 @@ Usage:
 ";
 
 fn main() {
-    let opts: Opts =
-        Docopt::new(USAGE).and_then(|d| d.deserialize()).unwrap_or_else(|e| {
-                                                                            println!("error: {:?}",
-                                                                                     e);
-                                                                            e.exit()
-                                                                        });
+    let opts: Opts = Docopt::new(USAGE)
+        .and_then(|d| d.deserialize())
+        .unwrap_or_else(|e| {
+            println!("error: {:?}", e);
+            e.exit()
+        });
     let js = if let Ok(s) = read_to_string(opts.arg_in_path) {
         s
     } else {
@@ -85,9 +82,9 @@ fn main() {
             new_line = true;
         }
         if in_if
-           && if_parens == 0
-           && last_token.matches_punct(Punct::CloseParen)
-           && !token.is_punct()
+            && if_parens == 0
+            && last_token.matches_punct(Punct::CloseParen)
+            && !token.is_punct()
         {
             unbraced_if = true;
             new_line = true;
@@ -124,7 +121,8 @@ fn main() {
         if space_before(&last_token, &token) {
             out.write(" ".as_bytes()).expect("error writing space");
         }
-        out.write(&(token_to_string(&token)).as_bytes()).expect("Error writing token");
+        out.write(&(token_to_string(&token)).as_bytes())
+            .expect("Error writing token");
         last_token = token;
     }
 }
@@ -134,12 +132,12 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
         return true;
     }
     if last_token.matches_punct(Punct::Period)
-       && (token.is_ident() || token.matches_keyword(Keyword::This))
+        && (token.is_ident() || token.matches_keyword(Keyword::This))
     {
         return false;
     }
     if (last_token.is_ident() || last_token.matches_keyword(Keyword::This))
-       && token.matches_punct(Punct::Period)
+        && token.matches_punct(Punct::Period)
     {
         return false;
     }
@@ -222,8 +220,8 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
         return false;
     }
     if last_token.matches_keyword(Keyword::In)
-       || last_token.matches_keyword(Keyword::Of)
-       || last_token.matches_keyword(Keyword::For)
+        || last_token.matches_keyword(Keyword::Of)
+        || last_token.matches_keyword(Keyword::For)
     {
         return true;
     }
@@ -244,18 +242,14 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
 
 fn token_to_string(t: &Token) -> String {
     match t {
-        &Token::Boolean(ref t) => if t == &Boolean::True {
-                                      "true"
-                                  } else {
-                                      "false"
-                                  }.to_string(),
+        &Token::Boolean(ref t) => if t == &Boolean::True { "true" } else { "false" }.to_string(),
         &Token::Comment(ref comment) => {
             if comment.is_multi_line() {
                 format!("/*\n{}\n*/", comment.content)
             } else {
                 format!("//{}", comment.content)
             }
-        },
+        }
         &Token::Ident(ref name) => name.to_string(),
         &Token::Keyword(ref key) => key.to_string(),
         &Token::Null => "null".to_string(),

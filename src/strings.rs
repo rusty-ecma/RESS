@@ -1,12 +1,9 @@
 use combine::{
-    between, choice,
-    error::ParseError,
-    many, not_followed_by,
+    between, choice, error::ParseError, many, not_followed_by,
     parser::{
-        char::{char as c_char, spaces, string},
-        item::satisfy,
-    },
-    try, Parser, Stream,
+        char::{char as c_char, spaces, string}, item::satisfy,
+    }, try, Parser,
+    Stream,
 };
 
 use super::{escaped, is_line_term};
@@ -86,23 +83,26 @@ impl StringLit {
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(single_quote()), try(double_quote()))).map(|t| Token::String(t))
 }
 
 fn single_quote<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (between(c_char('\''), c_char('\''), many(single_quoted_content())))
         .map(|t: String| StringLit::Single(t))
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(escaped('\'').map(|c: char| c.to_string())),
@@ -113,24 +113,28 @@ fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
 }
 
 fn string_continuation<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (c_char('\\'), line_terminator_sequence()).skip(spaces()).map(|_| String::new())
+    (c_char('\\'), line_terminator_sequence())
+        .skip(spaces())
+        .map(|_| String::new())
 }
 
 fn double_quote<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('"'), c_char('"'), many(double_quoted_content())).map(|t: String| {
-                                                                             StringLit::Double(t)
-                                                                         })
+    between(c_char('"'), c_char('"'), many(double_quoted_content()))
+        .map(|t: String| StringLit::Double(t))
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(escaped('"').map(|c: char| c.to_string())),
@@ -141,15 +145,17 @@ fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
 }
 
 fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     satisfy(|c| is_line_term(c)).map(|c: char| c)
 }
 
 pub(crate) fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(string("\r\n").map(|s: &str| s.to_string())),
@@ -158,59 +164,66 @@ pub(crate) fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = S
 }
 
 pub(crate) fn template_start<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(no_sub_template()), try(template_head()))).map(|s: StringLit| Token::String(s))
 }
 
 pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((try(template_middle()), try(template_tail()))).map(|s: StringLit| Token::String(s))
 }
 
 fn no_sub_template<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('`'), c_char('`'), many(template_char())).map(|s: String| {
-                                                                     StringLit::NoSubTemplate(s)
-                                                                 })
+    between(c_char('`'), c_char('`'), many(template_char()))
+        .map(|s: String| StringLit::NoSubTemplate(s))
 }
 
 fn template_head<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(string("`"), string("${"), many(template_char())).map(|s: String| {
-                                                                      StringLit::TemplateHead(s)
-                                                                  })
+    between(string("`"), string("${"), many(template_char()))
+        .map(|s: String| StringLit::TemplateHead(s))
 }
 
 fn template_middle<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (many(template_char()), string("${")).map(|(s, _): (String, _)| StringLit::TemplateMiddle(s))
 }
 
 fn template_tail<I>() -> impl Parser<Input = I, Output = StringLit>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (try(many(template_char())), c_char('`')).map(|(s, _): (String, _)| StringLit::TemplateTail(s))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>
-    where I: Stream<Item = char>,
-          I::Error: ParseError<I::Item, I::Range, I::Position>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(c_char('$').skip(not_followed_by(c_char('{')))),
-           try(escaped('`')),
-           try(escaped('\\')),
-           try(satisfy(|c: char| c != '`' && c != '$'))))
+    choice((
+        try(c_char('$').skip(not_followed_by(c_char('{')))),
+        try(escaped('`')),
+        try(escaped('\\')),
+        try(satisfy(|c: char| c != '`' && c != '$')),
+    ))
 }
 
 #[cfg(test)]
@@ -219,7 +232,11 @@ mod test {
     use tokens::{token, Token};
     #[test]
     fn strings() {
-        let strings = vec!["junk and places", "things and stuff", "✨✨✨✨ ✨✨✨✨",];
+        let strings = vec![
+            "junk and places",
+            "things and stuff",
+            "✨✨✨✨ ✨✨✨✨",
+        ];
         for s in strings.into_iter() {
             let dq_test = format!("\"{}\"", &s.clone());
             let dq = token().parse(dq_test.as_str()).unwrap();
