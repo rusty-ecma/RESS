@@ -14,7 +14,6 @@ matrix:
       script:
         - cargo test
         - cargo run --example major_libs --release
-        - cargo +nightly fmt --all -- --check
       after_script:
         - git add proptest-regressions
         - git commit -m "proptest-regressions update [ci skip]"
