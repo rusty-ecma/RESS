@@ -105,12 +105,10 @@ impl Scanner {
                             }
                             Some(Item::new(pair.0, span))
                         },
-                        Err(e) => {
-                            panic!(
+                        Err(e) => panic!(
                             "Failed to parse token last successful parse ended {}\nError: {:?}",
                             self.cursor, e,
-                        )
-                        },
+                        ),
                     }
                 } else if self.template > 0
                           && self.replacement == self.template
@@ -131,12 +129,10 @@ impl Scanner {
                             }
                             Some(Item::new(pair.0, span))
                         },
-                        Err(e) => {
-                            panic!(
+                        Err(e) => panic!(
                             "Failed to parse token last successful parse ended {}\nError: {:?}",
                             self.cursor, e,
-                        )
-                        },
+                        ),
                     }
                 } else {
                     if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
@@ -159,10 +155,8 @@ impl Scanner {
                     Some(Item::new(pair.0, span))
                 }
             },
-            Err(e) => {
-                panic!("Failed to parse token last successful parse ended {}\nError: {:?}",
-                       self.cursor, e,)
-            },
+            Err(e) => panic!("Failed to parse token last successful parse ended {}\nError: {:?}",
+                             self.cursor, e,),
         }
     }
 

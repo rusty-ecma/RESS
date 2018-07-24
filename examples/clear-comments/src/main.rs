@@ -244,11 +244,13 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
 
 fn token_to_string(t: &Token) -> String {
     match t {
-        &Token::Boolean(ref t) => if t == &Boolean::True {
-                                      "true"
-                                  } else {
-                                      "false"
-                                  }.to_string(),
+        &Token::Boolean(ref t) => {
+            if t == &Boolean::True {
+                "true"
+            } else {
+                "false"
+            }.to_string()
+        },
         &Token::Comment(ref comment) => {
             if comment.is_multi_line() {
                 format!("/*\n{}\n*/", comment.content)
@@ -261,9 +263,11 @@ fn token_to_string(t: &Token) -> String {
         &Token::Null => "null".to_string(),
         &Token::Numeric(ref number) => number.to_string(),
         &Token::Punct(ref p) => p.to_string(),
-        &Token::RegEx(ref regex) => match regex.flags {
-            Some(ref f) => format!("/{}/{}", regex.body, f),
-            None => format!("/{}/", regex.body),
+        &Token::RegEx(ref regex) => {
+            match regex.flags {
+                Some(ref f) => format!("/{}/{}", regex.body, f),
+                None => format!("/{}/", regex.body),
+            }
         },
         &Token::String(ref s) => format!("{}", s.to_string()),
         _ => String::new(),
