@@ -6,7 +6,7 @@ matrix:
       install:
         - npm i
         - rustup toolchain install nightly
-        - rustup +nightly component add rustfmt-preview
+        - rustup component add rustfmt-preview --toolchain nightly
       cache:
         - cargo: true
         - directories:
