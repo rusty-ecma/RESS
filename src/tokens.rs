@@ -300,9 +300,11 @@ impl Token {
 
     pub fn is_double_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => match s {
-                strings::StringLit::Double(_) => true,
-                _ => false,
+            Token::String(ref s) => {
+                match s {
+                    strings::StringLit::Double(_) => true,
+                    _ => false,
+                }
             },
             _ => false,
         }
@@ -310,9 +312,11 @@ impl Token {
 
     pub fn is_single_quoted_string(&self) -> bool {
         match self {
-            Token::String(ref s) => match s {
-                strings::StringLit::Single(_) => true,
-                _ => false,
+            Token::String(ref s) => {
+                match s {
+                    strings::StringLit::Single(_) => true,
+                    _ => false,
+                }
             },
             _ => false,
         }
