@@ -6,7 +6,7 @@ matrix:
       install:
         - npm i
         - rustup toolchain install nightly
-        - rustup component add rustfmt-preview
+        - rustup +nightly component add rustfmt-preview
       cache: cargo
       script:
         - cargo test
@@ -15,5 +15,8 @@ matrix:
       after_script:
         - git add proptest-regressions
         - git commit -m "proptest-regressions update [ci skip]"
+      stages:
+        after_script:
+          - if branch in (master, next)
 notifications:
   email: never
