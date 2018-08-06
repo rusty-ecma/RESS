@@ -20,7 +20,7 @@ pub use numeric::Number;
 pub use punct::Punct;
 pub use regex::RegEx;
 pub use strings::StringLit;
-pub use tokens::{BooleanLiteral as Boolean, Item, Span, Token};
+pub use tokens::{BooleanLiteral as Boolean, Item, Span, Token, Ident};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
