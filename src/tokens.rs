@@ -236,6 +236,20 @@ impl Token {
         self == &Token::keyword(name)
     }
 
+    pub fn is_strict_reserved(&self) -> bool {
+        match self {
+            &Token::Keyword(ref k) => k.is_strict_reserved(),
+            _ => false
+        }
+    }
+
+    pub fn is_restricted(&self) -> bool {
+        match self {
+            &Token::Keyword(ref k) => k.is_restricted(),
+            _ => false,
+        }
+    }
+
     pub fn keyword(name: &str) -> Token {
         Token::Keyword(keywords::Keyword::from(name))
     }
