@@ -80,6 +80,15 @@ impl StringLit {
             _ => false,
         }
     }
+    pub fn no_quote(&self) -> Result<String, String> {
+        if self.is_single() {
+            Ok(self.to_string().replace("'", ""))
+        } else if self.is_double() {
+            Ok(self.to_string().replace("\"", ""))
+        } else {
+            Err(String::from("cannot remove the quotes from a template string"))
+        }
+    }
 }
 
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>

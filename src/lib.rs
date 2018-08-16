@@ -31,7 +31,7 @@ pub fn tokenize(text: &str) -> Vec<Token> {
 /// An iterator over a js token stream
 pub struct Scanner {
     stream: String,
-    eof: bool,
+    pub eof: bool,
     cursor: usize,
     spans: Vec<Span>,
     last_open_paren_idx: usize,
@@ -84,6 +84,37 @@ impl Scanner {
     pub fn look_ahead(&mut self) -> Option<Item> {
         self.get_next_token(false)
     }
+
+    pub fn skip_comments(&mut self) {
+        let mut new_cursor = self.cursor;
+        while let Some(ref item) = self.next() {
+            if item.token.is_comment() {
+                new_cursor = self.cursor;
+            } else {
+                break;
+            }
+        }
+        self.cursor = new_cursor;
+    }
+
+    pub fn get_state(&self) -> ScannerState {
+        ScannerState {
+            cursor: self.cursor,
+            spans_len: self.spans.len(),
+            last_paren: self.last_open_paren_idx,
+            template: self.template,
+            replacement: self.replacement
+        }
+    }
+
+    pub fn set_state(&mut self, state: ScannerState) {
+        self.cursor = state.cursor;
+        self.spans.truncate(state.spans_len);
+        self.last_open_paren_idx = state.last_paren;
+        self.template = state.template;
+        self.replacement = state.replacement;
+    }
+
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
         if self.eof {
             return None;
@@ -331,6 +362,14 @@ pub mod error {
             Error::DataMismatch(format!("Error parsing int: {}", other))
         }
     }
+}
+
+pub struct ScannerState {
+    pub cursor: usize,
+    pub spans_len: usize,
+    pub last_paren: usize,
+    pub template: usize,
+    pub replacement: usize,
 }
 
 #[cfg(test)]

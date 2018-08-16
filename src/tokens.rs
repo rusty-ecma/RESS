@@ -446,6 +446,17 @@ impl Token {
             },
         ))
     }
+
+    pub fn is_literal(&self) -> bool {
+        match self {
+            &Token::Boolean(_) => true,
+            &Token::String(_) => true,
+            &Token::Null => true,
+            &Token::Numeric(_) => true,
+            &Token::RegEx(_) => true,
+            _ => false,
+        }
+    }
 }
 parser!{
     pub fn token[I]()(I) -> Token
