@@ -84,7 +84,8 @@ impl Scanner {
     pub fn look_ahead(&mut self) -> Option<Item> {
         self.get_next_token(false)
     }
-
+    /// Skip any upcoming comments to get the
+    /// next valid js token
     pub fn skip_comments(&mut self) {
         let mut new_cursor = self.cursor;
         while let Some(ref item) = self.next() {
@@ -96,7 +97,7 @@ impl Scanner {
         }
         self.cursor = new_cursor;
     }
-
+    /// Get a copy of the scanner's current state
     pub fn get_state(&self) -> ScannerState {
         ScannerState {
             cursor: self.cursor,
@@ -106,7 +107,7 @@ impl Scanner {
             replacement: self.replacement
         }
     }
-
+    /// Set the scanner's current state to the state provided
     pub fn set_state(&mut self, state: ScannerState) {
         self.cursor = state.cursor;
         self.spans.truncate(state.spans_len);
@@ -321,6 +322,14 @@ impl Scanner {
             None
         }
     }
+
+    pub fn string_for(&self, span: &Span) -> Option<String> {
+        if self.stream.len() < span.start || self.stream.len() < span.end {
+            None
+        } else {
+            Some(self.stream[span.start..span.end].to_string())
+        }
+    }
 }
 
 pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
@@ -522,5 +531,18 @@ this.y = 0;
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
             assert_eq!((i, lhs.token), (i, rhs));
         }
+    }
+
+    #[test]
+    fn get_str() {
+        let js = "function ( ) { return ; }";
+        let mut s = Scanner::new(js);
+        let strs = js.split(' ');
+        for (i, p) in strs.enumerate() {
+            let item = s.next().unwrap();
+            let q = s.string_for(&item.span).unwrap();
+            assert_eq!((i, p.to_string()), (i, q))
+        }
+        
     }
 }
