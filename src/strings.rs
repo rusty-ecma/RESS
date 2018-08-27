@@ -12,10 +12,14 @@ use tokens::Token;
 pub enum StringLit {
     Single(String),
     Double(String),
-    NoSubTemplate(String),
-    TemplateHead(String),
-    TemplateMiddle(String),
-    TemplateTail(String),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Template {
+    NoSub(String),
+    Head(String),
+    Middle(String),
+    Tail(String),
 }
 
 impl ToString for StringLit {
@@ -23,10 +27,6 @@ impl ToString for StringLit {
         match self {
             &StringLit::Single(ref s) => format!("'{}'", s),
             &StringLit::Double(ref s) => format!(r#""{}""#, s),
-            &StringLit::NoSubTemplate(ref s) => format!("`{}`", s),
-            &StringLit::TemplateHead(ref s) => format!("`{}${{", s),
-            &StringLit::TemplateMiddle(ref s) => format!("}}{}${{", s),
-            &StringLit::TemplateTail(ref s) => format!("}}{}`", s),
         }
     }
 }
@@ -37,18 +37,6 @@ impl StringLit {
     }
     pub fn double(content: &str) -> Self {
         StringLit::Double(content.into())
-    }
-    pub fn no_sub_template(content: &str) -> Self {
-        StringLit::NoSubTemplate(content.into())
-    }
-    pub fn template_head(content: &str) -> Self {
-        StringLit::TemplateHead(content.into())
-    }
-    pub fn template_middle(content: &str) -> Self {
-        StringLit::TemplateMiddle(content.into())
-    }
-    pub fn template_tail(content: &str) -> Self {
-        StringLit::TemplateTail(content.into())
     }
     pub fn is_single(&self) -> bool {
         match self {
@@ -62,31 +50,43 @@ impl StringLit {
             _ => false,
         }
     }
-    pub fn is_template_head(&self) -> bool {
+    pub fn no_quote(&self) -> String {
         match self {
-            &StringLit::TemplateHead(_) => true,
+            StringLit::Single(ref inner) => inner.clone(),
+            StringLit::Double(ref inner) => inner.clone(),
+        }
+    }
+}
+
+impl Template {
+    pub fn no_sub_template(content: &str) -> Self {
+        Template::NoSub(content.into())
+    }
+    pub fn template_head(content: &str) -> Self {
+        Template::Head(content.into())
+    }
+    pub fn template_middle(content: &str) -> Self {
+        Template::Middle(content.into())
+    }
+    pub fn template_tail(content: &str) -> Self {
+        Template::Tail(content.into())
+    }
+    pub fn is_head(&self) -> bool {
+        match self {
+            &Template::Head(_) => true,
             _ => false,
         }
     }
-    pub fn is_template_middle(&self) -> bool {
+    pub fn is_middle(&self) -> bool {
         match self {
-            &StringLit::TemplateMiddle(_) => true,
+            &Template::Middle(_) => true,
             _ => false,
         }
     }
-    pub fn is_template_tail(&self) -> bool {
+    pub fn is_tail(&self) -> bool {
         match self {
-            &StringLit::TemplateTail(_) => true,
+            &Template::Tail(_) => true,
             _ => false,
-        }
-    }
-    pub fn no_quote(&self) -> Result<String, String> {
-        if self.is_single() {
-            Ok(self.to_string().replace("'", ""))
-        } else if self.is_double() {
-            Ok(self.to_string().replace("\"", ""))
-        } else {
-            Err(String::from("cannot remove the quotes from a template string"))
         }
     }
 }
@@ -177,7 +177,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(no_sub_template()), try(template_head()))).map(|s: StringLit| Token::String(s))
+    choice((try(no_sub_template()), try(template_head()))).map(|s: Template| Token::Template(s))
 }
 
 pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
@@ -185,41 +185,41 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(template_middle()), try(template_tail()))).map(|s: StringLit| Token::String(s))
+    choice((try(template_middle()), try(template_tail()))).map(|s: Template| Token::Template(s))
 }
 
-fn no_sub_template<I>() -> impl Parser<Input = I, Output = StringLit>
+fn no_sub_template<I>() -> impl Parser<Input = I, Output = Template>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     between(c_char('`'), c_char('`'), many(template_char()))
-        .map(|s: String| StringLit::NoSubTemplate(s))
+        .map(|s: String| Template::NoSub(s))
 }
 
-fn template_head<I>() -> impl Parser<Input = I, Output = StringLit>
+fn template_head<I>() -> impl Parser<Input = I, Output = Template>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     between(string("`"), string("${"), many(template_char()))
-        .map(|s: String| StringLit::TemplateHead(s))
+        .map(|s: String| Template::Head(s))
 }
 
-fn template_middle<I>() -> impl Parser<Input = I, Output = StringLit>
+fn template_middle<I>() -> impl Parser<Input = I, Output = Template>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (many(template_char()), string("${")).map(|(s, _): (String, _)| StringLit::TemplateMiddle(s))
+    (many(template_char()), string("${")).map(|(s, _): (String, _)| Template::Middle(s))
 }
 
-fn template_tail<I>() -> impl Parser<Input = I, Output = StringLit>
+fn template_tail<I>() -> impl Parser<Input = I, Output = Template>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (try(many(template_char())), c_char('`')).map(|(s, _): (String, _)| StringLit::TemplateTail(s))
+    (try(many(template_char())), c_char('`')).map(|(s, _): (String, _)| Template::Tail(s))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = char>

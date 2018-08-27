@@ -57,9 +57,28 @@ pub enum Token {
     /// A string literal, either double or single quoted, the associated
     /// value will be the unquoted string
     String(strings::StringLit),
-    /// A regex literal (`/[a-fA-F0-9]+/g`) the first associated value
-    /// will be the pattern, the second will be the optional flags
+
     RegEx(regex::RegEx),
+    /// The string parts of a template string
+    /// ```
+    /// # extern crate ress;
+    /// # use ress::{Scanner, Item, Token, Number, Template};
+    /// # fn main() {
+    /// let js = "`Things and stuff times ${10} equals ${100000000}... i think`";
+    /// let mut s = Scanner::new(js);
+    /// assert_eq!(s.next().unwrap().token,
+    ///             Token::template_head("Things and stuff times "));
+    /// assert_eq!(s.next().unwrap().token,
+    ///             Token::numeric("10"));
+    /// assert_eq!(s.next().unwrap().token,
+    ///             Token::template_middle(" equals "));
+    /// assert_eq!(s.next().unwrap().token,
+    ///             Token::numeric("100000000"));
+    /// assert_eq!(s.next().unwrap().token,
+    ///             Token::template_tail("... i think"));
+    /// # }
+    /// ```
+    Template(strings::Template),
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
     /// and multi-line comments
@@ -74,6 +93,14 @@ pub enum Token {
 pub enum BooleanLiteral {
     True,
     False,
+}
+impl BooleanLiteral {
+    pub fn is_true(&self) -> bool {
+        match self {
+            BooleanLiteral::True => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'a> From<&'a str> for BooleanLiteral {
@@ -156,28 +183,54 @@ impl Into<String> for Ident {
         self.0
     }
 }
-
+//Constructors
 impl Token {
-    pub fn is_punct(&self) -> bool {
-        if let Token::Punct(ref _p) = self {
-            true
-        } else {
-            false
-        }
+    pub fn ident(name: &str) -> Token {
+        Token::Ident(name.into())
     }
-
-    pub fn matches_punct(&self, p: punct::Punct) -> bool {
-        self == &Token::Punct(p)
+    pub fn keyword(name: &str) -> Token {
+        Token::Keyword(keywords::Keyword::from(name))
     }
-
-    pub fn matches_punct_str(&self, s: &str) -> bool {
-        self == &Token::punct(s)
+    pub fn numeric(number: &str) -> Token {
+        Token::Numeric(numeric::Number::from(number))
     }
-
     pub fn punct(s: &str) -> Token {
         Token::Punct(s.into())
     }
-
+    pub fn double_quoted_string(s: &str) -> Token {
+        Token::String(strings::StringLit::Double(s.into()))
+    }
+    pub fn single_quoted_string(s: &str) -> Token {
+        Token::String(strings::StringLit::Single(s.into()))
+    }
+    pub fn regex(body: &str, flags: Option<String>) -> Token {
+        Token::RegEx(regex::RegEx::from_parts(body, flags.map(|s| s.into())))
+    }
+    pub fn no_sub_template(s: &str) -> Token {
+        Token::Template(strings::Template::NoSub(s.into()))
+    }
+    pub fn template_head(s: &str) -> Token {
+        Token::Template(strings::Template::Head(s.into()))
+    }
+    pub fn template_middle(s: &str) -> Token {
+        Token::Template(strings::Template::Middle(s.into()))
+    }
+    pub fn template_tail(s: &str) -> Token {
+        Token::Template(strings::Template::Tail(s.into()))
+    }
+    pub fn comment(comment: &str, multi: bool) -> Token {
+        Token::Comment(comments::Comment::from_parts(
+            comment.into(),
+            if multi {
+                comments::Kind::Multi
+            } else {
+                comments::Kind::Single
+            },
+        ))
+    }
+}
+//Is tests
+impl Token {
     pub fn is_boolean(&self) -> bool {
         match self {
             &Token::Boolean(_) => true,
@@ -199,61 +252,33 @@ impl Token {
             _ => false,
         }
     }
-    pub fn matches_boolean(&self, b: BooleanLiteral) -> bool {
-        self == &Token::Boolean(b)
-    }
-
     pub fn is_eof(&self) -> bool {
         self == &Token::EoF
     }
-
     pub fn is_ident(&self) -> bool {
         match self {
             &Token::Ident(_) => true,
             _ => false,
         }
     }
-    pub fn matches_ident_str(&self, name: &str) -> bool {
-        self == &Token::ident(name)
-    }
-
-    pub fn ident(name: &str) -> Token {
-        Token::Ident(name.into())
-    }
-
     pub fn is_keyword(&self) -> bool {
         match self {
             &Token::Keyword(_) => true,
             _ => false,
         }
     }
-
-    pub fn matches_keyword(&self, keyword: keywords::Keyword) -> bool {
-        self == &Token::Keyword(keyword)
-    }
-
-    pub fn matches_keyword_str(&self, name: &str) -> bool {
-        self == &Token::keyword(name)
-    }
-
     pub fn is_strict_reserved(&self) -> bool {
         match self {
             &Token::Keyword(ref k) => k.is_strict_reserved(),
             _ => false
         }
     }
-
     pub fn is_restricted(&self) -> bool {
         match self {
             &Token::Keyword(ref k) => k.is_restricted(),
             _ => false,
         }
     }
-
-    pub fn keyword(name: &str) -> Token {
-        Token::Keyword(keywords::Keyword::from(name))
-    }
-
     pub fn is_null(&self) -> bool {
         self == &Token::Null
     }
@@ -265,40 +290,30 @@ impl Token {
             false
         }
     }
-
     pub fn is_hex_literal(&self) -> bool {
         match self {
             &Token::Numeric(ref n) => n.is_hex(),
             _ => false,
         }
     }
-
     pub fn is_bin_literal(&self) -> bool {
         match self {
             &Token::Numeric(ref n) => n.is_bin(),
             _ => false,
         }
     }
-
     pub fn is_oct_literal(&self) -> bool {
         match self {
             &Token::Numeric(ref n) => n.is_oct(),
             _ => false,
         }
     }
-
-    pub fn matches_numeric_str(&self, number: &str) -> bool {
-        self == &Token::numeric(number)
+    pub fn is_punct(&self) -> bool {
+        match self {
+            Token::Punct(_) => true,
+            _ => false,
+        }
     }
-
-    pub fn matches_numeric(&self, number: numeric::Number) -> bool {
-        self == &Token::Numeric(number)
-    }
-
-    pub fn numeric(number: &str) -> Token {
-        Token::Numeric(numeric::Number::from(number))
-    }
-
     pub fn is_string(&self) -> bool {
         if let Token::String(ref _s) = self {
             true
@@ -306,7 +321,6 @@ impl Token {
             false
         }
     }
-
     pub fn is_double_quoted_string(&self) -> bool {
         match self {
             Token::String(ref s) => match s {
@@ -316,7 +330,6 @@ impl Token {
             _ => false,
         }
     }
-
     pub fn is_single_quoted_string(&self) -> bool {
         match self {
             Token::String(ref s) => match s {
@@ -326,102 +339,50 @@ impl Token {
             _ => false,
         }
     }
-    pub fn is_template_head(&self) -> bool {
-        match self {
-            Token::String(ref s) => s.is_template_head(),
-            _ => false,
-        }
-    }
-
-    pub fn is_template_middle(&self) -> bool {
-        match self {
-            Token::String(ref s) => s.is_template_middle(),
-            _ => false,
-        }
-    }
-
-    pub fn is_template_tail(&self) -> bool {
-        match self {
-            Token::String(ref s) => s.is_template_tail(),
-            _ => false,
-        }
-    }
-
-    pub fn double_quoted_string(s: &str) -> Token {
-        Token::String(strings::StringLit::Double(s.into()))
-    }
-
-    pub fn single_quoted_string(s: &str) -> Token {
-        Token::String(strings::StringLit::Single(s.into()))
-    }
-
-    pub fn no_sub_template(s: &str) -> Token {
-        Token::String(strings::StringLit::NoSubTemplate(s.into()))
-    }
-
-    pub fn template_head(s: &str) -> Token {
-        Token::String(strings::StringLit::TemplateHead(s.into()))
-    }
-
-    pub fn template_middle(s: &str) -> Token {
-        Token::String(strings::StringLit::TemplateMiddle(s.into()))
-    }
-
-    pub fn template_tail(s: &str) -> Token {
-        Token::String(strings::StringLit::TemplateTail(s.into()))
-    }
-
     pub fn is_regex(&self) -> bool {
         match self {
             &Token::RegEx(_) => true,
             _ => false,
         }
     }
-
-    pub fn matches_regex(&self, regex: regex::RegEx) -> bool {
-        self == &Token::RegEx(regex)
-    }
-
-    pub fn matches_regex_str(&self, regex: &str) -> bool {
-        if let Some(idx) = regex.rfind('/') {
-            let parts = regex.split_at(idx);
-            let flags = if parts.1.len() == 0 {
-                None
-            } else {
-                Some(parts.1[1..].to_string())
-            };
-            self == &Token::regex(&parts.0[1..], flags)
-        } else {
-            false
-        }
-    }
-
-    pub fn regex(body: &str, flags: Option<String>) -> Token {
-        Token::RegEx(regex::RegEx::from_parts(body, flags.map(|s| s.into())))
-    }
-
     pub fn is_template(&self) -> bool {
         self.is_template_head() || self.is_template_middle() || self.is_template_tail()
     }
-
+    pub fn is_template_head(&self) -> bool {
+        match self {
+            Token::Template(ref s) => s.is_head(),
+            _ => false,
+        }
+    }
+    pub fn is_template_middle(&self) -> bool {
+        match self {
+            Token::Template(ref s) => s.is_middle(),
+            _ => false,
+        }
+    }
+    pub fn is_template_tail(&self) -> bool {
+        match self {
+            Token::Template(ref s) => s.is_tail(),
+            _ => false,
+        }
+    }
+    pub fn is_literal(&self) -> bool {
+        match self {
+            &Token::Boolean(_) => true,
+            &Token::String(_) => true,
+            &Token::Null => true,
+            &Token::Numeric(_) => true,
+            &Token::RegEx(_) => true,
+            &Token::Template(_) => true,
+            _ => false,
+        }
+    }
     pub fn is_comment(&self) -> bool {
         match self {
             &Token::Comment(_) => true,
             _ => false,
         }
     }
-
-    pub fn matches_comment(&self, comment: comments::Comment) -> bool {
-        self == &Token::Comment(comment)
-    }
-
-    pub fn matches_comment_str(&self, comment: &str) -> bool {
-        match self {
-            &Token::Comment(ref t) => t.content == comment,
-            _ => false,
-        }
-    }
-
     pub fn is_multi_line_comment(&self) -> bool {
         match self {
             &Token::Comment(ref t) => t.kind == comments::Kind::Multi,
@@ -435,25 +396,69 @@ impl Token {
             _ => false,
         }
     }
-
-    pub fn comment(comment: &str, multi: bool) -> Token {
-        Token::Comment(comments::Comment::from_parts(
-            comment.into(),
-            if multi {
-                comments::Kind::Multi
+}
+//matches tests
+impl Token {
+    pub fn matches_boolean(&self, b: BooleanLiteral) -> bool {
+        self == &Token::Boolean(b)
+    }
+    pub fn matches_boolean_str(&self, b: &str) -> bool {
+        match self {
+            Token::Boolean(ref lit) => match (lit, b) {
+                (&BooleanLiteral::True, "true")
+                | (&BooleanLiteral::False, "false") => true,
+                _ => false,
+            }
+            _ => false,
+        }
+    }
+    pub fn matches_ident_str(&self, name: &str) -> bool {
+        self == &Token::ident(name)
+    }
+    pub fn matches_keyword(&self, keyword: keywords::Keyword) -> bool {
+        self == &Token::Keyword(keyword)
+    }
+    pub fn matches_keyword_str(&self, name: &str) -> bool {
+        self == &Token::keyword(name)
+    }
+    pub fn matches_numeric(&self, number: numeric::Number) -> bool {
+        self == &Token::Numeric(number)
+    }
+    pub fn matches_numeric_str(&self, number: &str) -> bool {
+        self == &Token::numeric(number)
+    }
+    pub fn matches_punct(&self, p: punct::Punct) -> bool {
+        self == &Token::Punct(p)
+    }
+    pub fn matches_punct_str(&self, s: &str) -> bool {
+        match self {
+            Token::Punct(ref p) => p == &s.into(),
+            _ => false,
+        }
+    }
+    pub fn matches_regex(&self, regex: regex::RegEx) -> bool {
+        self == &Token::RegEx(regex)
+    }
+    pub fn matches_regex_str(&self, regex: &str) -> bool {
+        if let Some(idx) = regex.rfind('/') {
+            let parts = regex.split_at(idx);
+            let flags = if parts.1.len() == 0 {
+                None
             } else {
-                comments::Kind::Single
-            },
-        ))
+                Some(parts.1[1..].to_string())
+            };
+            self == &Token::regex(&parts.0[1..], flags)
+        } else {
+            false
+        }
+    }
+    pub fn matches_comment(&self, comment: comments::Comment) -> bool {
+        self == &Token::Comment(comment)
     }
 
-    pub fn is_literal(&self) -> bool {
+    pub fn matches_comment_str(&self, comment: &str) -> bool {
         match self {
-            &Token::Boolean(_) => true,
-            &Token::String(_) => true,
-            &Token::Null => true,
-            &Token::Numeric(_) => true,
-            &Token::RegEx(_) => true,
+            &Token::Comment(ref t) => t.content == comment,
             _ => false,
         }
     }

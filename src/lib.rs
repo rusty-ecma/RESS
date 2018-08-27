@@ -19,7 +19,7 @@ pub use keywords::Keyword;
 pub use numeric::Number;
 pub use punct::Punct;
 pub use regex::RegEx;
-pub use strings::StringLit;
+pub use strings::{StringLit, Template};
 pub use tokens::{BooleanLiteral as Boolean, Item, Span, Token, Ident};
 
 /// a convince function for collecting a scanner into
