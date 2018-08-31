@@ -28,6 +28,17 @@ impl RegEx {
         }
     }
 }
+
+impl ToString for RegEx {
+    fn to_string(&self) -> String {
+        let f = if let Some(ref f) = self.flags {
+            f.clone()
+        } else {
+            String::new()
+        };
+        format!("/{}/{}", self.body, f)
+    }
+}
 /// Parse a regex literal starting after the first /
 pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
 where

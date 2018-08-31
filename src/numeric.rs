@@ -93,7 +93,6 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        optional(choice([c_char('-'), c_char('+')])),
         //any number of digits
         many1(digit()),
         //optionally followed by a . and any number of digits
@@ -101,16 +100,13 @@ where
         //optionally followed by e|E and any number of digits
         optional((choice((c_char('e'), c_char('E'))), many1(digit()))),
     ).map(
-        |(sign, integer, remainder, exponent): (
-            Option<char>,
+        |(integer, remainder, exponent): (
             String,
             Option<(char, String)>,
             Option<(char, String)>,
         )| {
             let mut ret = String::new();
-            if let Some(sign) = sign {
-                ret.push(sign);
-            }
+
             ret.push_str(&integer);
             if let Some((p, r)) = remainder {
                 ret.push(p);
@@ -234,12 +230,7 @@ mod test {
             "0.1",
             "1.1",
             "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
             "1.8876e2",
-            "-1.009987e87",
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
@@ -267,7 +258,7 @@ mod test {
     #[test]
     fn hex() {
         let vals = vec![
-            "0x123", "0X456", "-0x789", "+0X0abc", "0xdef", "0xABC", "0xDEF",
+            "0x123", "0X456", "0xdef", "0xABC", "0xDEF",
         ];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
@@ -280,7 +271,7 @@ mod test {
     }
     #[test]
     fn bin() {
-        let vals = vec!["0b000", "0B111", "-0B0101", "+0b1010"];
+        let vals = vec!["0b000", "0B111"];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
@@ -293,7 +284,7 @@ mod test {
 
     #[test]
     fn oct() {
-        let vals = vec!["0o7", "0O554", "-0o12345670", "+0O12345670"];
+        let vals = vec!["0o7", "0O554"];
         for val in vals {
             let h = tokens::token().parse(val.clone()).unwrap();
             assert_eq!(h, (Token::Numeric(Number::from(val)), ""))
@@ -310,20 +301,9 @@ mod test {
             "0.1",
             "1.1",
             "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
             "1.8876e2",
-            "-1.009987e87",
-            ".2",
-            "-.2",
             ".2E1",
-            "+.8",
-            "+.2E4",
             ".7e34",
-            "-.7e2",
-            "+.4e5",
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
@@ -343,35 +323,18 @@ mod test {
             "0.1",
             "1.1",
             "888888888.88888888888",
-            "+8",
-            "-6",
-            "+1E5",
-            "-1E2",
             "1.8876e2",
-            "-1.009987e87",
-            ".2",
-            "-.2",
             ".2E1",
-            "+.8",
-            "+.2E4",
             ".7e34",
-            "-.7e2",
-            "+.4e5",
             "0x123",
             "0X456",
-            "-0x789",
-            "+0X0abc",
             "0xdef",
             "0xABC",
             "0xDEF",
             "0o7",
             "0O554",
-            "-0o12345670",
-            "+0O12345670",
             "0b000",
             "0B111",
-            "-0B0101",
-            "+0b1010",
         ];
         for val in vals {
             let d = tokens::token().parse(val.clone()).unwrap();
@@ -385,7 +348,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn normal_decimal(s in r#"[+-]?((0[oO][0-7]+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+)|(([0-9]+)(\.[0-9]+)?([eE][0-9]+)?)|((\.[0-9])([eE][0-9]+)?))"#) {
+        fn normal_decimal(s in r#"((0[oO][0-7]+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+)|(([0-9]+)(\.[0-9]+)?([eE][0-9]+)?)|((\.[0-9])([eE][0-9]+)?))"#) {
             let r = tokens::token().easy_parse(s.as_str()).unwrap();
             assert!(r.0.is_numeric() && r.0.matches_numeric_str(&s))
         }

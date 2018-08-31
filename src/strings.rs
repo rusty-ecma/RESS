@@ -25,7 +25,7 @@ pub enum Template {
 impl ToString for StringLit {
     fn to_string(&self) -> String {
         match self {
-            &StringLit::Single(ref s) => format!("'{}'", s),
+            &StringLit::Single(ref s) => format!(r#"'{}'"#, s),
             &StringLit::Double(ref s) => format!(r#""{}""#, s),
         }
     }
@@ -91,6 +91,17 @@ impl Template {
     }
 }
 
+impl ToString for Template {
+    fn to_string(&self) -> String {
+        match self {
+            Template::NoSub(ref c) => format!("`{}`",c),
+            Template::Head(ref c) => format!("`{}${{", c),
+            Template::Middle(ref c) => format!("}}{}${{", c),
+            Template::Tail(ref c) => format!("}}{}`", c),
+        }
+    }
+}
+
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -114,8 +125,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('\'').map(|c: char| c.to_string())),
-        try(escaped('\\').map(|c: char| c.to_string())),
+        try(escaped('\'').map(|c: char| format!("\\{}", c))),
+        try(escaped('\\').map(|c: char| format!("\\{}", c))),
         try(string_continuation()),
         try(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|s: String| s)
@@ -146,8 +157,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('"').map(|c: char| c.to_string())),
-        try(escaped('\\').map(|c: char| c.to_string())),
+        try(escaped('"').map(|c: char| format!("\\{}", c))),
+        try(escaped('\\').map(|c: char| format!("\\{}", c))),
         try(string_continuation()),
         try(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|c: String| c)

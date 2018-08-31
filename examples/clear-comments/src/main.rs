@@ -220,12 +220,12 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
         return false;
     }
     if last_token.matches_keyword(Keyword::In)
-        || last_token.matches_keyword(Keyword::Of)
+        || last_token.matches_ident_str("of")
         || last_token.matches_keyword(Keyword::For)
     {
         return true;
     }
-    if token.matches_keyword(Keyword::In) || token.matches_keyword(Keyword::Of) {
+    if token.matches_keyword(Keyword::In) || token.matches_ident_str("of") {
         return true;
     }
     if last_token.is_keyword() {

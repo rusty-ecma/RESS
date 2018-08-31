@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 xs 3219093276 2773970703 4154894776 3021806892 # shrinks to s = "0O8"
+xs 891558002 1584292879 3558343646 3847314476 # shrinks to s = "+0"

@@ -12,23 +12,29 @@ use strings;
 use unicode;
 
 #[derive(Debug, PartialEq, Clone)]
+/// A wrapper around a token that will include
+/// the byte span of the text that it was found
+/// at
 pub struct Item {
     pub token: Token,
     pub span: Span,
 }
 
 impl Item {
+    /// Create a new Item from its parts
     pub fn new(token: Token, span: Span) -> Item {
         Item { token, span }
     }
 }
 #[derive(Debug, PartialEq, Clone)]
+/// A location in the original source text
 pub struct Span {
     pub start: usize,
     pub end: usize,
 }
 
 impl Span {
+    /// Create a new Span from its parts
     pub fn new(start: usize, end: usize) -> Self {
         Span { start, end }
     }
@@ -37,14 +43,14 @@ impl Span {
 #[derive(Debug, PartialEq, Clone)]
 /// The representation of a single JS token
 pub enum Token {
-    /// True of false, will contain the value
+    /// `true` of `false`
     Boolean(BooleanLiteral),
     /// The end of the file
     EoF,
     /// An identifier this will be either a variable name
     /// or a function/method name
-    Ident(String),
-    /// A keyword, currently this is all EcmaScript Keywords
+    Ident(Ident),
+    /// A word that has been reserved to not be used as an identifier
     Keyword(keywords::Keyword),
     /// A `null` literal value
     Null,
@@ -57,7 +63,10 @@ pub enum Token {
     /// A string literal, either double or single quoted, the associated
     /// value will be the unquoted string
     String(strings::StringLit),
-
+    /// A regular expression literal.
+    /// ```js
+    /// let regex = /[a-zA-Z]+/g;
+    /// ```
     RegEx(regex::RegEx),
     /// The string parts of a template string
     /// ```
@@ -90,11 +99,13 @@ pub enum Token {
     Comment(comments::Comment),
 }
 #[derive(Debug, PartialEq, Clone)]
+/// The tokenized representation of `true` or `false`
 pub enum BooleanLiteral {
     True,
     False,
 }
 impl BooleanLiteral {
+    /// Test if this instance represents `true`
     pub fn is_true(&self) -> bool {
         match self {
             BooleanLiteral::True => true,
@@ -104,6 +115,9 @@ impl BooleanLiteral {
 }
 
 impl<'a> From<&'a str> for BooleanLiteral {
+    /// Create a BooleanLiteral from raw text
+    ///
+    /// panics if argument is not `true` or `false`
     fn from(s: &'a str) -> Self {
         if s == "true" {
             BooleanLiteral::True
@@ -116,12 +130,16 @@ impl<'a> From<&'a str> for BooleanLiteral {
 }
 
 impl From<String> for BooleanLiteral {
+    /// Create a BooleanLiteral from raw text
+    ///
+    /// panics if argument is not `true` or `false`
     fn from(s: String) -> Self {
         BooleanLiteral::from(s.as_str())
     }
 }
 
 impl From<bool> for BooleanLiteral {
+    /// Creates a JS Bool for a rust bool
     fn from(b: bool) -> Self {
         if b {
             BooleanLiteral::True
@@ -132,6 +150,8 @@ impl From<bool> for BooleanLiteral {
 }
 
 impl Into<String> for BooleanLiteral {
+    /// Return this BooleanLiteral to the text
+    /// that was parsed to create it
     fn into(self) -> String {
         match self {
             BooleanLiteral::True => "true".into(),
@@ -140,7 +160,19 @@ impl Into<String> for BooleanLiteral {
     }
 }
 
+impl ToString for BooleanLiteral {
+    /// Return this BooleanLiteral to the text
+    /// that was parsed to create it
+    fn to_string(&self) -> String {
+        match self {
+            BooleanLiteral::True => "true".into(),
+            BooleanLiteral::False => "false".into(),
+        }
+    }
+}
+
 impl Into<bool> for BooleanLiteral {
+    /// Creates a Rust bool for a js bool
     fn into(self) -> bool {
         match self {
             BooleanLiteral::True => true,
@@ -150,6 +182,7 @@ impl Into<bool> for BooleanLiteral {
 }
 
 impl<'a> Into<bool> for &'a BooleanLiteral {
+    /// Creates a js bool for a rust bool
     fn into(self) -> bool {
         match self {
             &BooleanLiteral::True => true,
@@ -157,8 +190,34 @@ impl<'a> Into<bool> for &'a BooleanLiteral {
         }
     }
 }
-
+#[derive(Debug, PartialEq, Clone)]
+/// An identifier
+/// ```
+/// # extern crate ress;
+/// # use ress::{Scanner, Item, Token, Ident};
+/// # fn main() {
+/// let js = "var x = 1;";
+/// let mut s = Scanner::new(js);
+/// let _var = s.next().unwrap();
+/// assert_eq!(s.next().unwrap().token,
+///             Token::Ident(Ident::from("x")));
+/// let _assign = s.next().unwrap();
+/// let _one = s.next().unwrap();
+/// # }
+/// ```
 pub struct Ident(String);
+
+impl<'a> PartialEq<&'a str> for Ident {
+    fn eq(&self, other: &&'a str) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<str> for Ident {
+    fn eq(&self, other: &str) -> bool {
+        &self.0 == other
+    }
+}
 
 impl<'a> From<&'a str> for Ident {
     fn from(s: &'a str) -> Self {
@@ -185,39 +244,86 @@ impl Into<String> for Ident {
 }
 //Constructors
 impl Token {
+    ///Create and instance of Token::Ident from a &str
     pub fn ident(name: &str) -> Token {
         Token::Ident(name.into())
     }
+    ///Create and instance of Token::Keyword from a &str
+    ///
+    /// panics if the argument isn't a valid js keyword
     pub fn keyword(name: &str) -> Token {
         Token::Keyword(keywords::Keyword::from(name))
     }
+    ///Create and instance of Token::Numeric from a &str
     pub fn numeric(number: &str) -> Token {
         Token::Numeric(numeric::Number::from(number))
     }
+    ///Create and instance of Token::Punct from a &str
+    ///
+    /// panics if the augment isn't valid js punctuation
     pub fn punct(s: &str) -> Token {
         Token::Punct(s.into())
     }
+    ///Create and instance of Token::String from a &str wrapped in double quotes
     pub fn double_quoted_string(s: &str) -> Token {
         Token::String(strings::StringLit::Double(s.into()))
     }
+    ///Create an instance of Token::String from a &str wrapped in single quotes
     pub fn single_quoted_string(s: &str) -> Token {
         Token::String(strings::StringLit::Single(s.into()))
     }
+    /// Create an instance of Token::RegEx from a &str and an Option<String>
     pub fn regex(body: &str, flags: Option<String>) -> Token {
         Token::RegEx(regex::RegEx::from_parts(body, flags.map(|s| s.into())))
     }
+    /// Creates an instance of Token::Template with a template string that has
+    /// no substitutions
+    ///
+    /// ```js
+    /// var noSub = `template string with no subs`;
+    /// ```
     pub fn no_sub_template(s: &str) -> Token {
         Token::Template(strings::Template::NoSub(s.into()))
     }
+    /// Creates an instance of Token::Template for a template head
+    /// ```js
+    /// let t = `head ${true} middle ${false} tail ${false}`;
+    /// ```
     pub fn template_head(s: &str) -> Token {
         Token::Template(strings::Template::Head(s.into()))
     }
+    /// Creates an instance of a Token::Template for a template middle
+    /// ```js
+    /// let t = `head ${false} middle ${true} tail ${false}`;
+    /// ```
     pub fn template_middle(s: &str) -> Token {
         Token::Template(strings::Template::Middle(s.into()))
     }
+    /// Creates an instance of a Token::Template for a template tail
+    /// ```js
+    /// let t = `head ${false} middle ${false} tail ${true}`;
+    /// ```
     pub fn template_tail(s: &str) -> Token {
         Token::Template(strings::Template::Tail(s.into()))
     }
+    /// Creates an instance of a Token::Comment for a comment string and a flag
+    /// if this comment should be treated as a multi line comment
+    /// ```
+    /// # extern crate ress;
+    /// # use ress::{Scanner, Item, Token, Comment};
+    /// # fn main() {
+    /// let single_js = "//I am a comment";
+    /// let multi_js = "/*I am a multi-line comment*/";
+    /// let mut s = Scanner::new(single_js);
+    /// let single_scanner = s.next().expect("unable to parse single line comment");
+    /// let single = Token::comment("I am a comment", false);
+    /// assert_eq!(single, single_scanner.token);
+    /// s = Scanner::new(multi_js);
+    /// let multi_scanner = s.next().expect("Unable to parse multi-line comment");
+    /// let multi = Token::comment("I am a multi-line comment", true);
+    /// assert_eq!(multi, multi_scanner.token);
+    /// # }
+    /// ```
     pub fn comment(comment: &str, multi: bool) -> Token {
         Token::Comment(comments::Comment::from_parts(
             comment.into(),
@@ -275,7 +381,7 @@ impl Token {
     }
     pub fn is_restricted(&self) -> bool {
         match self {
-            &Token::Keyword(ref k) => k.is_restricted(),
+            &Token::Ident(ref i) => i == "arguments" || i == "eval",
             _ => false,
         }
     }
@@ -413,7 +519,10 @@ impl Token {
         }
     }
     pub fn matches_ident_str(&self, name: &str) -> bool {
-        self == &Token::ident(name)
+        match self {
+            Token::Ident(ref i) => name == &i.0,
+            _ => false,
+        }
     }
     pub fn matches_keyword(&self, keyword: keywords::Keyword) -> bool {
         self == &Token::Keyword(keyword)
@@ -460,6 +569,35 @@ impl Token {
         match self {
             &Token::Comment(ref t) => t.content == comment,
             _ => false,
+        }
+    }
+
+    pub fn matches_string_content(&self, content: &str) -> bool {
+        match self {
+            &Token::String(ref lit) => match lit {
+                strings::StringLit::Single(ref s) => content == s,
+                strings::StringLit::Double(ref s) => content == s,
+            },
+            _ => false,
+        }
+    }
+}
+
+
+impl ToString for Token {
+    fn to_string(&self) -> String {
+        match self {
+            Token::Boolean(ref b) => b.to_string(),
+            Token::EoF => String::new(),
+            Token::Ident(ref i) => i.to_string(),
+            Token::Keyword(ref k) => k.to_string(),
+            Token::Null => String::from("null"),
+            Token::Numeric(ref n) => n.to_string(),
+            Token::Punct(ref p) => p.to_string(),
+            Token::RegEx(ref r) => r.to_string(),
+            Token::String(ref s) => s.to_string(),
+            Token::Template(ref t) => t.to_string(),
+            Token::Comment(ref c) => c.to_string(),
         }
     }
 }
@@ -535,7 +673,7 @@ where
         let mut ret = String::new();
         ret.push(start);
         ret.push_str(&body);
-        Token::Ident(ret)
+        Token::Ident(Ident(ret))
     })
 }
 
@@ -624,7 +762,7 @@ mod test {
         ];
         for i in idents {
             let t = token().parse(i.clone()).unwrap();
-            assert_eq!(t, (Token::Ident(i.to_owned()), ""))
+            assert_eq!(t, (Token::Ident(Ident(i.to_string())), ""))
         }
     }
 

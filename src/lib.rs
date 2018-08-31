@@ -30,13 +30,14 @@ pub fn tokenize(text: &str) -> Vec<Token> {
 
 /// An iterator over a js token stream
 pub struct Scanner {
-    stream: String,
+    pub stream: String,
     pub eof: bool,
-    cursor: usize,
-    spans: Vec<Span>,
+    pub cursor: usize,
+    pub spans: Vec<Span>,
     last_open_paren_idx: usize,
     template: usize,
     replacement: usize,
+    pub pending_new_line: bool,
 }
 
 impl Scanner {
@@ -52,6 +53,7 @@ impl Scanner {
             last_open_paren_idx: 0,
             template: 0,
             replacement: 0,
+            pending_new_line: false,
         }
     }
 }
@@ -120,6 +122,7 @@ impl Scanner {
         if self.eof {
             return None;
         };
+        let prev_cursor = self.cursor;
         let result = if self.template > 0 && self.template < self.replacement {
             strings::template_continuation().parse(&self.stream[self.cursor..])
         } else {
@@ -129,15 +132,17 @@ impl Scanner {
             Ok(pair) => {
                 if pair.0.matches_punct(Punct::ForwardSlash) && self.is_regex_start() {
                     match regex::regex_tail().parse(pair.1) {
-                        Ok(pair) => {
+                        Ok(regex_pair) => {
                             let full_len = self.stream.len();
-                            let span_end = full_len - pair.1.len();
+                            let span_end = full_len - regex_pair.1.len();
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor = self.stream.len() - pair.1.trim_left().len();
+                                self.cursor = self.stream.len() - regex_pair.1.trim_left().len();
+                                let whitespace = &self.stream[prev_cursor..self.cursor];
+                                self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
                             }
-                            Some(Item::new(pair.0, span))
+                            Some(Item::new(regex_pair.0, span))
                         }
                         Err(e) => panic!(
                             "Failed to parse token last successful parse ended {}\nError: {:?}",
@@ -160,6 +165,8 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
+                                let whitespace = &self.stream[prev_cursor..self.cursor];
+                                self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
                             }
                             Some(Item::new(pair.0, span))
                         }
@@ -185,6 +192,8 @@ impl Scanner {
                     if advance_cursor {
                         self.spans.push(span.clone());
                         self.cursor = self.stream.len() - pair.1.trim_left().len();
+                        let whitespace = &self.stream[prev_cursor..self.cursor];
+                        self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
                     }
                     Some(Item::new(pair.0, span))
                 }
@@ -543,6 +552,19 @@ this.y = 0;
             let q = s.string_for(&item.span).unwrap();
             assert_eq!((i, p.to_string()), (i, q))
         }
-        
+
+    }
+    #[test]
+    fn spans() {
+        let js = include_str!("../node_modules/esprima/dist/esprima.js");
+        let mut s = Scanner::new(js);
+        while let Some(ref item) = s.next() {
+            let from_stream = &s.stream[item.span.start..item.span.end];
+            let token = item.token.to_string();
+
+            if from_stream != token {
+                panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
+            }
+        }
     }
 }

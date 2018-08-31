@@ -29,6 +29,15 @@ impl Comment {
     }
 }
 
+impl ToString for Comment {
+    fn to_string(&self) -> String {
+        match self.kind {
+            Kind::Single => format!("//{}", self.content),
+            Kind::Multi => format!("/*{}*/", self.content),
+        }
+    }
+}
+
 pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -61,11 +70,7 @@ where
         take_until(try(string("*/"))),
         multi_line_comment_end(),
     ).map(|(_s, c, _e): (String, String, String)| {
-        let ret = c.lines()
-            .map(|l| l.trim())
-            .collect::<Vec<&str>>()
-            .join("\n");
-        Comment::from_parts(ret, Kind::Multi)
+        Comment::from_parts(c, Kind::Multi)
     })
 }
 
@@ -96,9 +101,9 @@ mod test {
             "// another one with a space",
             "/*inline multi comments*/",
             "/*multi line comments
-            * that have extra decoration
-            * to help with readability
-            */",
+* that have extra decoration
+* to help with readability
+*/",
         ];
         for test in tests {
             let is_multi = test.starts_with("/*");

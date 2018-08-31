@@ -51,7 +51,6 @@ use tokens::{ident_part, Token};
 /// public
 pub enum Keyword {
     Await,
-    Arguments,
     Break,
     Case,
     Catch,
@@ -64,7 +63,6 @@ pub enum Keyword {
     Do,
     Else,
     Enum,
-    Eval,
     Export,
     Finally,
     For,
@@ -77,7 +75,6 @@ pub enum Keyword {
     Interface,
     Let,
     New,
-    Of,
     Package,
     Private,
     Protected,
@@ -98,6 +95,9 @@ pub enum Keyword {
 }
 
 impl<'a> From<&'a str> for Keyword {
+    /// convert a &str into a Keyword
+    ///
+    /// panics if invalid keyword
     fn from(s: &'a str) -> Self {
         match s {
             "await" => Keyword::Await,
@@ -119,7 +119,6 @@ impl<'a> From<&'a str> for Keyword {
             "instanceof" => Keyword::InstanceOf,
             "in" => Keyword::In,
             "new" => Keyword::New,
-            "of" => Keyword::Of,
             "return" => Keyword::Return,
             "switch" => Keyword::Switch,
             "this" => Keyword::This,
@@ -143,23 +142,24 @@ impl<'a> From<&'a str> for Keyword {
             "static" => Keyword::Static,
             "yield" => Keyword::Yield,
             "let" => Keyword::Let,
-            "eval" => Keyword::Eval,
-            "arguments" => Keyword::Arguments,
             _ => panic!("Unknown Keyword, `{}`", s),
         }
     }
 }
 
 impl From<String> for Keyword {
+    /// converts from a String to a Keyword
+    ///
+    /// panics if an invalid keyword
     fn from(s: String) -> Self {
         Self::from(s.as_str())
     }
 }
 
 impl ::std::string::ToString for Keyword {
+    /// Convert a keyword into a string
     fn to_string(&self) -> String {
         match self {
-            Keyword::Arguments => "arguments",
             Keyword::Await => "await",
             Keyword::Break => "break",
             Keyword::Case => "case",
@@ -174,7 +174,6 @@ impl ::std::string::ToString for Keyword {
             Keyword::Do => "do",
             Keyword::Else => "else",
             Keyword::Enum => "enum",
-            Keyword::Eval => "eval",
             Keyword::Export => "export",
             Keyword::Finally => "finally",
             Keyword::For => "for",
@@ -186,7 +185,6 @@ impl ::std::string::ToString for Keyword {
             Keyword::Interface => "interface",
             Keyword::Let => "let",
             Keyword::New => "new",
-            Keyword::Of => "of",
             Keyword::Package => "package",
             Keyword::Private => "private",
             Keyword::Protected => "protected",
@@ -209,6 +207,12 @@ impl ::std::string::ToString for Keyword {
 }
 
 impl Keyword {
+    /// Is this keyword one of the future reserved words
+    ///
+    /// - enum
+    /// - export
+    /// - implements
+    /// - super
     pub fn is_future_reserved(&self) -> bool {
         match self {
             &Keyword::Enum => true,
@@ -218,6 +222,19 @@ impl Keyword {
             _ => false,
         }
     }
+    /// Is this keyword a reserved word when the context
+    /// has a 'use strict' directive.
+    ///
+    /// ## Keywords
+    /// - implements
+    /// - interface
+    /// - package
+    /// - private
+    /// - protected
+    /// - public
+    /// - static
+    /// - yield
+    /// - let
     pub fn is_strict_reserved(&self) -> bool {
         match self {
             &Keyword::Implements => true,
@@ -232,13 +249,34 @@ impl Keyword {
             _ => false,
         }
     }
-    pub fn is_restricted(&self) -> bool {
-        match self {
-            &Keyword::Eval => true,
-            &Keyword::Arguments => true,
-            _ => false,
-        }
-    }
+    /// Is this keyword a reserved word
+    ///
+    /// ## Keywords
+    /// - break
+    /// - case
+    /// - catch
+    /// - continue
+    /// - debugger
+    /// - default
+    /// - delete
+    /// - do
+    /// - else
+    /// - for
+    /// - function
+    /// - if
+    /// - instanceof
+    /// - in
+    /// - new
+    /// - return
+    /// - switch
+    /// - this
+    /// - throw
+    /// - try
+    /// - typeof
+    /// - var
+    /// - void
+    /// - while
+    /// - with
     pub fn is_reserved(&self) -> bool {
         match self {
             &Keyword::Break => true,
@@ -271,7 +309,7 @@ impl Keyword {
         }
     }
 }
-
+/// generate a parser that will return an instance of Token::Keyword on success
 pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -280,12 +318,38 @@ where
     choice((
         try(future_reserved()),
         try(strict_mode_reserved()),
-        try(restricted()),
         try(reserved()),
     )).skip(not_followed_by(ident_part()))
         .map(|t| t)
 }
-
+/// generate a parser that will return a Token::Keyword with in finds
+/// one of the reserved keywords
+/// ## Keywords
+/// - break
+/// - case
+/// - catch
+/// - continue
+/// - debugger
+/// - default
+/// - delete
+/// - do
+/// - else
+/// - for
+/// - function
+/// - if
+/// - instanceof
+/// - in
+/// - new
+/// - return
+/// - switch
+/// - this
+/// - throw
+/// - try
+/// - typeof
+/// - var
+/// - void
+/// - while
+/// - with
 pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -311,7 +375,6 @@ where
         try(string("instanceof")),
         try(string("in")),
         try(string("new")),
-        try(string("of")),
         try(string("return")),
         try(string("switch")),
         try(string("this")),
@@ -324,7 +387,14 @@ where
         try(string("with")),
     ]).map(|t| Token::Keyword(Keyword::from(t.to_owned())))
 }
-
+/// Generate a parser that will return an instance of Token::Keyword when one of the
+/// future reserved words are found
+///
+/// ## Keywords
+/// - export
+/// - import
+/// - super
+/// - enum
 pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -338,6 +408,19 @@ where
     )).map(|t| Token::Keyword(Keyword::from(t)))
 }
 
+/// Generate a parser that will return an instance of Token::Keyword when a
+/// strict mode reserved word is found
+///
+/// ##Keywords
+/// - implements
+/// - interface
+/// - package
+/// - private
+/// - protected
+/// - public
+/// - static
+/// - yield
+/// - let
 pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
@@ -354,15 +437,6 @@ where
         try(string("yield")),
         try(string("let")),
     )).map(|t| Token::Keyword(Keyword::from(t)))
-}
-
-pub(crate) fn restricted<I>() -> impl Parser<Input = I, Output = Token>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((try(string("eval")), try(string("arguments"))))
-        .map(|t| Token::Keyword(Keyword::from(t)))
 }
 
 #[cfg(test)]
@@ -406,14 +480,6 @@ mod test {
     }
 
     #[test]
-    fn restricted_reserved() {
-        let k = token().parse("eval").unwrap();
-        assert_eq!(k, (Token::keyword("eval"), ""));
-        let k2 = token().parse("arguments").unwrap();
-        assert_eq!(k2, (Token::keyword("arguments"), ""))
-    }
-
-    #[test]
     fn reserved_keywords() {
         let keys = vec![
             "break",
@@ -449,59 +515,9 @@ mod test {
         }
     }
 
-    #[test]
-    fn keywords_test() {
-        let keys = vec![
-            "enum",
-            "export",
-            "import",
-            "super",
-            "implements",
-            "interface",
-            "package",
-            "private",
-            "protected",
-            "public",
-            "static",
-            "yield",
-            "let",
-            "eval",
-            "break",
-            "case",
-            "catch",
-            "continue",
-            "debugger",
-            "default",
-            "delete",
-            "do",
-            "else",
-            "finally",
-            "for",
-            "function",
-            "if",
-            "instanceof",
-            "in",
-            "new",
-            "return",
-            "switch",
-            "this",
-            "throw",
-            "try",
-            "typeof",
-            "var",
-            "void",
-            "while",
-            "with",
-        ];
-        for key in keys {
-            let k = token().parse(key.clone()).unwrap();
-            assert_eq!(k, (Token::keyword(key), ""));
-        }
-    }
-
     proptest! {
         #[test]
-        fn keyword_prop(s in r#"arguments|await|break|case|catch|class|const|continue|debugger|default|import|delete|do|else|enum|eval|export|finally|for|function|if|in|implements|instanceof|interface|let|new|of|package|private|protected|public|static|return|super|switch|this|throw|try|typeof|var|void|while|with|yield"#) {
+        fn keyword_prop(s in r#"await|break|case|catch|class|const|continue|debugger|default|import|delete|do|else|enum|export|finally|for|function|if|in|implements|instanceof|interface|let|new|package|private|protected|public|static|return|super|switch|this|throw|try|typeof|var|void|while|with|yield"#) {
             let r = token().easy_parse(s.as_str()).unwrap();
             assert!(r.0.is_keyword() && r.0.matches_keyword_str(&s));
         }

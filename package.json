@@ -5,5 +5,8 @@
     "react": "^16.4.1",
     "react-dom": "^16.4.1",
     "vue": "^2.5.16"
+  },
+  "dependencies": {
+    "esprima": "^4.0.1"
   }
 }
