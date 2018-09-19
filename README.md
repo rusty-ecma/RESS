@@ -4,12 +4,12 @@
 [![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)](https://travis-ci.org/FreeMasen/RESS)
 [![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)](https://ci.appveyor.com/project/FreeMasen/sitebuilder)
 [![crates.io](https://img.shields.io/crates/v/ress.svg)](https://crates.io/crates/ress)
-[![last commit](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)](https://github.com/FreeMasen/RESS/commits/master)
+[![last commit master](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)](https://github.com/FreeMasen/RESS/commits/master)
 
 A scanner/tokenizer for JS written in Rust
 
 ## Usage
-There are two interfaces for using `ress` in your Rust code.
+There are two main interfaces for using `ress` in your Rust code.
 
 The first is the very simple function `tokenize`, this takes in a `String` and outputs a `Vec<Token>`.
 
@@ -64,7 +64,7 @@ In either method the major construct that you would be dealing with is a `Token`
 - Regular Expression Literal
 - Comment
 
-In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level.
+In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword.
 
 For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this
 ```rust
@@ -83,11 +83,11 @@ if p.matches_keyword(Keyword::This) {
 }
 ```
 
-Like all `Iterators` the `Scanner` has a `next`, I have also implemented a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` have a method `Peekable` that will return a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
-```
+Like all `Iterators` the `Scanner` has a `next`, I have also implemented a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` implement `Peekable` that will convert them into a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
+```rust
 // look_ahead
 let js = "function() { return; }";
-let s = Scanner::new(js);
+let mut s = Scanner::new(js);
 let current = s.next();
 let next = s.look_ahead();
 let new_current = s.next();
@@ -98,13 +98,28 @@ let current = s.next(); // <-- first mutable borrow
 let next = p.peek(); // <-- second mutable borrow
 ```
 
+For more intense lookahead scenarios `Scanner` makes available the `get_state` and `set_state` methods. These methods will allow you to capture a snapshot of the current position and any context, and then later reset to that position and context.
+
+```rust
+let js = "function() {
+    return 0;
+};";
+let mut s = Scanner::new(js);
+let start = s.get_state();
+assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().token, Token::Punct(Punct::OpenParen));
+assert_eq!(s.next().unwrap().token, Token::Punct(Punct::CloseParen));
+s.set_state(start);
+assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
+```
+
 ## Why?
-Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This project will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
+Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
 ```sh
 $ cargo run --example clear-comments -- ./in.js ./out.js
 ```
 
-Ideally this project will be the starting point for building a full JS Abstract Syntax Tree (AST) in Rust. The next step would be to build a companion crate that will raise the tokens into a full (AST). And once we have an AST building JS dev tools in rust would be significantly easier.
+Ideally this project will be the starting point for building a full JS Abstract Syntax Tree (AST) in Rust. The next step would be to build a companion crate that will raise the tokens into a full (AST) ([work in progress](https://github.com/freemasen/resp)). And once we have an AST building JS dev tools in rust would be significantly easier.
 
 # Performance
 I am sure there are a lot of low hanging fruit in this area.
