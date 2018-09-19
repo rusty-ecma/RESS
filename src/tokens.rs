@@ -1,5 +1,8 @@
 use combine::{
-    choice, eof, error::ParseError, many, not_followed_by, parser::char::{char as c_char, string},
+    choice, eof,
+    error::ParseError,
+    many, not_followed_by,
+    parser::char::{char as c_char, string},
     try, Parser, Stream,
 };
 
@@ -376,7 +379,7 @@ impl Token {
     pub fn is_strict_reserved(&self) -> bool {
         match self {
             &Token::Keyword(ref k) => k.is_strict_reserved(),
-            _ => false
+            _ => false,
         }
     }
     pub fn is_restricted(&self) -> bool {
@@ -511,10 +514,9 @@ impl Token {
     pub fn matches_boolean_str(&self, b: &str) -> bool {
         match self {
             Token::Boolean(ref lit) => match (lit, b) {
-                (&BooleanLiteral::True, "true")
-                | (&BooleanLiteral::False, "false") => true,
+                (&BooleanLiteral::True, "true") | (&BooleanLiteral::False, "false") => true,
                 _ => false,
-            }
+            },
             _ => false,
         }
     }
@@ -582,7 +584,6 @@ impl Token {
         }
     }
 }
-
 
 impl ToString for Token {
     fn to_string(&self) -> String {

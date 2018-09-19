@@ -320,7 +320,7 @@ where
         try(strict_mode_reserved()),
         try(reserved()),
     )).skip(not_followed_by(ident_part()))
-        .map(|t| t)
+    .map(|t| t)
 }
 /// generate a parser that will return a Token::Keyword with in finds
 /// one of the reserved keywords

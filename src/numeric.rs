@@ -1,6 +1,9 @@
 use combine::{
-    choice, error::ParseError, many, many1, optional,
-    parser::char::{char as c_char, digit, hex_digit, oct_digit}, try, Parser, Stream,
+    choice,
+    error::ParseError,
+    many, many1, optional,
+    parser::char::{char as c_char, digit, hex_digit, oct_digit},
+    try, Parser, Stream,
 };
 
 use tokens::Token;
@@ -99,25 +102,26 @@ where
         optional((c_char('.'), many(digit()))),
         //optionally followed by e|E and any number of digits
         optional((choice((c_char('e'), c_char('E'))), many1(digit()))),
-    ).map(
-        |(integer, remainder, exponent): (
-            String,
-            Option<(char, String)>,
-            Option<(char, String)>,
-        )| {
-            let mut ret = String::new();
-            ret.push_str(&integer);
-            if let Some((p, r)) = remainder {
-                ret.push(p);
-                ret.push_str(&r);
-            }
-            if let Some((e, ex)) = exponent {
-                ret.push(e);
-                ret.push_str(&ex);
-            }
-            Number(ret)
-        },
     )
+        .map(
+            |(integer, remainder, exponent): (
+                String,
+                Option<(char, String)>,
+                Option<(char, String)>,
+            )| {
+                let mut ret = String::new();
+                ret.push_str(&integer);
+                if let Some((p, r)) = remainder {
+                    ret.push(p);
+                    ret.push_str(&r);
+                }
+                if let Some((e, ex)) = exponent {
+                    ret.push(e);
+                    ret.push_str(&ex);
+                }
+                Number(ret)
+            },
+        )
 }
 
 fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
@@ -129,18 +133,19 @@ where
         c_char('.'),
         many1(digit()),
         optional((choice([c_char('e'), c_char('E')]), many1(digit()))),
-    ).map(
-        |(dot, remainder, exponent): (char, String, Option<(char, String)>)| {
-            let mut ret = String::new();
-            ret.push(dot);
-            ret.push_str(&remainder);
-            if let Some((e, ex)) = exponent {
-                ret.push(e);
-                ret.push_str(&ex);
-            }
-            Number(ret)
-        },
     )
+        .map(
+            |(dot, remainder, exponent): (char, String, Option<(char, String)>)| {
+                let mut ret = String::new();
+                ret.push(dot);
+                ret.push_str(&remainder);
+                if let Some((e, ex)) = exponent {
+                    ret.push(e);
+                    ret.push_str(&ex);
+                }
+                Number(ret)
+            },
+        )
 }
 
 fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -152,14 +157,13 @@ where
         c_char('0'),
         choice([c_char('x'), c_char('X')]),
         many1(hex_digit()),
-    ).map(
-        |(zero, x, integer): (char, char, String)| {
+    )
+        .map(|(zero, x, integer): (char, char, String)| {
             let mut ret = format!("{}", zero);
             ret.push(x);
             ret.push_str(&integer);
             Number(ret)
-        },
-    )
+        })
 }
 
 fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -171,15 +175,14 @@ where
         c_char('0'),
         choice([c_char('b'), c_char('B')]),
         many1(choice([c_char('1'), c_char('0')])),
-    ).map(
-        |(zero, b, integer): (char, char, String)| {
+    )
+        .map(|(zero, b, integer): (char, char, String)| {
             let mut ret = String::new();
             ret.push(zero);
             ret.push(b);
             ret.push_str(&integer);
             Number(ret)
-        },
-    )
+        })
 }
 
 fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -191,15 +194,14 @@ where
         c_char('0'),
         choice([c_char('o'), c_char('O')]),
         many1(oct_digit()),
-    ).map(
-        |(zero, o, integer): (char, char, String)| {
+    )
+        .map(|(zero, o, integer): (char, char, String)| {
             let mut ret = String::new();
             ret.push(zero);
             ret.push(o);
             ret.push_str(&integer);
             Number(ret)
-        },
-    )
+        })
 }
 
 #[cfg(test)]

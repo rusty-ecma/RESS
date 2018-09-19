@@ -1,6 +1,9 @@
 use combine::{
-    choice, error::ParseError, not_followed_by, parser::char::{char as c_char, string}, try,
-    Parser, Stream,
+    choice,
+    error::ParseError,
+    not_followed_by,
+    parser::char::{char as c_char, string},
+    try, Parser, Stream,
 };
 use tokens::Token;
 #[derive(Debug, PartialEq, Clone)]
@@ -302,33 +305,9 @@ mod test {
         }
         let multi = vec![
             ">>>=", //3 char
-            "...",
-            "===",
-            "!==",
-            ">>>",
-            "<<=",
-            ">>=",
-            "**=", //2 char
-            "&&",
-            "||",
-            "==",
-            "!=",
-            "+=",
-            "-=",
-            "*=",
-            "/=",
-            "++",
-            "--",
-            "<<",
-            ">>",
-            "&=",
-            "|=",
-            "^=",
-            "%=",
-            "<=",
-            ">=",
-            "=>",
-            "**",
+            "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
+            "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
+            "^=", "%=", "<=", ">=", "=>", "**",
         ];
         for p in multi.clone() {
             let t = token().parse(p.clone()).unwrap();

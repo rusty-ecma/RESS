@@ -1,9 +1,12 @@
 use combine::{
-    between, choice, error::ParseError, many, not_followed_by,
+    between, choice,
+    error::ParseError,
+    many, not_followed_by,
     parser::{
-        char::{char as c_char, spaces, string}, item::satisfy,
-    }, try, Parser,
-    Stream,
+        char::{char as c_char, spaces, string},
+        item::satisfy,
+    },
+    try, Parser, Stream,
 };
 
 use super::{escaped, is_line_term};
@@ -94,7 +97,7 @@ impl Template {
 impl ToString for Template {
     fn to_string(&self) -> String {
         match self {
-            Template::NoSub(ref c) => format!("`{}`",c),
+            Template::NoSub(ref c) => format!("`{}`", c),
             Template::Head(ref c) => format!("`{}${{", c),
             Template::Middle(ref c) => format!("}}{}${{", c),
             Template::Tail(ref c) => format!("}}{}`", c),
@@ -204,8 +207,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('`'), c_char('`'), many(template_char()))
-        .map(|s: String| Template::NoSub(s))
+    between(c_char('`'), c_char('`'), many(template_char())).map(|s: String| Template::NoSub(s))
 }
 
 fn template_head<I>() -> impl Parser<Input = I, Output = Template>
@@ -213,8 +215,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(string("`"), string("${"), many(template_char()))
-        .map(|s: String| Template::Head(s))
+    between(string("`"), string("${"), many(template_char())).map(|s: String| Template::Head(s))
 }
 
 fn template_middle<I>() -> impl Parser<Input = I, Output = Template>

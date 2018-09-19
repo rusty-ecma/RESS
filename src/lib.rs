@@ -20,7 +20,7 @@ pub use numeric::Number;
 pub use punct::Punct;
 pub use regex::RegEx;
 pub use strings::{StringLit, Template};
-pub use tokens::{BooleanLiteral as Boolean, Item, Span, Token, Ident};
+pub use tokens::{BooleanLiteral as Boolean, Ident, Item, Span, Token};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -106,7 +106,7 @@ impl Scanner {
             spans_len: self.spans.len(),
             last_paren: self.last_open_paren_idx,
             template: self.template,
-            replacement: self.replacement
+            replacement: self.replacement,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -140,7 +140,14 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - regex_pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
+                                self.pending_new_line = whitespace
+                                    .chars()
+                                    .find(|c| {
+                                        c == &'\n'
+                                            || c == &'\r'
+                                            || c == &'\u{2028}'
+                                            || c == &'\u{2029}'
+                                    }).is_some();
                             }
                             Some(Item::new(regex_pair.0, span))
                         }
@@ -166,7 +173,14 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
+                                self.pending_new_line = whitespace
+                                    .chars()
+                                    .find(|c| {
+                                        c == &'\n'
+                                            || c == &'\r'
+                                            || c == &'\u{2028}'
+                                            || c == &'\u{2029}'
+                                    }).is_some();
                             }
                             Some(Item::new(pair.0, span))
                         }
@@ -193,7 +207,11 @@ impl Scanner {
                         self.spans.push(span.clone());
                         self.cursor = self.stream.len() - pair.1.trim_left().len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
-                        self.pending_new_line = whitespace.chars().find(|c| c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}').is_some();
+                        self.pending_new_line = whitespace
+                            .chars()
+                            .find(|c| {
+                                c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}'
+                            }).is_some();
                     }
                     Some(Item::new(pair.0, span))
                 }
@@ -552,7 +570,6 @@ this.y = 0;
             let q = s.string_for(&item.span).unwrap();
             assert_eq!((i, p.to_string()), (i, q))
         }
-
     }
     #[test]
     fn spans() {

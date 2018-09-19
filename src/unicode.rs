@@ -1,8 +1,11 @@
 use combine::{
-    count, error::ParseError,
+    count,
+    error::ParseError,
     parser::{
-        char::{char as c_char, hex_digit}, item::satisfy,
-    }, Parser, Stream,
+        char::{char as c_char, hex_digit},
+        item::satisfy,
+    },
+    Parser, Stream,
 };
 
 pub(crate) fn ll<I>() -> impl Parser<Input = I, Output = char>
