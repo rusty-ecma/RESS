@@ -6,7 +6,10 @@
 //! for each lib.
 extern crate ress;
 use std::{
-    env::args, fs::read_to_string, path::PathBuf, time::{Duration, SystemTime},
+    env::args,
+    fs::read_to_string,
+    path::PathBuf,
+    time::{Duration, SystemTime},
 };
 
 fn main() {
