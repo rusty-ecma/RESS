@@ -8,15 +8,18 @@ matrix:
         - rustup toolchain install nightly
         - rustup component add rustfmt-preview --toolchain nightly
       cache:
-        - cargo: true
         - directories:
           - node_modules
+          - /home/travis/.cargo
+      before_cache:
+        - rm -rf /home/travis/.cargo/registry
       script:
         - cargo test
         - cargo run --example major_libs --release
       after_script:
         - git add proptest-regressions
         - git commit -m "proptest-regressions update [ci skip]"
+        - git push
       stages:
         after_script:
           - if branch in (master, next)
