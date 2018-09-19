@@ -11,7 +11,10 @@ extern crate serde;
 extern crate serde_derive;
 
 use std::{
-    fs::{read_to_string, File}, io::{BufWriter, Write}, path::PathBuf, string::ToString,
+    fs::{read_to_string, File},
+    io::{BufWriter, Write},
+    path::PathBuf,
+    string::ToString,
 };
 
 use docopt::Docopt;
