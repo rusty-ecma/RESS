@@ -14,78 +14,97 @@ use std::{
 
 fn main() {
     let mut i = 0;
+    // loop over the ags and check for
+    // lib names. If they exist, run the test
+    // and increment the counter
     for arg in args() {
-        i += 1;
         if arg == "jquery" || arg == "jq" {
-            println!("trying jquery");
+            i += 1;
             jquery();
         } else if arg == "angular" || arg == "ng" {
-            println!("trying angular1");
+            i += 1;
             angular1();
         } else if arg == "react" {
-            println!("trying react");
+            i += 1;
             react();
         } else if arg == "react-dom" || arg == "rd" {
-            println!("trying react_dom");
+            i += 1;
             react_dom();
         } else if arg == "vue" {
-            println!("trying vue");
+            i += 1;
             vue();
+        } else if arg == "moment" {
+            i += 1;
+            moment();
+        } else if arg == "dexie" {
+            i += 1;
+            dexie();
         }
     }
+    // if no matching args were found,
+    // perform all the tests
     if i == 0 {
-        println!("trying jquery");
         jquery();
-        println!("trying angular1");
         angular1();
-        println!("trying react");
         react();
-        println!("trying react_dom");
         react_dom();
-        println!("trying vue");
         vue();
+        moment();
+        dexie();
     }
 }
 
 fn jquery() {
+    println!("trying jquery");
     if let Ok(ref js) = get_js(Lib::Jquery) {
         test_js(js, "jquery");
     }
 }
 
 fn angular1() {
+    println!("trying angular1");
     if let Ok(ref js) = get_js(Lib::Angular) {
         test_js(js, "angular");
     }
 }
 
 fn react() {
+    println!("trying react");
     if let Ok(ref js) = get_js(Lib::React) {
         test_js(js, "react");
     }
 }
 
 fn react_dom() {
+    println!("trying react_dom");
     if let Ok(ref js) = get_js(Lib::ReactDom) {
         test_js(js, "react-dom");
     }
 }
 
 fn vue() {
+    println!("trying vue");
     if let Ok(ref js) = get_js(Lib::Vue) {
         test_js(js, "vue");
     }
 }
 
+fn moment() {
+    println!("trying moment");
+    if let Ok(ref js) = get_js(Lib::Moment) {
+        test_js(js, "moment")
+    }
+}
+
+fn dexie() {
+    println!("trying dexie");
+    if let Ok(ref js) = get_js(Lib::Dexie) {
+        test_js(js, "dexie")
+    }
+}
+
 fn test_js(text: &str, name: &str) {
     let size = text.len();
-    let now = SystemTime::now();
-    let _ = ress::tokenize(text);
-    if let Ok(e) = now.elapsed() {
-        report(size, e, "tokenize", name)
-    } else {
-        println!("error capturing tokenize duration for {}", name);
-    }
 
     let now = SystemTime::now();
     let s = ress::Scanner::new(text);
@@ -142,6 +161,8 @@ enum Lib {
     React,
     ReactDom,
     Vue,
+    Moment,
+    Dexie,
 }
 
 impl Lib {
@@ -152,6 +173,8 @@ impl Lib {
             &Lib::React => "node_modules/react/umd/react.development.js".into(),
             &Lib::ReactDom => "node_modules/react-dom/umd/react-dom.development.js".into(),
             &Lib::Vue => "node_modules/vue/dist/vue.js".into(),
+            &Lib::Moment => "node_modules/moment/moment.js".into(),
+            &Lib::Dexie => "node_modules/dexie/dist/dexie.js".into(),
         }
     }
 }
@@ -160,6 +183,9 @@ fn get_js(l: Lib) -> Result<String, ::std::io::Error> {
     let path = PathBuf::from(l.path());
     if !path.exists() {
         npm_install()?;
+        if !path.exists() {
+            println!("cannot find {:?}", path);
+        }
     }
     read_to_string(path)
 }

@@ -188,8 +188,8 @@ impl<'a> Into<bool> for &'a BooleanLiteral {
     /// Creates a js bool for a rust bool
     fn into(self) -> bool {
         match self {
-            &BooleanLiteral::True => true,
-            &BooleanLiteral::False => false,
+            BooleanLiteral::True => true,
+            BooleanLiteral::False => false,
         }
     }
 }
@@ -218,7 +218,7 @@ impl<'a> PartialEq<&'a str> for Ident {
 
 impl PartialEq<str> for Ident {
     fn eq(&self, other: &str) -> bool {
-        &self.0 == other
+        self.0 == other
     }
 }
 
@@ -277,7 +277,7 @@ impl Token {
     }
     /// Create an instance of Token::RegEx from a &str and an Option<String>
     pub fn regex(body: &str, flags: Option<String>) -> Token {
-        Token::RegEx(regex::RegEx::from_parts(body, flags.map(|s| s.into())))
+        Token::RegEx(regex::RegEx::from_parts(body, flags))
     }
     /// Creates an instance of Token::Template with a template string that has
     /// no substitutions
@@ -342,19 +342,19 @@ impl Token {
 impl Token {
     pub fn is_boolean(&self) -> bool {
         match self {
-            &Token::Boolean(_) => true,
+            Token::Boolean(_) => true,
             _ => false,
         }
     }
     pub fn is_boolean_true(&self) -> bool {
         match self {
-            &Token::Boolean(ref b) => b.into(),
+            Token::Boolean(ref b) => b.into(),
             _ => false,
         }
     }
     pub fn is_boolean_false(&self) -> bool {
         match self {
-            &Token::Boolean(ref b) => {
+            Token::Boolean(ref b) => {
                 let b: bool = b.into();
                 !b
             }
@@ -366,25 +366,25 @@ impl Token {
     }
     pub fn is_ident(&self) -> bool {
         match self {
-            &Token::Ident(_) => true,
+            Token::Ident(_) => true,
             _ => false,
         }
     }
     pub fn is_keyword(&self) -> bool {
         match self {
-            &Token::Keyword(_) => true,
+            Token::Keyword(_) => true,
             _ => false,
         }
     }
     pub fn is_strict_reserved(&self) -> bool {
         match self {
-            &Token::Keyword(ref k) => k.is_strict_reserved(),
+            Token::Keyword(ref k) => k.is_strict_reserved(),
             _ => false,
         }
     }
     pub fn is_restricted(&self) -> bool {
         match self {
-            &Token::Ident(ref i) => i == "arguments" || i == "eval",
+            Token::Ident(ref i) => i == "arguments" || i == "eval",
             _ => false,
         }
     }
@@ -401,19 +401,19 @@ impl Token {
     }
     pub fn is_hex_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.is_hex(),
+            Token::Numeric(ref n) => n.is_hex(),
             _ => false,
         }
     }
     pub fn is_bin_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.is_bin(),
+            Token::Numeric(ref n) => n.is_bin(),
             _ => false,
         }
     }
     pub fn is_oct_literal(&self) -> bool {
         match self {
-            &Token::Numeric(ref n) => n.is_oct(),
+            Token::Numeric(ref n) => n.is_oct(),
             _ => false,
         }
     }
@@ -450,7 +450,7 @@ impl Token {
     }
     pub fn is_regex(&self) -> bool {
         match self {
-            &Token::RegEx(_) => true,
+            Token::RegEx(_) => true,
             _ => false,
         }
     }
@@ -477,31 +477,31 @@ impl Token {
     }
     pub fn is_literal(&self) -> bool {
         match self {
-            &Token::Boolean(_) => true,
-            &Token::String(_) => true,
-            &Token::Null => true,
-            &Token::Numeric(_) => true,
-            &Token::RegEx(_) => true,
-            &Token::Template(_) => true,
+            Token::Boolean(_) => true,
+            Token::String(_) => true,
+            Token::Null => true,
+            Token::Numeric(_) => true,
+            Token::RegEx(_) => true,
+            Token::Template(_) => true,
             _ => false,
         }
     }
     pub fn is_comment(&self) -> bool {
         match self {
-            &Token::Comment(_) => true,
+            Token::Comment(_) => true,
             _ => false,
         }
     }
     pub fn is_multi_line_comment(&self) -> bool {
         match self {
-            &Token::Comment(ref t) => t.kind == comments::Kind::Multi,
+            Token::Comment(ref t) => t.kind == comments::Kind::Multi,
             _ => false,
         }
     }
 
     pub fn is_single_line_comment(&self) -> bool {
         match self {
-            &Token::Comment(ref t) => t.kind == comments::Kind::Single,
+            Token::Comment(ref t) => t.kind == comments::Kind::Single,
             _ => false,
         }
     }
@@ -522,7 +522,7 @@ impl Token {
     }
     pub fn matches_ident_str(&self, name: &str) -> bool {
         match self {
-            Token::Ident(ref i) => name == &i.0,
+            Token::Ident(ref i) => name == i.0,
             _ => false,
         }
     }
@@ -553,7 +553,7 @@ impl Token {
     pub fn matches_regex_str(&self, regex: &str) -> bool {
         if let Some(idx) = regex.rfind('/') {
             let parts = regex.split_at(idx);
-            let flags = if parts.1.len() == 0 {
+            let flags = if parts.1.is_empty() {
                 None
             } else {
                 Some(parts.1[1..].to_string())
@@ -569,14 +569,14 @@ impl Token {
 
     pub fn matches_comment_str(&self, comment: &str) -> bool {
         match self {
-            &Token::Comment(ref t) => t.content == comment,
+            Token::Comment(ref t) => t.content == comment,
             _ => false,
         }
     }
 
     pub fn matches_string_content(&self, content: &str) -> bool {
         match self {
-            &Token::String(ref lit) => match lit {
+            Token::String(ref lit) => match lit {
                 strings::StringLit::Single(ref s) => content == s,
                 strings::StringLit::Double(ref s) => content == s,
             },

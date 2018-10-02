@@ -4,7 +4,9 @@
     "jquery": "^3.3.1",
     "react": "^16.4.1",
     "react-dom": "^16.4.1",
-    "vue": "^2.5.16"
+    "vue": "^2.5.16",
+    "moment": "^2.22.2",
+    "dexie": "^2.0.4"
   },
   "dependencies": {
     "esprima": "^4.0.1"

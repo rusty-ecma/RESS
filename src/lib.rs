@@ -158,14 +158,9 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - regex_pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace
-                                    .chars()
-                                    .find(|c| {
-                                        c == &'\n'
-                                            || c == &'\r'
-                                            || c == &'\u{2028}'
-                                            || c == &'\u{2029}'
-                                    }).is_some();
+                                self.pending_new_line = whitespace.chars().any(|c| {
+                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
+                                });
                             }
                             Some(Item::new(regex_pair.0, span))
                         }
@@ -191,14 +186,9 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace
-                                    .chars()
-                                    .find(|c| {
-                                        c == &'\n'
-                                            || c == &'\r'
-                                            || c == &'\u{2028}'
-                                            || c == &'\u{2029}'
-                                    }).is_some();
+                                self.pending_new_line = whitespace.chars().any(|c| {
+                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
+                                });
                             }
                             Some(Item::new(pair.0, span))
                         }
@@ -227,9 +217,7 @@ impl Scanner {
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()
-                            .find(|c| {
-                                c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}'
-                            }).is_some();
+                            .any(|c| c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}');
                     }
                     Some(Item::new(pair.0, span))
                 }
@@ -243,10 +231,9 @@ impl Scanner {
 
     fn is_regex_start(&self) -> bool {
         if let Some(last_token) = self.last_token() {
-            if !last_token.is_keyword() && !last_token.is_punct() {
-                false
-            } else if last_token.matches_keyword(Keyword::This)
-                || last_token.matches_punct(Punct::CloseBrace)
+            if (!last_token.is_keyword() && !last_token.is_punct())
+                || last_token.matches_keyword(Keyword::This)
+                || last_token.matches_punct(Punct::CloseBracket)
             {
                 false
             } else if last_token.matches_punct(Punct::CloseParen) {
@@ -262,10 +249,20 @@ impl Scanner {
     }
 
     fn last_token(&self) -> Option<Token> {
-        if self.spans.len() == 0 {
+        if self.spans.is_empty() {
             return None;
         }
-        self.token_for(&self.spans[self.spans.len() - 1])
+        let mut current_idx = self.spans.len().saturating_sub(1);
+        while current_idx > 0 {
+            if let Some(t) = self.token_for(&self.spans[current_idx]) {
+                if t.is_comment() {
+                    current_idx = current_idx.saturating_sub(1);
+                } else {
+                    return Some(t);
+                }
+            }
+        }
+        None
     }
 
     fn check_for_conditional(&self) -> bool {
@@ -283,11 +280,11 @@ impl Scanner {
         if let Some(before) = self.nth_before_last_open_paren(1) {
             if before.is_ident() {
                 if let Some(three_before) = self.nth_before_last_open_paren(3) {
-                    return Self::check_for_expression(three_before);
+                    return Self::check_for_expression(&three_before);
                 }
             } else if before.matches_keyword(Keyword::Function) {
                 if let Some(two_before) = self.nth_before_last_open_paren(2) {
-                    return Self::check_for_expression(two_before);
+                    return Self::check_for_expression(&two_before);
                 } else {
                     return false;
                 }
@@ -296,7 +293,7 @@ impl Scanner {
         true
     }
 
-    fn check_for_expression(token: Token) -> bool {
+    fn check_for_expression(token: &Token) -> bool {
         token.matches_punct(Punct::OpenParen)
             && !token.matches_punct(Punct::OpenBrace)
             && !token.matches_punct(Punct::OpenBracket)
@@ -388,7 +385,7 @@ where
 }
 
 pub(crate) fn is_source_char(c: char) -> bool {
-    c as u32 <= 0x10FFFF
+    c as u32 <= 0x10_FF_FF
 }
 
 pub(crate) fn is_line_term(c: char) -> bool {
@@ -404,7 +401,7 @@ pub mod error {
     impl ::std::fmt::Display for Error {
         fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
             match self {
-                &Error::DataMismatch(ref msg) => msg.fmt(f),
+                Error::DataMismatch(ref msg) => msg.fmt(f),
             }
         }
     }
@@ -417,7 +414,7 @@ pub mod error {
         }
     }
 }
-
+#[derive(Clone, Copy)]
 pub struct ScannerState {
     pub cursor: usize,
     pub spans_len: usize,
@@ -608,6 +605,9 @@ this.y = 0;
         let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
         let mut s = Scanner::new(js);
         let r = s.next().unwrap();
-        assert_eq!(r.token, Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None));
+        assert_eq!(
+            r.token,
+            Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None)
+        );
     }
 }

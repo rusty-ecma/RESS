@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.4.1"
+version = "0.4.3"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -17,11 +17,12 @@ appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github
 combine = "3.3"
 
 [dev-dependencies]
-docopt = "1.0.0"
+docopt = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
-proptest = "0.8.3"
+proptest = "0.8"
 criterion = "0.2"
+walkdir = "2.2"
 
 [[example]]
 name = "major_libs"
@@ -31,7 +32,6 @@ path = "examples/major_libs/src/main.rs"
 name = "clear-comments"
 path = "examples/clear-comments/src/main.rs"
 
-[[bench]]
-name = "major_libs"
-harness = false
-path = "benches/main.rs"
+[[example]]
+name = "semi_finder"
+path = "examples/semi_finder/src/main.rs"
