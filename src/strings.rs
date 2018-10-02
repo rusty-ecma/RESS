@@ -28,8 +28,8 @@ pub enum Template {
 impl ToString for StringLit {
     fn to_string(&self) -> String {
         match self {
-            &StringLit::Single(ref s) => format!(r#"'{}'"#, s),
-            &StringLit::Double(ref s) => format!(r#""{}""#, s),
+            StringLit::Single(ref s) => format!(r#"'{}'"#, s),
+            StringLit::Double(ref s) => format!(r#""{}""#, s),
         }
     }
 }
@@ -43,13 +43,13 @@ impl StringLit {
     }
     pub fn is_single(&self) -> bool {
         match self {
-            &StringLit::Single(_) => true,
+            StringLit::Single(_) => true,
             _ => false,
         }
     }
     pub fn is_double(&self) -> bool {
         match self {
-            &StringLit::Double(_) => true,
+            StringLit::Double(_) => true,
             _ => false,
         }
     }
@@ -76,19 +76,19 @@ impl Template {
     }
     pub fn is_head(&self) -> bool {
         match self {
-            &Template::Head(_) => true,
+            Template::Head(_) => true,
             _ => false,
         }
     }
     pub fn is_middle(&self) -> bool {
         match self {
-            &Template::Middle(_) => true,
+            Template::Middle(_) => true,
             _ => false,
         }
     }
     pub fn is_tail(&self) -> bool {
         match self {
-            &Template::Tail(_) => true,
+            Template::Tail(_) => true,
             _ => false,
         }
     }

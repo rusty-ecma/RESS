@@ -46,7 +46,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (choice((try(multi_comment()), try(single_comment()))).map(|t: Comment| Token::Comment(t)))
+    choice((try(multi_comment()), try(single_comment()))).map(Token::Comment)
 }
 
 pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>

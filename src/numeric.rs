@@ -79,7 +79,7 @@ where
         try(octal_literal()),
         try(hex_literal()),
         try(decimal_literal()),
-    )).map(|t: Number| super::Token::Numeric(t))
+    )).map(super::Token::Numeric)
 }
 
 fn decimal_literal<I>() -> impl Parser<Input = I, Output = Number>

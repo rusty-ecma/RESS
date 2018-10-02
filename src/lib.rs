@@ -160,12 +160,11 @@ impl Scanner {
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace
                                     .chars()
-                                    .find(|c| {
-                                        c == &'\n'
-                                            || c == &'\r'
-                                            || c == &'\u{2028}'
-                                            || c == &'\u{2029}'
-                                    }).is_some();
+                                    .any(|c| c == '\n'
+                                            || c == '\r'
+                                            || c == '\u{2028}'
+                                            || c == '\u{2029}'
+                                    );
                             }
                             Some(Item::new(regex_pair.0, span))
                         }
@@ -193,12 +192,11 @@ impl Scanner {
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace
                                     .chars()
-                                    .find(|c| {
-                                        c == &'\n'
-                                            || c == &'\r'
-                                            || c == &'\u{2028}'
-                                            || c == &'\u{2029}'
-                                    }).is_some();
+                                    .any(|c| c == '\n'
+                                            || c == '\r'
+                                            || c == '\u{2028}'
+                                            || c == '\u{2029}'
+                                    );
                             }
                             Some(Item::new(pair.0, span))
                         }
@@ -227,9 +225,10 @@ impl Scanner {
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()
-                            .find(|c| {
-                                c == &'\n' || c == &'\r' || c == &'\u{2028}' || c == &'\u{2029}'
-                            }).is_some();
+                            .any(|c| c == '\n' 
+                                || c == '\r' 
+                                || c == '\u{2028}' 
+                                || c == '\u{2029}');
                     }
                     Some(Item::new(pair.0, span))
                 }
@@ -293,11 +292,11 @@ impl Scanner {
         if let Some(before) = self.nth_before_last_open_paren(1) {
             if before.is_ident() {
                 if let Some(three_before) = self.nth_before_last_open_paren(3) {
-                    return Self::check_for_expression(three_before);
+                    return Self::check_for_expression(&three_before);
                 }
             } else if before.matches_keyword(Keyword::Function) {
                 if let Some(two_before) = self.nth_before_last_open_paren(2) {
-                    return Self::check_for_expression(two_before);
+                    return Self::check_for_expression(&two_before);
                 } else {
                     return false;
                 }
@@ -306,7 +305,7 @@ impl Scanner {
         true
     }
 
-    fn check_for_expression(token: Token) -> bool {
+    fn check_for_expression(token: &Token) -> bool {
         token.matches_punct(Punct::OpenParen)
             && !token.matches_punct(Punct::OpenBrace)
             && !token.matches_punct(Punct::OpenBracket)
@@ -398,7 +397,7 @@ where
 }
 
 pub(crate) fn is_source_char(c: char) -> bool {
-    c as u32 <= 0x10FFFF
+    c as u32 <= 0x10_FF_FF
 }
 
 pub(crate) fn is_line_term(c: char) -> bool {
@@ -414,7 +413,7 @@ pub mod error {
     impl ::std::fmt::Display for Error {
         fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
             match self {
-                &Error::DataMismatch(ref msg) => msg.fmt(f),
+                Error::DataMismatch(ref msg) => msg.fmt(f),
             }
         }
     }

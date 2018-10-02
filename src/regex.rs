@@ -47,7 +47,11 @@ where
 {
     (try(regex_body()), c_char('/'), many(ident_part())).map(
         |(body, _, flags): (String, _, String)| {
-            let flags = if flags.len() == 0 { None } else { Some(flags) };
+            let flags = if flags.is_empty() { 
+                None 
+            } else { 
+                Some(flags) 
+            };
             Token::RegEx(RegEx::from_parts(&body, flags))
         },
     )
