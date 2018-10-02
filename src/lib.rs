@@ -246,7 +246,7 @@ impl Scanner {
             if !last_token.is_keyword() && !last_token.is_punct() {
                 false
             } else if last_token.matches_keyword(Keyword::This)
-                || last_token.matches_punct(Punct::CloseBrace)
+                || last_token.matches_punct(Punct::CloseBracket)
             {
                 false
             } else if last_token.matches_punct(Punct::CloseParen) {
@@ -262,10 +262,20 @@ impl Scanner {
     }
 
     fn last_token(&self) -> Option<Token> {
-        if self.spans.len() == 0 {
+        if self.spans.is_empty() {
             return None;
         }
-        self.token_for(&self.spans[self.spans.len() - 1])
+        let mut current_idx = self.spans.len().saturating_sub(1);
+        while current_idx > 0 {
+            if let Some(t) = self.token_for(&self.spans[current_idx]) {
+                if t.is_comment() {
+                    current_idx = current_idx.saturating_sub(1);
+                } else {
+                    return Some(t);
+                }
+            }
+        }
+        None
     }
 
     fn check_for_conditional(&self) -> bool {
