@@ -110,7 +110,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(single_quote()), try(double_quote()))).map(|t| Token::String(t))
+    choice((try(single_quote()), try(double_quote()))).map(Token::String)
 }
 
 fn single_quote<I>() -> impl Parser<Input = I, Output = StringLit>
@@ -119,7 +119,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (between(c_char('\''), c_char('\''), many(single_quoted_content())))
-        .map(|t: String| StringLit::Single(t))
+        .map(StringLit::Single)
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -151,7 +151,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     between(c_char('"'), c_char('"'), many(double_quoted_content()))
-        .map(|t: String| StringLit::Double(t))
+        .map(StringLit::Double)
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -172,7 +172,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    satisfy(|c| is_line_term(c)).map(|c: char| c)
+    satisfy(is_line_term).map(|c: char| c)
 }
 
 pub(crate) fn line_terminator_sequence<I>() -> impl Parser<Input = I, Output = String>
@@ -191,7 +191,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(no_sub_template()), try(template_head()))).map(|s: Template| Token::Template(s))
+    choice((try(no_sub_template()), try(template_head()))).map(Token::Template)
 }
 
 pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
@@ -199,7 +199,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(template_middle()), try(template_tail()))).map(|s: Template| Token::Template(s))
+    choice((try(template_middle()), try(template_tail()))).map(Token::Template)
 }
 
 fn no_sub_template<I>() -> impl Parser<Input = I, Output = Template>
@@ -207,7 +207,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('`'), c_char('`'), many(template_char())).map(|s: String| Template::NoSub(s))
+    between(c_char('`'), c_char('`'), many(template_char())).map(Template::NoSub)
 }
 
 fn template_head<I>() -> impl Parser<Input = I, Output = Template>
@@ -215,7 +215,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(string("`"), string("${"), many(template_char())).map(|s: String| Template::Head(s))
+    between(string("`"), string("${"), many(template_char())).map(Template::Head)
 }
 
 fn template_middle<I>() -> impl Parser<Input = I, Output = Template>

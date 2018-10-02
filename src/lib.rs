@@ -231,9 +231,8 @@ impl Scanner {
 
     fn is_regex_start(&self) -> bool {
         if let Some(last_token) = self.last_token() {
-            if !last_token.is_keyword() && !last_token.is_punct() {
-                false
-            } else if last_token.matches_keyword(Keyword::This)
+            if (!last_token.is_keyword() && !last_token.is_punct())
+                || last_token.matches_keyword(Keyword::This)
                 || last_token.matches_punct(Punct::CloseBracket)
             {
                 false
@@ -415,7 +414,7 @@ pub mod error {
         }
     }
 }
-
+#[derive(Clone, Copy)]
 pub struct ScannerState {
     pub cursor: usize,
     pub spans_len: usize,
