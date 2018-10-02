@@ -1,5 +1,23 @@
 //! js_parse
 //! A crate for parsing raw JS into a token stream
+//!
+//!
+//! The primary interfaces are the function [`tokenize`][tokenize] and
+//! the struct [`Scanner`][scanner]. The [`Scanner`][scanner] struct impls [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
+//! and the [`tokenize`][tokenize] function is just a wrapper
+//! around [`Scanner::collect()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect).
+//!
+//! The `Scanner` will provide a stream of `Item`s, and `Item` is
+//! has 2 properties a [`Token`][token] and a [`Span`][span]. The `Span` is a
+//! representation of where the `Item` exists in the original source while the `Token`
+//! provides details about what JavaScript token it represents.
+//!
+//! An example of what a token stream might look like
+//!
+//! [token]: ./enum.Token
+//! [span]: ./struct.Span
+//! [scanner]: ./struct.Scanner
+//! [tokenize]: ../fn.tokenize
 #[cfg(test)]
 #[macro_use]
 extern crate proptest;
@@ -152,7 +170,7 @@ impl Scanner {
                             Some(Item::new(regex_pair.0, span))
                         }
                         Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {:?}",
+                            "Failed to parse token last successful parse ended {}\nError: {}",
                             self.cursor, e,
                         ),
                     }
@@ -185,7 +203,7 @@ impl Scanner {
                             Some(Item::new(pair.0, span))
                         }
                         Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {:?}",
+                            "Failed to parse token last successful parse ended {}\nError: {}",
                             self.cursor, e,
                         ),
                     }
@@ -217,7 +235,7 @@ impl Scanner {
                 }
             }
             Err(e) => panic!(
-                "Failed to parse token last successful parse ended {}\nError: {:?}",
+                "Failed to parse token last successful parse ended {}\nError: {}",
                 self.cursor, e,
             ),
         }
@@ -239,7 +257,7 @@ impl Scanner {
                 true
             }
         } else {
-            false
+            true
         }
     }
 
@@ -370,7 +388,7 @@ where
 }
 
 pub(crate) fn is_source_char(c: char) -> bool {
-    c as u32 <= 4095
+    c as u32 <= 0x10FFFF
 }
 
 pub(crate) fn is_line_term(c: char) -> bool {
@@ -583,5 +601,13 @@ this.y = 0;
                 panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
             }
         }
+    }
+
+    #[test]
+    fn local_host_regex() {
+        let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
+        let mut s = Scanner::new(js);
+        let r = s.next().unwrap();
+        assert_eq!(r.token, Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None));
     }
 }

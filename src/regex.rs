@@ -178,6 +178,12 @@ mod test {
         let _u_r = super::regex_tail().easy_parse(url).unwrap();
     }
 
+    #[test]
+    fn localhost_regex_tail() {
+        let js = r#"^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
+        let _u_r = super::regex_tail().easy_parse(js).unwrap();
+    }
+
     proptest! {
         #[test]
         fn regex_prop(s in r#"[a-zA-Z0-9][a-zA-Z0-9\*\?\.\+@!#$%^&*\(\)-]+/[a-zA-Z]+"#) {
