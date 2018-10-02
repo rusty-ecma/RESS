@@ -104,11 +104,7 @@ where
         optional(exponent()),
     )
         .map(
-            |(integer, remainder, exponent): (
-                String,
-                Option<(char, String)>,
-                Option<String>,
-            )| {
+            |(integer, remainder, exponent): (String, Option<(char, String)>, Option<String>)| {
                 let mut ret = String::new();
                 ret.push_str(&integer);
                 if let Some((p, r)) = remainder {
@@ -123,25 +119,24 @@ where
         )
 }
 
-fn exponent<I>() -> impl Parser<Input = I, Output = String> 
+fn exponent<I>() -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
         choice([c_char('e'), c_char('E')]),
-        optional(
-            choice([c_char('-'), c_char('+')])
-        ),
-        many1(digit())
-    ).map(|(e, sign, value): (char, Option<char>, String)| {
-        let mut ret = e.to_string();
-        if let Some(sign) = sign {
-            ret.push(sign)
-        }
-        ret.push_str(&value);
-        ret
-    })
+        optional(choice([c_char('-'), c_char('+')])),
+        many1(digit()),
+    )
+        .map(|(e, sign, value): (char, Option<char>, String)| {
+            let mut ret = e.to_string();
+            if let Some(sign) = sign {
+                ret.push(sign)
+            }
+            ret.push_str(&value);
+            ret
+        })
 }
 
 fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
@@ -149,22 +144,17 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (
-        c_char('.'),
-        many1(digit()),
-        optional(exponent()),
+    (c_char('.'), many1(digit()), optional(exponent())).map(
+        |(dot, remainder, exponent): (char, String, Option<String>)| {
+            let mut ret = String::new();
+            ret.push(dot);
+            ret.push_str(&remainder);
+            if let Some(ex) = exponent {
+                ret.push_str(&ex);
+            }
+            Number(ret)
+        },
     )
-        .map(
-            |(dot, remainder, exponent): (char, String, Option<String>)| {
-                let mut ret = String::new();
-                ret.push(dot);
-                ret.push_str(&remainder);
-                if let Some(ex) = exponent {
-                    ret.push_str(&ex);
-                }
-                Number(ret)
-            },
-        )
 }
 
 fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>

@@ -14,7 +14,7 @@ use std::{
 
 fn main() {
     let mut i = 0;
-    // loop over the ags and check for 
+    // loop over the ags and check for
     // lib names. If they exist, run the test
     // and increment the counter
     for arg in args() {
@@ -41,7 +41,7 @@ fn main() {
             dexie();
         }
     }
-    // if no matching args were found, 
+    // if no matching args were found,
     // perform all the tests
     if i == 0 {
         jquery();
@@ -162,7 +162,7 @@ enum Lib {
     ReactDom,
     Vue,
     Moment,
-    Dexie
+    Dexie,
 }
 
 impl Lib {

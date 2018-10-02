@@ -1,20 +1,17 @@
 extern crate ress;
 extern crate walkdir;
 
-use ress::{Scanner, Punct};
-use walkdir::{WalkDir};
+use ress::{Punct, Scanner};
+use walkdir::WalkDir;
 
-use std::{
-    env::args,
-    path::PathBuf,
-    fs::read_to_string,
-    collections::HashMap,
-};
+use std::{collections::HashMap, env::args, fs::read_to_string, path::PathBuf};
 
 fn main() {
     let mut args = args();
     let _ = args.next();
-    let start = args.next().expect("No directory provided as starting location.");
+    let start = args
+        .next()
+        .expect("No directory provided as starting location.");
     if let Err(issues) = check_files(start) {
         for (path, indexes) in issues {
             println!("Issues found in {:?} at indexes:", path);
@@ -38,7 +35,7 @@ fn check_files(start: String) -> Result<(), HashMap<PathBuf, Vec<usize>>> {
             let path = entry.path();
             //if the path ends with js, we want to check for semicolons
             if path.extension() == Some(::std::ffi::OsStr::new("js")) {
-            println!("checking: {:?}", path);
+                println!("checking: {:?}", path);
                 // if we can read the file to a string
                 if let Ok(js) = read_to_string(path) {
                     // pas the text off to our check_js fn
@@ -65,23 +62,23 @@ fn check_js(js: &str) -> Result<(), Vec<usize>> {
     // filter out any tokens that are not semi-colons
     // then collect them all into a `Vec` of the start index
     // for the semi-colon
-    let semis: Vec<usize> = s.filter_map(|item| {
-        // If this token matches the `Punct::SemiColon`
-        if item.token.matches_punct(Punct::SemiColon) {
-            // we want to return the first position of this token
-            // since semi-colons are only 1 character wide we would
-            // only need this part of the `Span`
-            Some(item.span.start)
-        } else {
-            None
-        }
-    }).collect();
+    let semis: Vec<usize> = s
+        .filter_map(|item| {
+            // If this token matches the `Punct::SemiColon`
+            if item.token.matches_punct(Punct::SemiColon) {
+                // we want to return the first position of this token
+                // since semi-colons are only 1 character wide we would
+                // only need this part of the `Span`
+                Some(item.span.start)
+            } else {
+                None
+            }
+        }).collect();
     // If we have anything in the result of the `filter_map`
     // we will return an error
-    if  semis.len() > 0 {
+    if semis.len() > 0 {
         Err(semis)
     } else {
         Ok(())
     }
 }
-

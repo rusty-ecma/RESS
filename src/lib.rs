@@ -158,13 +158,9 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - regex_pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace
-                                    .chars()
-                                    .any(|c| c == '\n'
-                                            || c == '\r'
-                                            || c == '\u{2028}'
-                                            || c == '\u{2029}'
-                                    );
+                                self.pending_new_line = whitespace.chars().any(|c| {
+                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
+                                });
                             }
                             Some(Item::new(regex_pair.0, span))
                         }
@@ -190,13 +186,9 @@ impl Scanner {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len() - pair.1.trim_left().len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace
-                                    .chars()
-                                    .any(|c| c == '\n'
-                                            || c == '\r'
-                                            || c == '\u{2028}'
-                                            || c == '\u{2029}'
-                                    );
+                                self.pending_new_line = whitespace.chars().any(|c| {
+                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
+                                });
                             }
                             Some(Item::new(pair.0, span))
                         }
@@ -225,10 +217,7 @@ impl Scanner {
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()
-                            .any(|c| c == '\n' 
-                                || c == '\r' 
-                                || c == '\u{2028}' 
-                                || c == '\u{2029}');
+                            .any(|c| c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}');
                     }
                     Some(Item::new(pair.0, span))
                 }
@@ -617,6 +606,9 @@ this.y = 0;
         let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
         let mut s = Scanner::new(js);
         let r = s.next().unwrap();
-        assert_eq!(r.token, Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None));
+        assert_eq!(
+            r.token,
+            Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None)
+        );
     }
 }
