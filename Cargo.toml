@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]

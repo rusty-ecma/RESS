@@ -101,13 +101,13 @@ where
         //optionally followed by a . and any number of digits
         optional((c_char('.'), many(digit()))),
         //optionally followed by e|E and any number of digits
-        optional((choice((c_char('e'), c_char('E'))), many1(digit()))),
+        optional(exponent()),
     )
         .map(
             |(integer, remainder, exponent): (
                 String,
                 Option<(char, String)>,
-                Option<(char, String)>,
+                Option<String>,
             )| {
                 let mut ret = String::new();
                 ret.push_str(&integer);
@@ -115,13 +115,33 @@ where
                     ret.push(p);
                     ret.push_str(&r);
                 }
-                if let Some((e, ex)) = exponent {
-                    ret.push(e);
+                if let Some(ex) = exponent {
                     ret.push_str(&ex);
                 }
                 Number(ret)
             },
         )
+}
+
+fn exponent<I>() -> impl Parser<Input = I, Output = String> 
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        choice([c_char('e'), c_char('E')]),
+        optional(
+            choice([c_char('-'), c_char('+')])
+        ),
+        many1(digit())
+    ).map(|(e, sign, value): (char, Option<char>, String)| {
+        let mut ret = e.to_string();
+        if let Some(sign) = sign {
+            ret.push(sign)
+        }
+        ret.push_str(&value);
+        ret
+    })
 }
 
 fn no_leading_decimal<I>() -> impl Parser<Input = I, Output = Number>
@@ -132,15 +152,14 @@ where
     (
         c_char('.'),
         many1(digit()),
-        optional((choice([c_char('e'), c_char('E')]), many1(digit()))),
+        optional(exponent()),
     )
         .map(
-            |(dot, remainder, exponent): (char, String, Option<(char, String)>)| {
+            |(dot, remainder, exponent): (char, String, Option<String>)| {
                 let mut ret = String::new();
                 ret.push(dot);
                 ret.push_str(&remainder);
-                if let Some((e, ex)) = exponent {
-                    ret.push(e);
+                if let Some(ex) = exponent {
                     ret.push_str(&ex);
                 }
                 Number(ret)
@@ -211,7 +230,7 @@ mod test {
 
     proptest! {
         #[test]
-        fn normal_decimal(s in r#"((0[oO][0-7]+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+)|(([0-9]+)(\.[0-9]+)?([eE][0-9]+)?)|((\.[0-9])([eE][0-9]+)?))"#) {
+        fn normal_decimal(s in r#"((0[oO][0-7]+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+)|(([0-9]+)(\.[0-9]+)?([eE]([-+])?[0-9]+)?)|((\.[0-9])([eE]([-+])?[0-9]+)?))"#) {
             let r = tokens::token().easy_parse(s.as_str()).unwrap();
             assert!(r.0.is_numeric() && r.0.matches_numeric_str(&s))
         }
