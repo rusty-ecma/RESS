@@ -24,6 +24,7 @@ proptest = "0.8"
 criterion = "0.2"
 walkdir = "2.2"
 
+
 [[example]]
 name = "major_libs"
 path = "examples/major_libs/src/main.rs"
