@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use combine::{
     choice, eof,
     error::ParseError,
@@ -29,6 +31,14 @@ impl Item {
         Item { token, span }
     }
 }
+
+impl Deref for Item {
+    type Target = Token;
+    fn deref<'a>(&'a self) -> &'a Self::Target {
+        &self.token
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 /// A location in the original source text
 pub struct Span {
