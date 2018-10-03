@@ -586,6 +586,19 @@ this.y = 0;
             assert_eq!((i, p.to_string()), (i, q))
         }
     }
+
+    #[test]
+    fn item_deref_to_token() {
+        let js = "function ( ) { return ; }";
+        let mut s = Scanner::new(js);
+        let i: Item = s.next().unwrap();
+
+        // explicit reference to token
+        assert!(i.token.is_keyword());
+        // implitic deref to token
+        assert!(i.is_keyword());
+    }
+
     #[test]
     fn spans() {
         let js = include_str!("../node_modules/esprima/dist/esprima.js");
