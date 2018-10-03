@@ -23,6 +23,7 @@ serde_derive = "1.0"
 proptest = "0.8.3"
 criterion = "0.2"
 
+
 [[example]]
 name = "major_libs"
 path = "examples/major_libs/src/main.rs"

@@ -7,6 +7,7 @@
     "vue": "^2.5.16"
   },
   "dependencies": {
-    "esprima": "^4.0.1"
+    "esprima": "^4.0.1",
+    "everything.js": "^1.0.3"
   }
 }
