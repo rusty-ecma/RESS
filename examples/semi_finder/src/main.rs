@@ -4,11 +4,7 @@ extern crate walkdir;
 use ress::{Punct, Scanner};
 use walkdir::WalkDir;
 
-use std::{collections::HashMap, 
-        env::args, 
-        fs::read_to_string, 
-        path::PathBuf
-};
+use std::{collections::HashMap, env::args, fs::read_to_string, path::PathBuf};
 
 fn main() {
     // get the command line arguments that started this process
@@ -29,7 +25,7 @@ fn main() {
         // Print the success message
         println!("Good to go, no semicolons found");
     } else {
-        // Otherwise loop over the hashmap and 
+        // Otherwise loop over the hashmap and
         // tell the user where we found semi-colons that need to be
         // removed
         for (path, indexes) in issues {
@@ -58,13 +54,13 @@ fn check_files(start: String) -> HashMap<PathBuf, Vec<usize>> {
                     // if we can't we'll just skip it for now
                     if let Ok(js) = read_to_string(path) {
                         let indexes = check_js(&js);
-                            // if we found any semicolons, add them to our hashmap
-                            if !indexes.is_empty() {
-                                ret.insert(path.to_path_buf(), indexes);
-                            }
+                        // if we found any semicolons, add them to our hashmap
+                        if !indexes.is_empty() {
+                            ret.insert(path.to_path_buf(), indexes);
+                        }
                     }
                 }
-            },
+            }
             Err(e) => eprintln!("failed to get a directory entry: {:?}", e),
         }
     }
@@ -75,7 +71,8 @@ fn check_js(js: &str) -> Vec<usize> {
     // Create a scanner with the text then
     // filter out any tokens that are not semi-colons
     // then collect them all into a `Vec` of the start indexes
-    Scanner::new(js).filter_map(|item| {
+    Scanner::new(js)
+        .filter_map(|item| {
             // If this token matches the `Punct::SemiColon`
             if item.token.matches_punct(Punct::SemiColon) {
                 // we want to return the first position of this token

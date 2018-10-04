@@ -9,7 +9,7 @@ use combine::{
     try, Parser, Stream,
 };
 
-use super::{escaped, is_line_term};
+use super::{is_line_term, is_source_char};
 use tokens::Token;
 #[derive(Debug, PartialEq, Clone)]
 pub enum StringLit {
@@ -118,8 +118,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (between(c_char('\''), c_char('\''), many(single_quoted_content())))
-        .map(StringLit::Single)
+    (between(c_char('\''), c_char('\''), many(single_quoted_content()))).map(StringLit::Single)
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -128,8 +127,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('\'').map(|c: char| format!("\\{}", c))),
-        try(escaped('\\').map(|c: char| format!("\\{}", c))),
+        try(string(r#"\'"#).map(|s: &str| s.to_string())),
+        try(string(r#"\\"#).map(|s: &str| s.to_string())),
         try(string_continuation()),
         try(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|s: String| s)
@@ -150,8 +149,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('"'), c_char('"'), many(double_quoted_content()))
-        .map(StringLit::Double)
+    between(c_char('"'), c_char('"'), many(double_quoted_content())).map(StringLit::Double)
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -160,8 +158,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(escaped('"').map(|c: char| format!("\\{}", c))),
-        try(escaped('\\').map(|c: char| format!("\\{}", c))),
+        try(string(r#"\""#).map(|s: &str| s.to_string())),
+        try(string(r#"\\"#).map(|s: &str| s.to_string())),
         try(string_continuation()),
         try(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|c: String| c)
@@ -234,17 +232,21 @@ where
     (try(many(template_char())), c_char('`')).map(|(s, _): (String, _)| Template::Tail(s))
 }
 
-fn template_char<I>() -> impl Parser<Input = I, Output = char>
+fn template_char<I>() -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(c_char('$').skip(not_followed_by(c_char('{')))),
-        try(escaped('`')),
-        try(escaped('\\')),
-        try(satisfy(|c: char| c != '`' && c != '$')),
-    ))
+        try(c_char('$')
+            .skip(not_followed_by(c_char('{')))
+            .map(|c: char| c.to_string())),
+        try(string(r#"\${"#).map(|s: &str| s.to_string())),
+        try(string(r#"\`"#).map(|s: &str| s.to_string())),
+        try(string(r#"\"#).map(|s: &str| s.to_string())),
+        try(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
+            .map(|c: char| c.to_string())),
+    )).map(|s: String| s)
 }
 
 #[cfg(test)]

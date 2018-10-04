@@ -9,6 +9,7 @@
     "dexie": "^2.0.4"
   },
   "dependencies": {
-    "esprima": "^4.0.1"
+    "esprima": "^4.0.1",
+    "everything.js": "^1.0.3"
   }
 }
