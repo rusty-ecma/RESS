@@ -23,7 +23,11 @@
 extern crate proptest;
 #[macro_use]
 extern crate combine;
-use combine::{error::ParseError, parser::char::char as c_char, Parser, Stream};
+#[macro_use]
+extern crate log;
+extern crate unic_ucd_ident;
+
+use combine::{Parser};
 mod comments;
 mod keywords;
 mod numeric;
@@ -32,7 +36,7 @@ mod regex;
 mod strings;
 mod tokens;
 mod unicode;
-pub use comments::Comment;
+pub use comments::{Comment, Kind as CommentKind};
 pub use keywords::Keyword;
 pub use numeric::Number;
 pub use punct::Punct;
@@ -62,7 +66,7 @@ impl Scanner {
     /// Create a new Scanner with the raw JS text
     pub fn new(text: impl Into<String>) -> Self {
         let text = text.into();
-        let cursor = text.len() - text.trim_left().len();
+        let cursor = text.len() - text.trim_left_matches(whitespace).len();
         Scanner {
             stream: text,
             eof: false,
@@ -107,6 +111,7 @@ impl Scanner {
     /// Skip any upcoming comments to get the
     /// next valid js token
     pub fn skip_comments(&mut self) {
+        debug!(target: "ress", "skipping comments");
         let mut new_cursor = self.cursor;
         while let Some(ref item) = self.next() {
             if item.token.is_comment() {
@@ -115,6 +120,7 @@ impl Scanner {
                 break;
             }
         }
+        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor - self.cursor);
         self.cursor = new_cursor;
     }
     /// Get a copy of the scanner's current state
@@ -138,10 +144,12 @@ impl Scanner {
 
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
         if self.eof {
+            debug!(target: "ress", "end of iterator, returning None");
             return None;
         };
         let prev_cursor = self.cursor;
         let result = if self.template > 0 && self.template < self.replacement {
+            debug!(target: "ress", "parsing template continuation");
             strings::template_continuation().parse(&self.stream[self.cursor..])
         } else {
             tokens::token().parse(&self.stream[self.cursor..])
@@ -156,12 +164,13 @@ impl Scanner {
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor = self.stream.len() - regex_pair.1.trim_left().len();
+                                self.cursor = self.stream.len() - regex_pair.1.trim_left_matches(whitespace).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(|c| {
                                     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
                                 });
                             }
+                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next regex item" } else {"look ahead"}, regex_pair.0);
                             Some(Item::new(regex_pair.0, span))
                         }
                         Err(e) => panic!(
@@ -184,12 +193,13 @@ impl Scanner {
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor = self.stream.len() - pair.1.trim_left().len();
+                                self.cursor = self.stream.len() - pair.1.trim_left_matches(whitespace).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(|c| {
                                     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
                                 });
                             }
+                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
                             Some(Item::new(pair.0, span))
                         }
                         Err(e) => panic!(
@@ -213,12 +223,13 @@ impl Scanner {
                     let span = Span::new(self.cursor, span_end);
                     if advance_cursor {
                         self.spans.push(span.clone());
-                        self.cursor = self.stream.len() - pair.1.trim_left().len();
+                        self.cursor = self.stream.len() - pair.1.trim_left_matches(whitespace).len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()
                             .any(|c| c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}');
                     }
+                    debug!(target: "ress", "{}: {:?}", if advance_cursor { "next item" } else {"look ahead"}, pair.0);
                     Some(Item::new(pair.0, span))
                 }
             }
@@ -374,14 +385,8 @@ impl Scanner {
     }
 }
 
-pub(crate) fn escaped<I>(q: char) -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    c_char('\\')
-        .and(c_char(q))
-        .map(|(_slash, c): (char, char)| c)
+fn whitespace(c: char) -> bool {
+    c.is_whitespace() || c as u32 == 65279
 }
 
 pub(crate) fn is_source_char(c: char) -> bool {
