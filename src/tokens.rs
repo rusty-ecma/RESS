@@ -111,7 +111,7 @@ pub enum Token {
     /// ```
     Comment(comments::Comment),
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 /// The tokenized representation of `true` or `false`
 pub enum BooleanLiteral {
     True,

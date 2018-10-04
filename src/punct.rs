@@ -6,7 +6,7 @@ use combine::{
     try, Parser, Stream,
 };
 use tokens::Token;
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Punct {
     And,
     Assign,

@@ -2,7 +2,7 @@ use combine::{
     choice, error::ParseError, not_followed_by, parser::char::string, try, Parser, Stream,
 };
 use tokens::{raw_ident_part, Token};
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 /// A JS Keyword
 ///
 /// #Standard
