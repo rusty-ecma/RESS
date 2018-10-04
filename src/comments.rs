@@ -12,7 +12,7 @@ pub struct Comment {
     pub kind: Kind,
     pub content: String,
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Kind {
     Single,
     Multi,
