@@ -653,8 +653,22 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     string("true")
-        .skip(not_followed_by(ident_part()))
+        .skip(not_followed_by(raw_ident_part()))
         .map(|s: &str| s.to_string())
+}
+
+pub(crate) fn raw_ident_part<I>() -> impl Parser<Input = I, Output = char>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        unicode::id_continue(),
+        c_char('$'),
+        c_char('\\').skip(c_char('u')),
+        c_char('\u{200C}'),
+        c_char('\u{200D}')
+    ))
 }
 
 fn false_literal<I>() -> impl Parser<Input = I, Output = String>
@@ -663,7 +677,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     string("false")
-        .skip(not_followed_by(ident_part()))
+        .skip(not_followed_by(raw_ident_part()))
         .map(|s: &str| s.to_string())
 }
 
@@ -680,11 +694,8 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (ident_start(), many(ident_part())).map(|(start, body): (char, String)| {
-        let mut ret = String::new();
-        ret.push(start);
-        ret.push_str(&body);
-        Token::Ident(Ident(ret))
+    (ident_start(), many(ident_part())).map(|(start, body): (String, String)| {
+        Token::Ident(Ident(start + &body))
     })
 }
 
@@ -694,49 +705,31 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     string("null")
-        .skip(not_followed_by(ident_part()))
+        .skip(not_followed_by(raw_ident_part()))
         .map(|_| Token::Null)
 }
 
-fn unicode_char<I>() -> impl Parser<Input = I, Output = char>
+fn ident_start<I>() -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(unicode::lu()),
-        try(unicode::ll()),
-        try(unicode::lt()),
-        try(unicode::lm()),
-        try(unicode::lo()),
-        try(unicode::nl()),
-    )).map(|c: char| c)
-}
-
-fn ident_start<I>() -> impl Parser<Input = I, Output = char>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    choice((
-        try(unicode_char()),
-        try(c_char('$')),
-        try(c_char('_')),
+        try(unicode::id_start().map(|c: char| c.to_string())),
+        try(c_char('$').map(|c: char| c.to_string())),
+        try(c_char('_').map(|c: char| c.to_string())),
         try(unicode::char_literal()),
-    )).map(|c: char| c)
+    )).map(|s: String| s)
 }
 
-pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = char>
+pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = String>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
         try(ident_start()),
-        try(unicode::mn()),
-        try(unicode::mc()),
-        try(unicode::nd()),
-        try(unicode::pc()),
+        try(raw_ident_part().map(|c: char| c.to_string())),
     ))
 }
 

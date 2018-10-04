@@ -1,7 +1,7 @@
 use combine::{
     choice, error::ParseError, not_followed_by, parser::char::string, try, Parser, Stream,
 };
-use tokens::{ident_part, Token};
+use tokens::{raw_ident_part, Token};
 #[derive(Debug, PartialEq, Clone)]
 /// A JS Keyword
 ///
@@ -319,7 +319,7 @@ where
         try(future_reserved()),
         try(strict_mode_reserved()),
         try(reserved()),
-    )).skip(not_followed_by(ident_part()))
+    )).skip(not_followed_by(raw_ident_part()))
     .map(|t| t)
 }
 /// generate a parser that will return a Token::Keyword with in finds
