@@ -321,6 +321,7 @@ impl Token {
     }
     /// Creates an instance of a Token::Comment for a comment string and a flag
     /// if this comment should be treated as a multi line comment
+    /// note, this will not generate HTML-style comments
     /// ```
     /// # extern crate ress;
     /// # use ress::{Scanner, Item, Token, Comment};
@@ -345,6 +346,7 @@ impl Token {
             } else {
                 comments::Kind::Single
             },
+            None
         ))
     }
 }

@@ -5,3 +5,4 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 xs 823165937 3524042579 1300144645 3460888313 # shrinks to s = "//\r¡"
+xs 2546364303 4055620366 3887015968 2037831009 # shrinks to s = "<!----->"

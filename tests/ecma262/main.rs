@@ -23,8 +23,7 @@ fn es2015_script() {
     println!("testing es2015 script");
     ensure_logging();
     let js = get_js(EsVersion::Es2015Script);
-    // FIXME skipping first 2 lines to avoid the HTML style comment
-    run_test(&js[112..]);
+    run_test(&js);
 }
 
 #[test]
@@ -39,7 +38,7 @@ fn run_test(js: &str) {
     for item in Scanner::new(js) {
         match item.token {
             Token::Comment(c) => match c.kind {
-                CommentKind::Single => eprintln!("----------\n{}\n----------", c.content),
+                CommentKind::Single => println!("----------\n{}\n----------", c.content),
                 _ => ()
             },
             _ => ()
@@ -48,9 +47,6 @@ fn run_test(js: &str) {
 }
 
 fn ensure_logging() {
-    if let Err(_) = ::std::env::var("RUST_LOG") {
-        std::env::set_var("RUST_LOG", "debug");
-    }
     let _ = pretty_env_logger::try_init();
 }
 
