@@ -1,9 +1,9 @@
-use combine::*;
 use combine::parser::{
     char::{char as c_char, hex_digit},
+    error::unexpected_any,
     item::satisfy,
-    error::unexpected_any
 };
+use combine::*;
 
 use unic_ucd_ident::{is_id_continue, is_id_start};
 
@@ -12,9 +12,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (
-        count(4, hex_digit())
-    ).map(|hex: String| hex)
+    (count(4, hex_digit())).map(|hex: String| hex)
 }
 
 pub(crate) fn code_point_literal<I>() -> impl Parser<Input = I, Output = String>
@@ -37,8 +35,7 @@ where
         }),
         c_char('}'),
     )
-    .map(|(_, num, _): (char, String, char)| format!("{{{}}}", num))
-
+        .map(|(_, num, _): (char, String, char)| format!("{{{}}}", num))
 }
 
 pub(crate) fn char_literal<I>() -> impl Parser<Input = I, Output = String>
@@ -46,11 +43,12 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-        (
-            c_char('\\'),
-            c_char('u'),
-            choice((code_point_literal(), escape_sequence()))
-        ).map(|(_, _, sequence): (char, char, String)| format!(r#"\u{}"#, sequence))
+    (
+        c_char('\\'),
+        c_char('u'),
+        choice((code_point_literal(), escape_sequence())),
+    )
+        .map(|(_, _, sequence): (char, char, String)| format!(r#"\u{}"#, sequence))
 }
 
 pub(crate) fn id_start<I>() -> impl Parser<Input = I, Output = char>

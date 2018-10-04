@@ -1,14 +1,10 @@
 #![cfg(test)]
-extern crate ress;
 extern crate pretty_env_logger;
+extern crate ress;
 
-use std::{
-    path::Path,
-    process::Command,
-    fs::read_to_string,
-};
+use std::{fs::read_to_string, path::Path, process::Command};
 
-use ress::{Scanner, Token, CommentKind,};
+use ress::{CommentKind, Scanner, Token};
 
 #[test]
 fn es5() {
@@ -39,9 +35,9 @@ fn run_test(js: &str) {
         match item.token {
             Token::Comment(c) => match c.kind {
                 CommentKind::Single => println!("----------\n{}\n----------", c.content),
-                _ => ()
+                _ => (),
             },
-            _ => ()
+            _ => (),
         }
     }
 }
@@ -58,11 +54,14 @@ enum EsVersion {
 
 impl EsVersion {
     pub fn path(&self) -> String {
-        format!("node_modules/everything.js/{}", match self {
-            EsVersion::Es5 => "es5.js",
-            EsVersion::Es2015Module => "es2015-module.js",
-            EsVersion::Es2015Script => "es2015-script.js",
-        })
+        format!(
+            "node_modules/everything.js/{}",
+            match self {
+                EsVersion::Es5 => "es5.js",
+                EsVersion::Es2015Module => "es2015-module.js",
+                EsVersion::Es2015Script => "es2015-script.js",
+            }
+        )
     }
 }
 
@@ -82,5 +81,8 @@ fn get_file(path: impl AsRef<Path>) -> String {
 }
 
 fn npm_install() {
-    Command::new("npm").arg("install").output().expect("Failed to npm install");
+    Command::new("npm")
+        .arg("install")
+        .output()
+        .expect("Failed to npm install");
 }

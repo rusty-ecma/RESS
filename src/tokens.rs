@@ -346,7 +346,7 @@ impl Token {
             } else {
                 comments::Kind::Single
             },
-            None
+            None,
         ))
     }
 }
@@ -669,7 +669,7 @@ where
         c_char('$'),
         c_char('\\').skip(c_char('u')),
         c_char('\u{200C}'),
-        c_char('\u{200D}')
+        c_char('\u{200D}'),
     ))
 }
 
@@ -696,9 +696,8 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (ident_start(), many(ident_part())).map(|(start, body): (String, String)| {
-        Token::Ident(Ident(start + &body))
-    })
+    (ident_start(), many(ident_part()))
+        .map(|(start, body): (String, String)| Token::Ident(Ident(start + &body)))
 }
 
 pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>

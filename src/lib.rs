@@ -27,7 +27,7 @@ extern crate combine;
 extern crate log;
 extern crate unic_ucd_ident;
 
-use combine::{Parser};
+use combine::Parser;
 mod comments;
 mod keywords;
 mod numeric;
@@ -164,7 +164,8 @@ impl Scanner {
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor = self.stream.len() - regex_pair.1.trim_left_matches(whitespace).len();
+                                self.cursor = self.stream.len()
+                                    - regex_pair.1.trim_left_matches(whitespace).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(|c| {
                                     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
@@ -193,7 +194,8 @@ impl Scanner {
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor = self.stream.len() - pair.1.trim_left_matches(whitespace).len();
+                                self.cursor =
+                                    self.stream.len() - pair.1.trim_left_matches(whitespace).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(|c| {
                                     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
@@ -223,7 +225,8 @@ impl Scanner {
                     let span = Span::new(self.cursor, span_end);
                     if advance_cursor {
                         self.spans.push(span.clone());
-                        self.cursor = self.stream.len() - pair.1.trim_left_matches(whitespace).len();
+                        self.cursor =
+                            self.stream.len() - pair.1.trim_left_matches(whitespace).len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()

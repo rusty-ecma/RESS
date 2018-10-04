@@ -1,6 +1,7 @@
 use combine::{
-    choice, eof, optional,
+    choice, eof,
     error::ParseError,
+    optional,
     parser::{char::string, repeat::take_until},
     try, Parser, Stream,
 };
@@ -11,18 +12,22 @@ use tokens::Token;
 pub struct Comment {
     pub kind: Kind,
     pub content: String,
-    pub tail_content: Option<String>
+    pub tail_content: Option<String>,
 }
-    #[derive(Debug, PartialEq, Clone, Copy)]
-    pub enum Kind {
-        Single,
-        Multi,
-        Html,
-    }
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Kind {
+    Single,
+    Multi,
+    Html,
+}
 
 impl Comment {
     pub fn from_parts(content: String, kind: Kind, tail_content: Option<String>) -> Self {
-        Comment { content, kind, tail_content }
+        Comment {
+            content,
+            kind,
+            tail_content,
+        }
     }
 
     pub fn new_single_line(content: &str) -> Self {
@@ -104,7 +109,8 @@ where
         multi_line_comment_start(),
         take_until(try(string("*/"))),
         multi_line_comment_end(),
-    ).map(|(_s, c, _e): (String, String, String)| Comment::new_multi_line(&c))
+    )
+        .map(|(_s, c, _e): (String, String, String)| Comment::new_multi_line(&c))
 }
 
 fn multi_line_comment_start<I>() -> impl Parser<Input = I, Output = String>
@@ -132,12 +138,11 @@ where
         string("<!--"),
         take_until(try(string("-->"))),
         string("-->"),
-        optional(
-            take_until(
-                try(strings::line_terminator_sequence())
-            )
-        )
-    ).map(|(_, content, _, tail): (_, String, _, Option<String>)| Comment::new_html(&content, tail))
+        optional(take_until(try(strings::line_terminator_sequence()))),
+    )
+        .map(|(_, content, _, tail): (_, String, _, Option<String>)| {
+            Comment::new_html(&content, tail)
+        })
 }
 
 #[cfg(test)]
@@ -175,7 +180,7 @@ mod test {
         let (left_matches, right_matches) = match kind {
             Kind::Single => ("//", ""),
             Kind::Multi => ("/*", "*/"),
-            Kind::Html => ("<!--", "-->")
+            Kind::Html => ("<!--", "-->"),
         };
         s.lines()
             .map(|l| {
@@ -209,6 +214,5 @@ mod test {
             assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Html)));
         }
     }
-
 
 }

@@ -118,8 +118,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (between(c_char('\''), c_char('\''), many(single_quoted_content())))
-        .map(StringLit::Single)
+    (between(c_char('\''), c_char('\''), many(single_quoted_content()))).map(StringLit::Single)
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -150,8 +149,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    between(c_char('"'), c_char('"'), many(double_quoted_content()))
-        .map(StringLit::Double)
+    between(c_char('"'), c_char('"'), many(double_quoted_content())).map(StringLit::Double)
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = String>
@@ -240,17 +238,14 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(
-            c_char('$')
-            .skip(
-                not_followed_by(
-                    c_char('{')
-                )
-            ).map(|c: char| c.to_string())),
+        try(c_char('$')
+            .skip(not_followed_by(c_char('{')))
+            .map(|c: char| c.to_string())),
         try(string(r#"\${"#).map(|s: &str| s.to_string())),
         try(string(r#"\`"#).map(|s: &str| s.to_string())),
         try(string(r#"\"#).map(|s: &str| s.to_string())),
-        try(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$').map(|c: char| c.to_string())),
+        try(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
+            .map(|c: char| c.to_string())),
     )).map(|s: String| s)
 }
 
