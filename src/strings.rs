@@ -6,7 +6,7 @@ use combine::{
         char::{char as c_char, spaces, string},
         item::satisfy,
     },
-    try, Parser, Stream,
+    attempt, Parser, Stream,
 };
 
 use super::{is_line_term, is_source_char};
@@ -127,10 +127,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(string(r#"\'"#).map(|s: &str| s.to_string())),
-        try(string(r#"\\"#).map(|s: &str| s.to_string())),
-        try(string_continuation()),
-        try(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
+        attempt(string(r#"\'"#).map(|s: &str| s.to_string())),
+        attempt(string(r#"\\"#).map(|s: &str| s.to_string())),
+        attempt(string_continuation()),
+        attempt(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|s: String| s)
 }
 
@@ -158,10 +158,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(string(r#"\""#).map(|s: &str| s.to_string())),
-        try(string(r#"\\"#).map(|s: &str| s.to_string())),
-        try(string_continuation()),
-        try(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
+        attempt(string(r#"\""#).map(|s: &str| s.to_string())),
+        attempt(string(r#"\\"#).map(|s: &str| s.to_string())),
+        attempt(string_continuation()),
+        attempt(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
     )).map(|c: String| c)
 }
 
@@ -179,8 +179,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(string("\r\n").map(|s: &str| s.to_string())),
-        try(line_terminator().map(|c: char| c.to_string())),
+        attempt(string("\r\n").map(|s: &str| s.to_string())),
+        attempt(line_terminator().map(|c: char| c.to_string())),
     )).map(|s: String| s)
 }
 
@@ -189,7 +189,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(no_sub_template()), try(template_head()))).map(Token::Template)
+    choice((attempt(no_sub_template()), attempt(template_head()))).map(Token::Template)
 }
 
 pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
@@ -197,7 +197,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(template_middle()), try(template_tail()))).map(Token::Template)
+    choice((attempt(template_middle()), attempt(template_tail()))).map(Token::Template)
 }
 
 fn no_sub_template<I>() -> impl Parser<Input = I, Output = Template>
@@ -229,7 +229,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (try(many(template_char())), c_char('`')).map(|(s, _): (String, _)| Template::Tail(s))
+    (attempt(many(template_char())), c_char('`')).map(|(s, _): (String, _)| Template::Tail(s))
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = String>
@@ -238,13 +238,13 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(c_char('$')
+        attempt(c_char('$')
             .skip(not_followed_by(c_char('{')))
             .map(|c: char| c.to_string())),
-        try(string(r#"\${"#).map(|s: &str| s.to_string())),
-        try(string(r#"\`"#).map(|s: &str| s.to_string())),
-        try(string(r#"\"#).map(|s: &str| s.to_string())),
-        try(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
+        attempt(string(r#"\${"#).map(|s: &str| s.to_string())),
+        attempt(string(r#"\`"#).map(|s: &str| s.to_string())),
+        attempt(string(r#"\"#).map(|s: &str| s.to_string())),
+        attempt(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
             .map(|c: char| c.to_string())),
     )).map(|s: String| s)
 }

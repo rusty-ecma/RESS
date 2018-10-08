@@ -3,7 +3,7 @@ use combine::{
     error::ParseError,
     optional,
     parser::{char::string, repeat::take_until},
-    try, Parser, Stream,
+    attempt, Parser, Stream,
 };
 use strings;
 use tokens::Token;
@@ -79,9 +79,9 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(multi_comment()),
-        try(single_comment()),
-        try(html_comment()),
+        attempt(multi_comment()),
+        attempt(single_comment()),
+        attempt(html_comment()),
     )).map(Token::Comment)
 }
 
@@ -93,8 +93,8 @@ where
     (
         string("//"),
         take_until(choice((
-            try(strings::line_terminator_sequence()),
-            try(eof().map(|_| String::new())),
+            attempt(strings::line_terminator_sequence()),
+            attempt(eof().map(|_| String::new())),
         ))),
     )
         .map(|(_, content): (_, String)| Comment::new_single_line(&content))
@@ -107,7 +107,7 @@ where
 {
     (
         multi_line_comment_start(),
-        take_until(try(string("*/"))),
+        take_until(attempt(string("*/"))),
         multi_line_comment_end(),
     )
         .map(|(_s, c, _e): (String, String, String)| Comment::new_multi_line(&c))
@@ -136,9 +136,9 @@ where
 {
     (
         string("<!--"),
-        take_until(try(string("-->"))),
+        take_until(attempt(string("-->"))),
         string("-->"),
-        optional(take_until(try(strings::line_terminator_sequence()))),
+        optional(take_until(attempt(strings::line_terminator_sequence()))),
     )
         .map(|(_, content, _, tail): (_, String, _, Option<String>)| {
             Comment::new_html(&content, tail)

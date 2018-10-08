@@ -3,7 +3,7 @@ use combine::{
     error::ParseError,
     many, many1, optional,
     parser::char::{char as c_char, digit, hex_digit, oct_digit},
-    try, Parser, Stream,
+    attempt, Parser, Stream,
 };
 
 use tokens::Token;
@@ -75,10 +75,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(bin_literal()),
-        try(octal_literal()),
-        try(hex_literal()),
-        try(decimal_literal()),
+        attempt(bin_literal()),
+        attempt(octal_literal()),
+        attempt(hex_literal()),
+        attempt(decimal_literal()),
     )).map(super::Token::Numeric)
 }
 
@@ -87,7 +87,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(full_decimal_literal()), try(no_leading_decimal()))).map(|t| t)
+    choice((attempt(full_decimal_literal()), attempt(no_leading_decimal()))).map(|t| t)
 }
 
 fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Number>

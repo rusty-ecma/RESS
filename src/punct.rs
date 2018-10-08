@@ -3,7 +3,7 @@ use combine::{
     error::ParseError,
     not_followed_by,
     parser::char::{char as c_char, string},
-    try, Parser, Stream,
+    attempt, Parser, Stream,
 };
 use tokens::Token;
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -191,7 +191,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(multi_punct()), try(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
+    choice((attempt(multi_punct()), attempt(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
@@ -199,7 +199,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(normal_punct()), try(div_punct()))).map(|c| c.to_string())
+    choice((attempt(normal_punct()), attempt(div_punct()))).map(|c| c.to_string())
 }
 
 fn normal_punct<I>() -> impl Parser<Input = I, Output = char>
@@ -207,7 +207,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(c_char('}')), try(normal_punct_not_close_brace()))).map(|c: char| c)
+    choice((attempt(c_char('}')), attempt(normal_punct_not_close_brace()))).map(|c: char| c)
 }
 
 fn normal_punct_not_close_brace<I>() -> impl Parser<Input = I, Output = char>
@@ -216,28 +216,28 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice([
-        try(c_char('{')),
-        try(c_char('(')),
-        try(c_char(')')),
-        try(c_char('.')),
-        try(c_char(';')),
-        try(c_char(',')),
-        try(c_char('[')),
-        try(c_char(']')),
-        try(c_char(':')),
-        try(c_char('?')),
-        try(c_char('~')),
-        try(c_char('>')),
-        try(c_char('<')),
-        try(c_char('=')),
-        try(c_char('!')),
-        try(c_char('+')),
-        try(c_char('-')),
-        try(c_char('*')),
-        try(c_char('%')),
-        try(c_char('&')),
-        try(c_char('|')),
-        try(c_char('^')),
+        attempt(c_char('{')),
+        attempt(c_char('(')),
+        attempt(c_char(')')),
+        attempt(c_char('.')),
+        attempt(c_char(';')),
+        attempt(c_char(',')),
+        attempt(c_char('[')),
+        attempt(c_char(']')),
+        attempt(c_char(':')),
+        attempt(c_char('?')),
+        attempt(c_char('~')),
+        attempt(c_char('>')),
+        attempt(c_char('<')),
+        attempt(c_char('=')),
+        attempt(c_char('!')),
+        attempt(c_char('+')),
+        attempt(c_char('-')),
+        attempt(c_char('*')),
+        attempt(c_char('%')),
+        attempt(c_char('&')),
+        attempt(c_char('|')),
+        attempt(c_char('^')),
     ]).map(|c: char| c)
 }
 
@@ -256,36 +256,36 @@ where
 {
     choice([
         //4 char
-        try(string(">>>=")),
+        attempt(string(">>>=")),
         //3 char
-        try(string("...")),
-        try(string("===")),
-        try(string("!==")),
-        try(string(">>>")),
-        try(string("<<=")),
-        try(string(">>=")),
-        try(string("**=")),
+        attempt(string("...")),
+        attempt(string("===")),
+        attempt(string("!==")),
+        attempt(string(">>>")),
+        attempt(string("<<=")),
+        attempt(string(">>=")),
+        attempt(string("**=")),
         //2 char
-        try(string("&&")),
-        try(string("||")),
-        try(string("==")),
-        try(string("!=")),
-        try(string("+=")),
-        try(string("-=")),
-        try(string("*=")),
-        try(string("/=")),
-        try(string("++")),
-        try(string("--")),
-        try(string("<<")),
-        try(string(">>")),
-        try(string("&=")),
-        try(string("|=")),
-        try(string("^=")),
-        try(string("%=")),
-        try(string("<=")),
-        try(string(">=")),
-        try(string("=>")),
-        try(string("**")),
+        attempt(string("&&")),
+        attempt(string("||")),
+        attempt(string("==")),
+        attempt(string("!=")),
+        attempt(string("+=")),
+        attempt(string("-=")),
+        attempt(string("*=")),
+        attempt(string("/=")),
+        attempt(string("++")),
+        attempt(string("--")),
+        attempt(string("<<")),
+        attempt(string(">>")),
+        attempt(string("&=")),
+        attempt(string("|=")),
+        attempt(string("^=")),
+        attempt(string("%=")),
+        attempt(string("<=")),
+        attempt(string(">=")),
+        attempt(string("=>")),
+        attempt(string("**")),
     ]).map(|t| t.to_string())
 }
 
