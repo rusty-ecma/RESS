@@ -467,11 +467,20 @@ impl Token {
         }
     }
     pub fn is_template(&self) -> bool {
-        self.is_template_head() || self.is_template_middle() || self.is_template_tail()
+        match self {
+            Token::Template(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_template_no_sub(&self) -> bool {
+        match self {
+            Token::Template(ref s) => s.is_no_sub(),
+            _ => false
+        }
     }
     pub fn is_template_head(&self) -> bool {
         match self {
-            Token::Template(ref s) => s.is_head(),
+            Token::Template(ref s) => s.is_head() || s.is_no_sub(),
             _ => false,
         }
     }
@@ -483,7 +492,7 @@ impl Token {
     }
     pub fn is_template_tail(&self) -> bool {
         match self {
-            Token::Template(ref s) => s.is_tail(),
+            Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
             _ => false,
         }
     }

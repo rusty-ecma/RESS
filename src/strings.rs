@@ -92,6 +92,12 @@ impl Template {
             _ => false,
         }
     }
+    pub fn is_no_sub(&self) -> bool {
+        match self {
+            Template::NoSub(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl ToString for Template {
@@ -110,7 +116,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(single_quote()), try(double_quote()))).map(Token::String)
+    choice((attempt(single_quote()), attempt(double_quote()))).map(Token::String)
 }
 
 fn single_quote<I>() -> impl Parser<Input = I, Output = StringLit>
