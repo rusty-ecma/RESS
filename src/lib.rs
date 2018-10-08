@@ -120,7 +120,7 @@ impl Scanner {
                 break;
             }
         }
-        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor - self.cursor);
+        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.cursor));
         self.cursor = new_cursor;
     }
     /// Get a copy of the scanner's current state
