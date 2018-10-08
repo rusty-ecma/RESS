@@ -1,6 +1,8 @@
 #![cfg(test)]
 extern crate pretty_env_logger;
 extern crate ress;
+#[macro_use]
+extern crate log;
 
 use std::{fs::read_to_string, path::Path, process::Command};
 
@@ -31,14 +33,18 @@ fn es2015_module() {
 }
 
 fn run_test(js: &str) {
-    for item in Scanner::new(js) {
+    let mut s = Scanner::new(js);
+    let mut i = 0;
+    while let Some(item) = s.next() {
+        debug!("{}, {:?}", i, item.token);
         match item.token {
             Token::Comment(c) => match c.kind {
-                CommentKind::Single => println!("----------\n{}\n----------", c.content),
+                CommentKind::Single => debug!("----------\n{}\n----------", c.content),
                 _ => (),
             },
             _ => (),
         }
+        i += 1;
     }
 }
 
