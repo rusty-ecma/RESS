@@ -1,5 +1,5 @@
 use combine::{
-    choice, error::ParseError, not_followed_by, parser::char::string, try, Parser, Stream,
+    choice, error::ParseError, not_followed_by, parser::char::string, attempt, Parser, Stream,
 };
 use tokens::{raw_ident_part, Token};
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -316,9 +316,9 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(future_reserved()),
-        try(strict_mode_reserved()),
-        try(reserved()),
+        attempt(future_reserved()),
+        attempt(strict_mode_reserved()),
+        attempt(reserved()),
     )).skip(not_followed_by(raw_ident_part()))
     .map(|t| t)
 }
@@ -356,35 +356,35 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice([
-        try(string("await")),
-        try(string("break")),
-        try(string("case")),
-        try(string("catch")),
-        try(string("class")),
-        try(string("const")),
-        try(string("continue")),
-        try(string("debugger")),
-        try(string("default")),
-        try(string("delete")),
-        try(string("do")),
-        try(string("else")),
-        try(string("finally")),
-        try(string("for")),
-        try(string("function")),
-        try(string("if")),
-        try(string("instanceof")),
-        try(string("in")),
-        try(string("new")),
-        try(string("return")),
-        try(string("switch")),
-        try(string("this")),
-        try(string("throw")),
-        try(string("try")),
-        try(string("typeof")),
-        try(string("var")),
-        try(string("void")),
-        try(string("while")),
-        try(string("with")),
+        attempt(string("await")),
+        attempt(string("break")),
+        attempt(string("case")),
+        attempt(string("catch")),
+        attempt(string("class")),
+        attempt(string("const")),
+        attempt(string("continue")),
+        attempt(string("debugger")),
+        attempt(string("default")),
+        attempt(string("delete")),
+        attempt(string("do")),
+        attempt(string("else")),
+        attempt(string("finally")),
+        attempt(string("for")),
+        attempt(string("function")),
+        attempt(string("if")),
+        attempt(string("instanceof")),
+        attempt(string("in")),
+        attempt(string("new")),
+        attempt(string("return")),
+        attempt(string("switch")),
+        attempt(string("this")),
+        attempt(string("throw")),
+        attempt(string("try")),
+        attempt(string("typeof")),
+        attempt(string("var")),
+        attempt(string("void")),
+        attempt(string("while")),
+        attempt(string("with")),
     ]).map(|t| Token::Keyword(Keyword::from(t.to_owned())))
 }
 /// Generate a parser that will return an instance of Token::Keyword when one of the
@@ -401,10 +401,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(string("export")),
-        try(string("import")),
-        try(string("super")),
-        try(string("enum")),
+        attempt(string("export")),
+        attempt(string("import")),
+        attempt(string("super")),
+        attempt(string("enum")),
     )).map(|t| Token::Keyword(Keyword::from(t)))
 }
 
@@ -427,15 +427,15 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(string("implements")),
-        try(string("interface")),
-        try(string("package")),
-        try(string("private")),
-        try(string("protected")),
-        try(string("public")),
-        try(string("static")),
-        try(string("yield")),
-        try(string("let")),
+        attempt(string("implements")),
+        attempt(string("interface")),
+        attempt(string("package")),
+        attempt(string("private")),
+        attempt(string("protected")),
+        attempt(string("public")),
+        attempt(string("static")),
+        attempt(string("yield")),
+        attempt(string("let")),
     )).map(|t| Token::Keyword(Keyword::from(t)))
 }
 

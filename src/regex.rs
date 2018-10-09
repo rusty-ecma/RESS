@@ -1,6 +1,6 @@
 use super::{is_line_term, is_source_char};
 use combine::{
-    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, try, Parser,
+    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, attempt, Parser,
     Stream,
 };
 use tokens::{ident_part, Token};
@@ -45,7 +45,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (try(regex_body()), c_char('/'), many(ident_part())).map(
+    (attempt(regex_body()), c_char('/'), many(ident_part())).map(
         |(body, _, flags): (String, _, String)| {
             let flags = if flags.is_empty() { None } else { Some(flags) };
             Token::RegEx(RegEx::from_parts(&body, flags))
@@ -67,9 +67,9 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(regex_body_first_source_char()),
-        try(regular_expression_backslash_sequence()),
-        try(regular_expression_class()),
+        attempt(regex_body_first_source_char()),
+        attempt(regular_expression_backslash_sequence()),
+        attempt(regular_expression_class()),
     )).map(|c: String| c)
 }
 
@@ -98,9 +98,9 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(regex_body_source_char()),
-        try(regular_expression_backslash_sequence()),
-        try(regular_expression_class()),
+        attempt(regex_body_source_char()),
+        attempt(regular_expression_backslash_sequence()),
+        attempt(regular_expression_class()),
     )).map(|s: String| s)
 }
 
@@ -122,10 +122,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(satisfy(|c: char| {
+        attempt(satisfy(|c: char| {
             is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}'
         }).map(|c: char| c.to_string())),
-        try(regular_expression_backslash_sequence()),
+        attempt(regular_expression_backslash_sequence()),
     )).map(|s: String| s)
 }
 pub(crate) fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>

@@ -120,7 +120,7 @@ impl Scanner {
                 break;
             }
         }
-        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor - self.cursor);
+        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.cursor));
         self.cursor = new_cursor;
     }
     /// Get a copy of the scanner's current state
@@ -148,12 +148,7 @@ impl Scanner {
             return None;
         };
         let prev_cursor = self.cursor;
-        let result = if self.template > 0 && self.template < self.replacement {
-            debug!(target: "ress", "parsing template continuation");
-            strings::template_continuation().parse(&self.stream[self.cursor..])
-        } else {
-            tokens::token().parse(&self.stream[self.cursor..])
-        };
+        let result = tokens::token().parse(&self.stream[self.cursor..]);
         match result {
             Ok(pair) => {
                 if pair.0.matches_punct(Punct::ForwardSlash) && self.is_regex_start() {
@@ -165,11 +160,9 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len()
-                                    - regex_pair.1.trim_left_matches(whitespace).len();
+                                    - regex_pair.1.trim_left_matches(whitespace_or_line_term).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(|c| {
-                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
-                                });
+                                self.pending_new_line = whitespace.chars().any(|c| is_line_term(c));
                             }
                             debug!(target: "ress", "{}: {:?}", if advance_cursor { "next regex item" } else {"look ahead"}, regex_pair.0);
                             Some(Item::new(regex_pair.0, span))
@@ -180,13 +173,11 @@ impl Scanner {
                         ),
                     }
                 } else if self.template > 0
-                    && self.replacement == self.template
                     && pair.0.matches_punct(Punct::CloseBrace)
                 {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() && advance_cursor {
-                                self.replacement = self.replacement.saturating_sub(1);
                                 self.template = self.template.saturating_sub(1);
                             }
                             let full_len = self.stream.len();
@@ -195,11 +186,9 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor =
-                                    self.stream.len() - pair.1.trim_left_matches(whitespace).len();
+                                    self.stream.len() - pair.1.trim_left_matches(whitespace_or_line_term).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(|c| {
-                                    c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
-                                });
+                                self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
                             debug!(target: "ress", "{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
                             Some(Item::new(pair.0, span))
@@ -216,9 +205,8 @@ impl Scanner {
                     if pair.0.is_eof() && advance_cursor {
                         self.eof = true;
                     }
-                    if pair.0.is_template_head() && advance_cursor {
+                    if pair.0.is_template_head() && advance_cursor && !pair.0.is_template_tail() {
                         self.template += 1;
-                        self.replacement += 1;
                     }
                     let full_len = self.stream.len();
                     let span_end = full_len - pair.1.len();
@@ -226,11 +214,11 @@ impl Scanner {
                     if advance_cursor {
                         self.spans.push(span.clone());
                         self.cursor =
-                            self.stream.len() - pair.1.trim_left_matches(whitespace).len();
+                            self.stream.len() - pair.1.trim_left_matches(whitespace_or_line_term).len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace
                             .chars()
-                            .any(|c| c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}');
+                            .any(|c| is_line_term(c));
                     }
                     debug!(target: "ress", "{}: {:?}", if advance_cursor { "next item" } else {"look ahead"}, pair.0);
                     Some(Item::new(pair.0, span))
@@ -386,6 +374,10 @@ impl Scanner {
             Some(self.stream[span.start..span.end].to_string())
         }
     }
+}
+
+fn whitespace_or_line_term(c: char) -> bool {
+    whitespace(c) || is_line_term(c)
 }
 
 fn whitespace(c: char) -> bool {

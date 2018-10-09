@@ -5,7 +5,7 @@ use combine::{
     error::ParseError,
     many, not_followed_by,
     parser::char::{char as c_char, string},
-    try, Parser, Stream,
+    attempt, Parser, Stream,
 };
 
 use comments;
@@ -467,11 +467,20 @@ impl Token {
         }
     }
     pub fn is_template(&self) -> bool {
-        self.is_template_head() || self.is_template_middle() || self.is_template_tail()
+        match self {
+            Token::Template(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_template_no_sub(&self) -> bool {
+        match self {
+            Token::Template(ref s) => s.is_no_sub(),
+            _ => false
+        }
     }
     pub fn is_template_head(&self) -> bool {
         match self {
-            Token::Template(ref s) => s.is_head(),
+            Token::Template(ref s) => s.is_head() || s.is_no_sub(),
             _ => false,
         }
     }
@@ -483,7 +492,7 @@ impl Token {
     }
     pub fn is_template_tail(&self) -> bool {
         match self {
-            Token::Template(ref s) => s.is_tail(),
+            Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
             _ => false,
         }
     }
@@ -630,13 +639,13 @@ where
     choice((
         comments::comment(),
         boolean_literal(),
-        try(keywords::literal()),
-        try(ident()),
-        try(null_literal()),
-        try(numeric::literal()),
-        try(strings::literal()),
-        try(punct::punctuation()),
-        try(strings::template_start()),
+        attempt(keywords::literal()),
+        attempt(ident()),
+        attempt(null_literal()),
+        attempt(numeric::literal()),
+        attempt(strings::literal()),
+        attempt(punct::punctuation()),
+        attempt(strings::template_start()),
     )).map(|t| t)
 }
 
@@ -645,7 +654,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((try(true_literal()), try(false_literal())))
+    choice((attempt(true_literal()), attempt(false_literal())))
         .map(|t: String| Token::Boolean(BooleanLiteral::from(t)))
 }
 
@@ -716,10 +725,10 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(unicode::id_start().map(|c: char| c.to_string())),
-        try(c_char('$').map(|c: char| c.to_string())),
-        try(c_char('_').map(|c: char| c.to_string())),
-        try(unicode::char_literal()),
+        attempt(unicode::id_start().map(|c: char| c.to_string())),
+        attempt(c_char('$').map(|c: char| c.to_string())),
+        attempt(c_char('_').map(|c: char| c.to_string())),
+        attempt(unicode::char_literal()),
     )).map(|s: String| s)
 }
 
@@ -729,8 +738,8 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        try(ident_start()),
-        try(raw_ident_part().map(|c: char| c.to_string())),
+        attempt(ident_start()),
+        attempt(raw_ident_part().map(|c: char| c.to_string())),
     ))
 }
 
