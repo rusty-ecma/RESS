@@ -30,7 +30,7 @@ extern crate unic_ucd_ident;
 use combine::Parser;
 mod comments;
 mod keywords;
-mod numeric;
+pub mod numeric;
 mod punct;
 mod regex;
 mod strings;

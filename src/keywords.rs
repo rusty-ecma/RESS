@@ -355,37 +355,67 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice([
-        attempt(string("await")),
-        attempt(string("break")),
-        attempt(string("case")),
-        attempt(string("catch")),
-        attempt(string("class")),
-        attempt(string("const")),
-        attempt(string("continue")),
-        attempt(string("debugger")),
-        attempt(string("default")),
-        attempt(string("delete")),
-        attempt(string("do")),
-        attempt(string("else")),
-        attempt(string("finally")),
-        attempt(string("for")),
-        attempt(string("function")),
-        attempt(string("if")),
-        attempt(string("instanceof")),
-        attempt(string("in")),
-        attempt(string("new")),
-        attempt(string("return")),
-        attempt(string("switch")),
-        attempt(string("this")),
-        attempt(string("throw")),
-        attempt(string("try")),
-        attempt(string("typeof")),
-        attempt(string("var")),
-        attempt(string("void")),
-        attempt(string("while")),
-        attempt(string("with")),
-    ]).map(|t| Token::Keyword(Keyword::from(t.to_owned())))
+    choice((
+        attempt(reserved_a_to_d()),
+        attempt(reserved_e_to_r()),
+        attempt(reserved_s_to_z()),
+    )).map(|k| Token::Keyword(k))
+}
+
+pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        attempt(string("await").map(|_| Keyword::Await)),
+        attempt(string("break").map(|_| Keyword::Break)),
+        attempt(string("case").map(|_| Keyword::Case)),
+        attempt(string("catch").map(|_| Keyword::Catch)),
+        attempt(string("class").map(|_| Keyword::Class)),
+        attempt(string("const").map(|_| Keyword::Const)),
+        attempt(string("continue").map(|_| Keyword::Continue)),
+        attempt(string("debugger").map(|_| Keyword::Debugger)),
+        attempt(string("default").map(|_| Keyword::Default)), 
+        attempt(string("delete").map(|_| Keyword::Delete)),
+        attempt(string("do").map(|_| Keyword::Do)),
+    ))
+}
+
+pub(crate) fn reserved_e_to_r<I>() -> impl Parser<Input = I, Output = Keyword>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+
+    choice((
+        attempt(string("else").map(|_| Keyword::Else)),
+        attempt(string("finally").map(|_| Keyword::Finally)),
+        attempt(string("for").map(|_| Keyword::For)),
+        attempt(string("function").map(|_| Keyword::Function)),
+        attempt(string("if").map(|_| Keyword::If)),
+        attempt(string("instanceof").map(|_| Keyword::InstanceOf)),
+        attempt(string("in").map(|_| Keyword::In)),
+        attempt(string("new").map(|_| Keyword::New)),
+        attempt(string("return").map(|_| Keyword::Return)),
+    ))
+}
+pub(crate) fn reserved_s_to_z<I>() -> impl Parser<Input = I, Output = Keyword>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        attempt(string("switch").map(|_| Keyword::Switch)),
+        attempt(string("this").map(|_| Keyword::This)),
+        attempt(string("throw").map(|_| Keyword::Throw)),
+        attempt(string("try").map(|_| Keyword::Try)),
+        attempt(string("typeof").map(|_| Keyword::TypeOf)),
+        attempt(string("var").map(|_| Keyword::Var)),
+        attempt(string("void").map(|_| Keyword::Void)),
+        attempt(string("while").map(|_| Keyword::While)),
+        attempt(string("with").map(|_| Keyword::With)),
+    ))
 }
 /// Generate a parser that will return an instance of Token::Keyword when one of the
 /// future reserved words are found
@@ -401,11 +431,11 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        attempt(string("export")),
-        attempt(string("import")),
-        attempt(string("super")),
-        attempt(string("enum")),
-    )).map(|t| Token::Keyword(Keyword::from(t)))
+        attempt(string("export").map(|_| Keyword::Export)),
+        attempt(string("import").map(|_| Keyword::Import)),
+        attempt(string("super").map(|_| Keyword::Super)),
+        attempt(string("enum").map(|_| Keyword::Enum)),
+    )).map(|k| Token::Keyword(k))
 }
 
 /// Generate a parser that will return an instance of Token::Keyword when a
@@ -427,16 +457,16 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        attempt(string("implements")),
-        attempt(string("interface")),
-        attempt(string("package")),
-        attempt(string("private")),
-        attempt(string("protected")),
-        attempt(string("public")),
-        attempt(string("static")),
-        attempt(string("yield")),
-        attempt(string("let")),
-    )).map(|t| Token::Keyword(Keyword::from(t)))
+        attempt(string("implements").map(|_| Keyword::Implements)),
+        attempt(string("interface").map(|_| Keyword::Interface)),
+        attempt(string("package").map(|_| Keyword::Package)),
+        attempt(string("private").map(|_| Keyword::Private)),
+        attempt(string("protected").map(|_| Keyword::Protected)),
+        attempt(string("public").map(|_| Keyword::Public)),
+        attempt(string("static").map(|_| Keyword::Static)),
+        attempt(string("yield").map(|_| Keyword::Yield)),
+        attempt(string("let").map(|_| Keyword::Let)),
+    )).map(|k| Token::Keyword(k))
 }
 
 #[cfg(test)]

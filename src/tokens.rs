@@ -646,7 +646,7 @@ where
         attempt(strings::literal()),
         attempt(punct::punctuation()),
         attempt(strings::template_start()),
-    )).map(|t| t)
+    ))
 }
 
 pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>

@@ -69,15 +69,13 @@ pub enum Kind {
     Octal,
 }
 
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        attempt(bin_literal()),
-        attempt(octal_literal()),
-        attempt(hex_literal()),
+        attempt(non_decimal()),
         attempt(decimal_literal()),
     )).map(super::Token::Numeric)
 }
@@ -105,16 +103,21 @@ where
     )
         .map(
             |(integer, remainder, exponent): (String, Option<(char, String)>, Option<String>)| {
-                let mut ret = String::new();
-                ret.push_str(&integer);
-                if let Some((p, r)) = remainder {
-                    ret.push(p);
-                    ret.push_str(&r);
-                }
-                if let Some(ex) = exponent {
-                    ret.push_str(&ex);
-                }
-                Number(ret)
+                let remainder = if let Some((_, remainder)) = remainder {
+                    format!(".{}", remainder)
+                } else {
+                    String::new()
+                };
+                let exponent = if let Some(exp) = exponent {
+                    format!("{}", exp)
+                } else {
+                    String::new()
+                };
+                Number(format!("{integer}{remainder}{exponent}",
+                    integer=integer,
+                    remainder=remainder,
+                    exponent=exponent,
+                ))
             },
         )
 }
@@ -130,12 +133,12 @@ where
         many1(digit()),
     )
         .map(|(e, sign, value): (char, Option<char>, String)| {
-            let mut ret = e.to_string();
-            if let Some(sign) = sign {
-                ret.push(sign)
-            }
-            ret.push_str(&value);
-            ret
+            let sign = if let Some(sign) = sign {
+                sign.to_string()
+            } else {
+                String::new()
+            };
+            format!("{}{}{}", e, sign, value)
         })
 }
 
@@ -145,19 +148,30 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (c_char('.'), many1(digit()), optional(exponent())).map(
-        |(dot, remainder, exponent): (char, String, Option<String>)| {
-            let mut ret = String::new();
-            ret.push(dot);
-            ret.push_str(&remainder);
-            if let Some(ex) = exponent {
-                ret.push_str(&ex);
-            }
-            Number(ret)
+        |(_, remainder, exponent): (_, String, Option<String>)| {
+            let ex = if let Some(ex) = exponent {
+                ex
+            } else {
+                String::new()
+            };
+            Number(format!(".{}{}", remainder, ex))
         },
     )
 }
 
-fn hex_literal<I>() -> impl Parser<Input = I, Output = Number>
+pub fn non_decimal<I>() -> impl Parser<Input = I, Output = Number>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((
+        attempt(hex_literal()),
+        attempt(octal_literal()),
+        attempt(bin_literal())
+    )).map(|(kind, integer): (char, String)| Number(format!("0{}{}", kind, integer)))
+}
+
+fn hex_literal<I>() -> impl Parser<Input = I, Output = (char, String)>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -167,15 +181,10 @@ where
         choice([c_char('x'), c_char('X')]),
         many1(hex_digit()),
     )
-        .map(|(zero, x, integer): (char, char, String)| {
-            let mut ret = format!("{}", zero);
-            ret.push(x);
-            ret.push_str(&integer);
-            Number(ret)
-        })
+        .map(|(_, x, integer): (_, char, String)| (x, integer))
 }
 
-fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
+fn bin_literal<I>() -> impl Parser<Input = I, Output = (char, String)>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -185,16 +194,10 @@ where
         choice([c_char('b'), c_char('B')]),
         many1(choice([c_char('1'), c_char('0')])),
     )
-        .map(|(zero, b, integer): (char, char, String)| {
-            let mut ret = String::new();
-            ret.push(zero);
-            ret.push(b);
-            ret.push_str(&integer);
-            Number(ret)
-        })
+        .map(|(_, b, integer): (_, char, String)| (b, integer))
 }
 
-fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
+fn octal_literal<I>() -> impl Parser<Input = I, Output = (char, String)>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -204,13 +207,7 @@ where
         choice([c_char('o'), c_char('O')]),
         many1(oct_digit()),
     )
-        .map(|(zero, o, integer): (char, char, String)| {
-            let mut ret = String::new();
-            ret.push(zero);
-            ret.push(o);
-            ret.push_str(&integer);
-            Number(ret)
-        })
+        .map(|(_, o, integer): (_, char, String)| (o, integer))
 }
 
 #[cfg(test)]
