@@ -34,7 +34,7 @@ impl Item {
 
 impl Deref for Item {
     type Target = Token;
-    fn deref<'a>(&'a self) -> &'a Self::Target {
+    fn deref(& self) -> &Self::Target {
         &self.token
     }
 }
@@ -119,7 +119,7 @@ pub enum BooleanLiteral {
 }
 impl BooleanLiteral {
     /// Test if this instance represents `true`
-    pub fn is_true(&self) -> bool {
+    pub fn is_true(self) -> bool {
         match self {
             BooleanLiteral::True => true,
             _ => false,

@@ -109,7 +109,7 @@ where
                     String::new()
                 };
                 let exponent = if let Some(exp) = exponent {
-                    format!("{}", exp)
+                    exp
                 } else {
                     String::new()
                 };

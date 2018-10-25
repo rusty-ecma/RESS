@@ -213,7 +213,7 @@ impl Keyword {
     /// - export
     /// - implements
     /// - super
-    pub fn is_future_reserved(&self) -> bool {
+    pub fn is_future_reserved(self) -> bool {
         match self {
             Keyword::Enum => true,
             Keyword::Export => true,
@@ -235,7 +235,7 @@ impl Keyword {
     /// - static
     /// - yield
     /// - let
-    pub fn is_strict_reserved(&self) -> bool {
+    pub fn is_strict_reserved(self) -> bool {
         match self {
             Keyword::Implements => true,
             Keyword::Interface => true,
@@ -277,7 +277,7 @@ impl Keyword {
     /// - void
     /// - while
     /// - with
-    pub fn is_reserved(&self) -> bool {
+    pub fn is_reserved(self) -> bool {
         match self {
             Keyword::Break => true,
             Keyword::Case => true,
@@ -359,7 +359,7 @@ where
         attempt(reserved_a_to_d()),
         attempt(reserved_e_to_r()),
         attempt(reserved_s_to_z()),
-    )).map(|k| Token::Keyword(k))
+    )).map(Token::Keyword)
 }
 
 pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -435,7 +435,7 @@ where
         attempt(string("import").map(|_| Keyword::Import)),
         attempt(string("super").map(|_| Keyword::Super)),
         attempt(string("enum").map(|_| Keyword::Enum)),
-    )).map(|k| Token::Keyword(k))
+    )).map(Token::Keyword)
 }
 
 /// Generate a parser that will return an instance of Token::Keyword when a
@@ -466,7 +466,7 @@ where
         attempt(string("static").map(|_| Keyword::Static)),
         attempt(string("yield").map(|_| Keyword::Yield)),
         attempt(string("let").map(|_| Keyword::Let)),
-    )).map(|k| Token::Keyword(k))
+    )).map(Token::Keyword)
 }
 
 #[cfg(test)]
