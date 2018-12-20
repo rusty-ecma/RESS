@@ -1,12 +1,12 @@
 use combine::{
-    between, choice,
+    attempt, between, choice,
     error::ParseError,
     many, not_followed_by,
     parser::{
         char::{char as c_char, spaces, string},
         item::satisfy,
     },
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 
 use super::{is_line_term, is_source_char};
@@ -138,7 +138,8 @@ where
         attempt(string(r#"\\"#).map(|s: &str| s.to_string())),
         attempt(string_continuation()),
         attempt(satisfy(|c: char| c != '\'' && !is_line_term(c)).map(|c: char| c.to_string())),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 
 fn string_continuation<I>() -> impl Parser<Input = I, Output = String>
@@ -169,7 +170,8 @@ where
         attempt(string(r#"\\"#).map(|s: &str| s.to_string())),
         attempt(string_continuation()),
         attempt(satisfy(|c: char| c != '"' && !is_line_term(c)).map(|c: char| c.to_string())),
-    )).map(|c: String| c)
+    ))
+    .map(|c: String| c)
 }
 
 fn line_terminator<I>() -> impl Parser<Input = I, Output = char>
@@ -188,7 +190,8 @@ where
     choice((
         attempt(string("\r\n").map(|s: &str| s.to_string())),
         attempt(line_terminator().map(|c: char| c.to_string())),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 
 pub fn template_start<I>() -> impl Parser<Input = I, Output = Token>
@@ -245,15 +248,20 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        attempt(c_char('$')
-            .skip(not_followed_by(c_char('{')))
-            .map(|c: char| c.to_string())),
+        attempt(
+            c_char('$')
+                .skip(not_followed_by(c_char('{')))
+                .map(|c: char| c.to_string()),
+        ),
         attempt(string(r#"\${"#).map(|s: &str| s.to_string())),
         attempt(string(r#"\`"#).map(|s: &str| s.to_string())),
         attempt(string(r#"\"#).map(|s: &str| s.to_string())),
-        attempt(satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
-            .map(|c: char| c.to_string())),
-    )).map(|s: String| s)
+        attempt(
+            satisfy(|c: char| is_source_char(c) && c != '`' && c != '$')
+                .map(|c: char| c.to_string()),
+        ),
+    ))
+    .map(|s: String| s)
 }
 
 #[cfg(test)]

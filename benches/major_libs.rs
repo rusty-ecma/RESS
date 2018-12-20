@@ -1,9 +1,9 @@
 #![cfg(test)]
 #![feature(test)]
-extern crate test;
 extern crate ress;
-use test::Bencher;
+extern crate test;
 use ress::Scanner;
+use test::Bencher;
 #[bench]
 fn angular(b: &mut Bencher) {
     let js = include_str!("../node_modules/angular/angular.js");

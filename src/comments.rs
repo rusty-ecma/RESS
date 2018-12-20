@@ -1,9 +1,9 @@
 use combine::{
-    choice, eof,
+    attempt, choice, eof,
     error::ParseError,
     optional,
     parser::{char::string, repeat::take_until},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 use strings;
 use tokens::Token;
@@ -82,7 +82,8 @@ where
         attempt(multi_comment()),
         attempt(single_comment()),
         attempt(html_comment()),
-    )).map(Token::Comment)
+    ))
+    .map(Token::Comment)
 }
 
 pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>
@@ -170,7 +171,8 @@ mod test {
                         .replace("//", "")
                         .replace("/*", "")
                         .replace("*/", "")
-                }).collect::<Vec<String>>()
+                })
+                .collect::<Vec<String>>()
                 .join("\n");
             assert_eq!(p, (Token::comment(&comment_contents, is_multi), ""));
         }
@@ -187,10 +189,11 @@ mod test {
                 l.trim()
                     .trim_left_matches(left_matches)
                     .trim_right_matches(right_matches)
-            }).collect::<Vec<&str>>()
+            })
+            .collect::<Vec<&str>>()
             .join("\n")
     }
-    proptest!{
+    proptest! {
         #[test]
         fn multi_line_comments_prop(s in r#"(/\*(.+[\n\r*])+\*/)"#) {
             let r = token().easy_parse(s.as_str()).unwrap();
@@ -198,7 +201,7 @@ mod test {
         }
     }
 
-    proptest!{
+    proptest! {
         #[test]
         fn single_line_comments_prop(s in r#"(//.*)+"#) {
             let r = token().easy_parse(s.as_str()).unwrap();
@@ -206,7 +209,7 @@ mod test {
         }
     }
 
-    proptest!{
+    proptest! {
         #[test]
         fn html_comments_prop(s in r#"<!--.*-->"#) {
             eprintln!("testing {:?}", s);

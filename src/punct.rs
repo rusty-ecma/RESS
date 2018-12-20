@@ -1,9 +1,9 @@
 use combine::{
-    choice,
+    attempt, choice,
     error::ParseError,
     not_followed_by,
     parser::char::{char as c_char, string},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 use tokens::Token;
 
@@ -192,7 +192,8 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((attempt(multi_punct()), attempt(single_punct()))).map(|t: String| Token::Punct(Punct::from(t)))
+    choice((attempt(multi_punct()), attempt(single_punct())))
+        .map(|t: String| Token::Punct(Punct::from(t)))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>
@@ -208,7 +209,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((attempt(c_char('}')), attempt(normal_punct_not_close_brace()))).map(|c: char| c)
+    choice((
+        attempt(c_char('}')),
+        attempt(normal_punct_not_close_brace()),
+    ))
+    .map(|c: char| c)
 }
 
 fn normal_punct_not_close_brace<I>() -> impl Parser<Input = I, Output = char>
@@ -239,7 +244,8 @@ where
         attempt(c_char('&')),
         attempt(c_char('|')),
         attempt(c_char('^')),
-    ]).map(|c: char| c)
+    ])
+    .map(|c: char| c)
 }
 
 fn div_punct<I>() -> impl Parser<Input = I, Output = char>
@@ -287,7 +293,8 @@ where
         attempt(string(">=")),
         attempt(string("=>")),
         attempt(string("**")),
-    ]).map(|t| t.to_string())
+    ])
+    .map(|t| t.to_string())
 }
 
 #[cfg(test)]

@@ -1,25 +1,17 @@
 use combine::{
-    between, choice,
+    attempt, between, choice,
     error::ParseError,
-    many,
-    not_followed_by,
+    many, not_followed_by,
     parser::{
         char::{char as c_char, spaces, string},
         item::satisfy,
         range::recognize,
     },
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 
-use refs::tokens::{
-    RefToken as Token,
-    StringLit,
-    Template,
-};
-use super::super::{
-    is_line_term,
-    is_source_char,
-};
+use super::super::{is_line_term, is_source_char};
+use refs::tokens::{RefToken as Token, StringLit, Template};
 
 pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
@@ -28,12 +20,10 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>,
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
-    choice((
-        attempt(single_quote()),
-        attempt(double_quote()),
-    )).map(Token::String)
+    choice((attempt(single_quote()), attempt(double_quote()))).map(Token::String)
 }
 
 fn single_quote<I>() -> impl Parser<Input = I, Output = StringLit>
@@ -44,13 +34,12 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize(
-        between(
-            c_char('\''),
-            c_char('\''),
-            many::<String,_>(single_quoted_content())
-        )
-    ).map(|_| StringLit::Single)
+    recognize(between(
+        c_char('\''),
+        c_char('\''),
+        many::<String, _>(single_quoted_content()),
+    ))
+    .map(|_| StringLit::Single)
 }
 
 fn single_quoted_content<I>() -> impl Parser<Input = I, Output = I::Range>
@@ -64,13 +53,7 @@ where
         attempt(escaped_single_quote()),
         attempt(escaped_escape()),
         attempt(string_continuation()),
-        attempt(
-            recognize(
-                satisfy(|c: char| c != '\''
-                                && !is_line_term(c)
-                )
-            )
-        ),
+        attempt(recognize(satisfy(|c: char| c != '\'' && !is_line_term(c)))),
     ))
 }
 
@@ -101,8 +84,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize((c_char('\\'), line_terminator_sequence()))
-        .skip(spaces())
+    recognize((c_char('\\'), line_terminator_sequence())).skip(spaces())
 }
 
 fn double_quote<I>() -> impl Parser<Input = I, Output = StringLit>
@@ -113,13 +95,12 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize(
-            between(
-            c_char('"'),
-            c_char('"'),
-            many::<String, _>(double_quoted_content()
-        ))
-    ).map(|_|StringLit::Double)
+    recognize(between(
+        c_char('"'),
+        c_char('"'),
+        many::<String, _>(double_quoted_content()),
+    ))
+    .map(|_| StringLit::Double)
 }
 
 fn double_quoted_content<I>() -> impl Parser<Input = I, Output = I::Range>
@@ -133,10 +114,7 @@ where
         attempt(escaped_double_quote()),
         attempt(escaped_escape()),
         attempt(string_continuation()),
-        attempt(recognize(
-            satisfy(|c: char| c != '"' && !is_line_term(c))
-            )
-        ),
+        attempt(recognize(satisfy(|c: char| c != '"' && !is_line_term(c)))),
     ))
 }
 
@@ -167,14 +145,11 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(
-        choice((
-            attempt(recognize(string("\r\n"))),
-            attempt(line_terminator()),
-        ))
-    )
+    recognize(choice((
+        attempt(recognize(string("\r\n"))),
+        attempt(line_terminator()),
+    )))
 }
-
 
 pub fn template_start<I>() -> impl Parser<Input = I, Output = Token>
 where
@@ -206,13 +181,12 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize(
-        between(
-            c_char('`'),
-            c_char('`'),
-            many::<String, _>(template_char())
-        )
-    ).map(|_| Template::NoSub)
+    recognize(between(
+        c_char('`'),
+        c_char('`'),
+        many::<String, _>(template_char()),
+    ))
+    .map(|_| Template::NoSub)
 }
 
 fn template_head<I>() -> impl Parser<Input = I, Output = Template>
@@ -223,13 +197,12 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize(
-        between(
-            string("`"),
-            string("${"),
-            many::<String, _>(template_char()),
-        )
-    ).map(|_| Template::Head)
+    recognize(between(
+        string("`"),
+        string("${"),
+        many::<String, _>(template_char()),
+    ))
+    .map(|_| Template::Head)
 }
 
 fn template_middle<I>() -> impl Parser<Input = I, Output = Template>
@@ -240,10 +213,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize((
-        many::<String, _>(template_char()),
-        string("${")
-    )).map(|_| Template::Body)
+    recognize((many::<String, _>(template_char()), string("${"))).map(|_| Template::Body)
 }
 
 fn template_tail<I>() -> impl Parser<Input = I, Output = Template>
@@ -254,10 +224,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    (
-        many::<String, _>(template_char()),
-        recognize(c_char('`')),
-    ).map(|_| Template::Tail)
+    (many::<String, _>(template_char()), recognize(c_char('`'))).map(|_| Template::Tail)
 }
 
 fn template_char<I>() -> impl Parser<Input = I, Output = I::Range>
@@ -285,10 +252,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
 {
-    recognize(
-        c_char('$')
-        .skip(not_followed_by(c_char('{')))
-    )
+    recognize(c_char('$').skip(not_followed_by(c_char('{'))))
 }
 
 fn escaped_template_start<I>() -> impl Parser<Input = I, Output = I::Range>

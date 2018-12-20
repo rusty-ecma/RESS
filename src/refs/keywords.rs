@@ -1,17 +1,13 @@
 use combine::{
-    choice, error::ParseError,
+    attempt, choice,
+    error::ParseError,
     not_followed_by,
     parser::char::string,
-    attempt,
-    Parser,
-    Stream,
-    range::{recognize, range},
+    range::{range, recognize},
+    Parser, Stream,
 };
 
-use refs::tokens::{
-    RefToken as Token,
-    raw_ident_part,
-};
+use refs::tokens::{raw_ident_part, RefToken as Token};
 // use tokens::raw_ident_part;
 use keywords::Keyword;
 
@@ -22,15 +18,13 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>,
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
-    choice((
-        future_reserved(),
-        strict_mode_reserved(),
-        reserved(),
-    )).skip(not_followed_by(raw_ident_part()))
-    .map(Token::Keyword)
+    choice((future_reserved(), strict_mode_reserved(), reserved()))
+        .skip(not_followed_by(raw_ident_part()))
+        .map(Token::Keyword)
 }
 
 /// generate a parser that will return a Token::Keyword with in finds
@@ -69,11 +63,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
-    choice((
-        reserved_a_to_d(),
-        reserved_e_to_r(),
-        reserved_s_to_z(),
-    ))
+    choice((reserved_a_to_d(), reserved_e_to_r(), reserved_s_to_z()))
 }
 
 pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -84,19 +74,19 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
-        choice((
-            attempt(range("await".into()).map(|_| Keyword::Await)),
-            attempt(range("break".into()).map(|_| Keyword::Break)),
-            attempt(range("case".into()).map(|_| Keyword::Case)),
-            attempt(range("catch".into()).map(|_| Keyword::Catch)),
-            attempt(range("class".into()).map(|_| Keyword::Class)),
-            attempt(range("const".into()).map(|_| Keyword::Const)),
-            attempt(range("continue".into()).map(|_| Keyword::Continue)),
-            attempt(range("debugger".into()).map(|_| Keyword::Debugger)),
-            attempt(range("default".into()).map(|_| Keyword::Default)),
-            attempt(range("delete".into()).map(|_| Keyword::Delete)),
-            attempt(range("do".into()).map(|_| Keyword::Do)),
-        ))
+    choice((
+        attempt(range("await".into()).map(|_| Keyword::Await)),
+        attempt(range("break".into()).map(|_| Keyword::Break)),
+        attempt(range("case".into()).map(|_| Keyword::Case)),
+        attempt(range("catch".into()).map(|_| Keyword::Catch)),
+        attempt(range("class".into()).map(|_| Keyword::Class)),
+        attempt(range("const".into()).map(|_| Keyword::Const)),
+        attempt(range("continue".into()).map(|_| Keyword::Continue)),
+        attempt(range("debugger".into()).map(|_| Keyword::Debugger)),
+        attempt(range("default".into()).map(|_| Keyword::Default)),
+        attempt(range("delete".into()).map(|_| Keyword::Delete)),
+        attempt(range("do".into()).map(|_| Keyword::Do)),
+    ))
 }
 
 pub(crate) fn reserved_e_to_r<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -108,14 +98,9 @@ where
     <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        attempt(
-            range("else".into()).map(|_| Keyword::Else)
-        ),
-        attempt(
-            range("finally".into()).map(|_| Keyword::Finally)
-        ),
-        attempt(
-            range("for".into()).map(|_| Keyword::For)),
+        attempt(range("else".into()).map(|_| Keyword::Else)),
+        attempt(range("finally".into()).map(|_| Keyword::Finally)),
+        attempt(range("for".into()).map(|_| Keyword::For)),
         attempt(range("function".into()).map(|_| Keyword::Function)),
         attempt(range("if".into()).map(|_| Keyword::If)),
         attempt(range("instanceof".into()).map(|_| Keyword::InstanceOf)),
@@ -210,7 +195,7 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     range("await".into()).map(|_| Keyword::Await)
 }
@@ -477,9 +462,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(
-        string("export")
-    ).map(|_| Keyword::Export)
+    recognize(string("export")).map(|_| Keyword::Export)
 }
 
 pub(crate) fn import<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -489,9 +472,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(
-        string("import")
-    ).map(|_| Keyword::Import)
+    recognize(string("import")).map(|_| Keyword::Import)
 }
 
 pub(crate) fn _super<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -501,9 +482,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(
-        string("super")
-    ).map(|_| Keyword::Super)
+    recognize(string("super")).map(|_| Keyword::Super)
 }
 
 pub(crate) fn _enum<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -513,9 +492,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(
-        string("enum")
-    ).map(|_| Keyword::Enum)
+    recognize(string("enum")).map(|_| Keyword::Enum)
 }
 
 fn _implements<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -657,6 +634,5 @@ mod test {
             }
             assert_eq!(result.1.len(), 0);
         }
-
     }
 }

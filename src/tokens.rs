@@ -1,11 +1,11 @@
 use std::ops::Deref;
 
 use combine::{
-    choice, eof,
+    attempt, choice, eof,
     error::ParseError,
     many, not_followed_by,
     parser::char::{char as c_char, string},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 
 use comments;
@@ -16,7 +16,7 @@ use regex;
 use strings;
 use unicode;
 
-#[derive(Debug, PartialEq, Clone,)]
+#[derive(Debug, PartialEq, Clone)]
 /// A wrapper around a token that will include
 /// the byte span of the text that it was found
 /// at
@@ -34,7 +34,7 @@ impl Item {
 
 impl Deref for Item {
     type Target = Token;
-    fn deref(& self) -> &Self::Target {
+    fn deref(&self) -> &Self::Target {
         &self.token
     }
 }
@@ -475,7 +475,7 @@ impl Token {
     pub fn is_template_no_sub(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_no_sub(),
-            _ => false
+            _ => false,
         }
     }
     pub fn is_template_head(&self) -> bool {
@@ -623,7 +623,7 @@ impl ToString for Token {
         }
     }
 }
-parser!{
+parser! {
     pub fn token[I]()(I) -> Token
         where [I: Stream<Item = char>]
     {
@@ -729,7 +729,8 @@ where
         attempt(c_char('$').map(|c: char| c.to_string())),
         attempt(c_char('_').map(|c: char| c.to_string())),
         attempt(unicode::char_literal()),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 
 pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = String>

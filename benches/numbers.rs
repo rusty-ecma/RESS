@@ -1,12 +1,12 @@
 #![cfg(test)]
 #![feature(test)]
-extern crate test;
-extern crate ress;
 extern crate combine;
+extern crate ress;
+extern crate test;
 
-use test::Bencher;
-use ress::numeric::{literal as number};
 use combine::Parser;
+use ress::numeric::literal as number;
+use test::Bencher;
 #[bench]
 fn number_non_decimal(b: &mut Bencher) {
     b.iter(|| {

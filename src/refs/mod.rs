@@ -1,9 +1,9 @@
-pub mod keywords;
-pub mod punct;
-pub mod strings;
 pub mod comments;
+pub mod keywords;
 pub mod numbers;
+pub mod punct;
 pub mod regex;
+pub mod strings;
 pub mod tokens;
 
 use tokens::Span;

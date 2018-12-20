@@ -166,7 +166,10 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len()
-                                    - regex_pair.1.trim_left_matches(whitespace_or_line_term).len();
+                                    - regex_pair
+                                        .1
+                                        .trim_left_matches(whitespace_or_line_term)
+                                        .len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
@@ -192,8 +195,8 @@ impl Scanner {
                             let span = Span::new(self.cursor, span_end);
                             if advance_cursor {
                                 self.spans.push(span.clone());
-                                self.cursor =
-                                    self.stream.len() - pair.1.trim_left_matches(whitespace_or_line_term).len();
+                                self.cursor = self.stream.len()
+                                    - pair.1.trim_left_matches(whitespace_or_line_term).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
@@ -226,12 +229,10 @@ impl Scanner {
                     let span = Span::new(self.cursor, span_end);
                     if advance_cursor {
                         self.spans.push(span.clone());
-                        self.cursor =
-                            self.stream.len() - pair.1.trim_left_matches(whitespace_or_line_term).len();
+                        self.cursor = self.stream.len()
+                            - pair.1.trim_left_matches(whitespace_or_line_term).len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
-                        self.pending_new_line = whitespace
-                            .chars()
-                            .any(is_line_term);
+                        self.pending_new_line = whitespace.chars().any(is_line_term);
                     }
                     debug!(target: "ress", "{}: {:?}", if advance_cursor { "next item" } else {"look ahead"}, pair.0);
                     Some(Item::new(pair.0, span))

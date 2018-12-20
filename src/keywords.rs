@@ -1,5 +1,5 @@
 use combine::{
-    choice, error::ParseError, not_followed_by, parser::char::string, attempt, Parser, Stream,
+    attempt, choice, error::ParseError, not_followed_by, parser::char::string, Parser, Stream,
 };
 use tokens::{raw_ident_part, Token};
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -202,7 +202,8 @@ impl ::std::string::ToString for Keyword {
             Keyword::While => "while",
             Keyword::With => "with",
             Keyword::Yield => "yield",
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -319,7 +320,8 @@ where
         attempt(future_reserved()),
         attempt(strict_mode_reserved()),
         attempt(reserved()),
-    )).skip(not_followed_by(raw_ident_part()))
+    ))
+    .skip(not_followed_by(raw_ident_part()))
     .map(|t| t)
 }
 /// generate a parser that will return a Token::Keyword with in finds
@@ -359,7 +361,8 @@ where
         attempt(reserved_a_to_d()),
         attempt(reserved_e_to_r()),
         attempt(reserved_s_to_z()),
-    )).map(Token::Keyword)
+    ))
+    .map(Token::Keyword)
 }
 
 pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
@@ -376,7 +379,7 @@ where
         attempt(string("const").map(|_| Keyword::Const)),
         attempt(string("continue").map(|_| Keyword::Continue)),
         attempt(string("debugger").map(|_| Keyword::Debugger)),
-        attempt(string("default").map(|_| Keyword::Default)), 
+        attempt(string("default").map(|_| Keyword::Default)),
         attempt(string("delete").map(|_| Keyword::Delete)),
         attempt(string("do").map(|_| Keyword::Do)),
     ))
@@ -387,7 +390,6 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-
     choice((
         attempt(string("else").map(|_| Keyword::Else)),
         attempt(string("finally").map(|_| Keyword::Finally)),
@@ -435,7 +437,8 @@ where
         attempt(string("import").map(|_| Keyword::Import)),
         attempt(string("super").map(|_| Keyword::Super)),
         attempt(string("enum").map(|_| Keyword::Enum)),
-    )).map(Token::Keyword)
+    ))
+    .map(Token::Keyword)
 }
 
 /// Generate a parser that will return an instance of Token::Keyword when a
@@ -466,7 +469,8 @@ where
         attempt(string("static").map(|_| Keyword::Static)),
         attempt(string("yield").map(|_| Keyword::Yield)),
         attempt(string("let").map(|_| Keyword::Let)),
-    )).map(Token::Keyword)
+    ))
+    .map(Token::Keyword)
 }
 
 #[cfg(test)]

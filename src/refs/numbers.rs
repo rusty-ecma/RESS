@@ -1,13 +1,13 @@
 use combine::{
-    choice,
+    attempt, choice,
     error::ParseError,
     many, many1, optional,
     parser::char::{char as c_char, digit, hex_digit, oct_digit},
-    attempt, Parser, Stream,
     range::recognize,
+    Parser, Stream,
 };
 
-use refs::tokens::{RefToken as Token, Number};
+use refs::tokens::{Number, RefToken as Token};
 
 pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
@@ -15,12 +15,10 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
-    choice((
-        attempt(non_decimal()),
-        attempt(decimal_literal()),
-    )).map(Token::Numeric)
+    choice((attempt(non_decimal()), attempt(decimal_literal()))).map(Token::Numeric)
 }
 
 fn decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -29,12 +27,14 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     choice((
         attempt(full_decimal_literal()),
-        attempt(no_leading_decimal())
-    )).map(|_| Number::Dec)
+        attempt(no_leading_decimal()),
+    ))
+    .map(|_| Number::Dec)
 }
 
 fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = I::Range>
@@ -43,7 +43,8 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         //any number of digits
@@ -61,7 +62,8 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         choice([c_char('e'), c_char('E')]),
@@ -76,12 +78,13 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         c_char('.'),
         many1::<String, _>(digit()),
-        optional(exponent())
+        optional(exponent()),
     ))
 }
 
@@ -91,12 +94,13 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     choice((
         attempt(hex_literal()),
         attempt(octal_literal()),
-        attempt(bin_literal())
+        attempt(bin_literal()),
     ))
 }
 
@@ -106,13 +110,15 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         c_char('0'),
         choice([c_char('x'), c_char('X')]),
         many1::<String, _>(hex_digit()),
-    )).map(|_| Number::Hex)
+    ))
+    .map(|_| Number::Hex)
 }
 
 fn bin_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -121,13 +127,15 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         c_char('0'),
         choice([c_char('b'), c_char('B')]),
         many1::<String, _>(choice([c_char('1'), c_char('0')])),
-    )).map(|_| Number::Bin)
+    ))
+    .map(|_| Number::Bin)
 }
 
 fn octal_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -136,13 +144,15 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
+        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     recognize((
         c_char('0'),
         choice([c_char('o'), c_char('O')]),
         many1::<String, _>(oct_digit()),
-    )).map(|_| Number::Oct)
+    ))
+    .map(|_| Number::Oct)
 }
 
 #[cfg(test)]

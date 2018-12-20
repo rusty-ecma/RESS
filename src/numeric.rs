@@ -1,9 +1,9 @@
 use combine::{
-    choice,
+    attempt, choice,
     error::ParseError,
     many, many1, optional,
     parser::char::{char as c_char, digit, hex_digit, oct_digit},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 
 use tokens::Token;
@@ -74,10 +74,7 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        attempt(non_decimal()),
-        attempt(decimal_literal()),
-    )).map(super::Token::Numeric)
+    choice((attempt(non_decimal()), attempt(decimal_literal()))).map(super::Token::Numeric)
 }
 
 fn decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -85,7 +82,11 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((attempt(full_decimal_literal()), attempt(no_leading_decimal()))).map(|t| t)
+    choice((
+        attempt(full_decimal_literal()),
+        attempt(no_leading_decimal()),
+    ))
+    .map(|t| t)
 }
 
 fn full_decimal_literal<I>() -> impl Parser<Input = I, Output = Number>
@@ -113,10 +114,11 @@ where
                 } else {
                     String::new()
                 };
-                Number(format!("{integer}{remainder}{exponent}",
-                    integer=integer,
-                    remainder=remainder,
-                    exponent=exponent,
+                Number(format!(
+                    "{integer}{remainder}{exponent}",
+                    integer = integer,
+                    remainder = remainder,
+                    exponent = exponent,
                 ))
             },
         )
@@ -167,8 +169,9 @@ where
     choice((
         attempt(hex_literal()),
         attempt(octal_literal()),
-        attempt(bin_literal())
-    )).map(|(kind, integer): (char, String)| Number(format!("0{}{}", kind, integer)))
+        attempt(bin_literal()),
+    ))
+    .map(|(kind, integer): (char, String)| Number(format!("0{}{}", kind, integer)))
 }
 
 fn hex_literal<I>() -> impl Parser<Input = I, Output = (char, String)>

@@ -1,14 +1,13 @@
-
 #![cfg(test)]
 #![feature(test)]
-extern crate test;
-extern crate ress;
 extern crate combine;
+extern crate ress;
+extern crate test;
 #[macro_use]
 extern crate lazy_static;
 
 use combine::Parser;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 static KEYWORDS: &[&str] = &[
     "implements",
     "interface",
@@ -51,12 +50,11 @@ static KEYWORDS: &[&str] = &[
     "with",
 ];
 static PUNCTS: &[&str] = &[
-    "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+",
-    "-", "/", "*", "%", "&", "|", "^",
-    ">>>=", //3 char
+    "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+", "-", "/",
+    "*", "%", "&", "|", "^", ">>>=", //3 char
     "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
-    "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
-    "^=", "%=", "<=", ">=", "=>", "**",
+    "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=", "^=", "%=",
+    "<=", ">=", "=>", "**",
 ];
 
 static STRINGS: &[&str] = &[
@@ -168,24 +166,22 @@ static IDENTS: &[&str] = &[
     r#"x‌‍"#,
 ];
 
-static BOOLS: &[&str] = &[
-    "true",
-    "false",
-];
+static BOOLS: &[&str] = &["true", "false"];
 
 static NULL: &[&str] = &["null"];
 
 lazy_static! {
-    static ref TOKENS: Vec<&'static str> = COMMENTS.into_iter()
-                                    .chain(KEYWORDS.into_iter())
-                                    .chain(NUMBERS.into_iter())
-                                    .chain(PUNCTS.into_iter())
-                                    .chain(IDENTS.into_iter())
-                                    .chain(BOOLS.into_iter())
-                                    .chain(NULL.into_iter())
-                                    .chain(TEMPLATE_STARTS.into_iter())
-                                    .map(|s| *s)
-                                    .collect();
+    static ref TOKENS: Vec<&'static str> = COMMENTS
+        .into_iter()
+        .chain(KEYWORDS.into_iter())
+        .chain(NUMBERS.into_iter())
+        .chain(PUNCTS.into_iter())
+        .chain(IDENTS.into_iter())
+        .chain(BOOLS.into_iter())
+        .chain(NULL.into_iter())
+        .chain(TEMPLATE_STARTS.into_iter())
+        .map(|s| *s)
+        .collect();
 }
 
 #[bench]
@@ -312,7 +308,11 @@ fn templates(b: &mut Bencher) {
 fn templates_ref(b: &mut Bencher) {
     b.iter(|| {
         for t in TEMPLATE_CONTINUATIONS {
-            black_box(ress::refs::strings::template_continuation().parse(*t).unwrap());
+            black_box(
+                ress::refs::strings::template_continuation()
+                    .parse(*t)
+                    .unwrap(),
+            );
         }
         for t in TEMPLATE_STARTS {
             black_box(ress::refs::strings::template_start().parse(*t).unwrap());

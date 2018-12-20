@@ -1,10 +1,10 @@
 use combine::{
-    choice,
+    attempt, choice,
     error::ParseError,
     not_followed_by,
-    parser::char::{string, char as c_char},
-    attempt, Parser, Stream,
+    parser::char::{char as c_char, string},
     range::recognize,
+    Parser, Stream,
 };
 use punct::Punct;
 use refs::tokens::RefToken as Token;
@@ -16,10 +16,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        attempt(multi_punct()),
-        attempt(single_punct())
-    )).map(Token::Punct)
+    choice((attempt(multi_punct()), attempt(single_punct()))).map(Token::Punct)
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = Punct>
@@ -29,10 +26,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        attempt(normal_punct()),
-        attempt(div_punct())
-    ))
+    choice((attempt(normal_punct()), attempt(div_punct())))
 }
 
 fn normal_punct<I>() -> impl Parser<Input = I, Output = Punct>
@@ -44,7 +38,7 @@ where
 {
     choice((
         attempt(recognize(c_char('}'))).map(|_| Punct::CloseBrace),
-        normal_punct_not_close_brace()
+        normal_punct_not_close_brace(),
     ))
 }
 
@@ -88,9 +82,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    recognize(c_char('/')
-        .skip(not_followed_by(c_char('*'))))
-    .map(|_| Punct::ForwardSlash)
+    recognize(c_char('/').skip(not_followed_by(c_char('*')))).map(|_| Punct::ForwardSlash)
 }
 
 fn multi_punct<I>() -> impl Parser<Input = I, Output = Punct>
@@ -100,11 +92,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((
-        four_char_punct(),
-        three_char_punct(),
-        two_char_punct(),
-    ))
+    choice((four_char_punct(), three_char_punct(), two_char_punct()))
 }
 
 fn four_char_punct<I>() -> impl Parser<Input = I, Output = Punct>
