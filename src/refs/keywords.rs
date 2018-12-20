@@ -5,7 +5,7 @@ use combine::{
     attempt,
     Parser,
     Stream,
-    range::recognize,
+    range::{recognize, range},
 };
 
 use refs::tokens::{
@@ -23,6 +23,7 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
         future_reserved(),
@@ -66,53 +67,61 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        reserved_a_to_e(),
-        reserved_f_to_r(),
+        reserved_a_to_d(),
+        reserved_e_to_r(),
         reserved_s_to_z(),
     ))
 }
 
-pub(crate) fn reserved_a_to_e<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
         choice((
-            attempt(_await()),
-            attempt(_break()),
-            attempt(_case()),
-            attempt(_catch()),
-            attempt(_class()),
-            attempt(_const()),
-            attempt(_continue()),
-            attempt(_debugger()),
-            attempt(_default()),
-            attempt(_delete()),
-            attempt(_do()),
-            attempt(_else()),
+            attempt(range("await".into()).map(|_| Keyword::Await)),
+            attempt(range("break".into()).map(|_| Keyword::Break)),
+            attempt(range("case".into()).map(|_| Keyword::Case)),
+            attempt(range("catch".into()).map(|_| Keyword::Catch)),
+            attempt(range("class".into()).map(|_| Keyword::Class)),
+            attempt(range("const".into()).map(|_| Keyword::Const)),
+            attempt(range("continue".into()).map(|_| Keyword::Continue)),
+            attempt(range("debugger".into()).map(|_| Keyword::Debugger)),
+            attempt(range("default".into()).map(|_| Keyword::Default)),
+            attempt(range("delete".into()).map(|_| Keyword::Delete)),
+            attempt(range("do".into()).map(|_| Keyword::Do)),
         ))
 }
 
-pub(crate) fn reserved_f_to_r<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved_e_to_r<I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        attempt(_finally()),
-        attempt(_for()),
-        attempt(_function()),
-        attempt(_if()),
-        attempt(_instanceof()),
-        attempt(_in()),
-        attempt(_new()),
-        attempt(_return()),
+        attempt(
+            range("else".into()).map(|_| Keyword::Else)
+        ),
+        attempt(
+            range("finally".into()).map(|_| Keyword::Finally)
+        ),
+        attempt(
+            range("for".into()).map(|_| Keyword::For)),
+        attempt(range("function".into()).map(|_| Keyword::Function)),
+        attempt(range("if".into()).map(|_| Keyword::If)),
+        attempt(range("instanceof".into()).map(|_| Keyword::InstanceOf)),
+        attempt(range("in".into()).map(|_| Keyword::In)),
+        attempt(range("new".into()).map(|_| Keyword::New)),
+        attempt(range("return".into()).map(|_| Keyword::Return)),
     ))
 }
 
@@ -122,17 +131,18 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        attempt(switch()),
-        attempt(this()),
-        attempt(_throw()),
-        attempt(_try()),
-        attempt(_typeof()),
-        attempt(var()),
-        attempt(_void()),
-        attempt(_while()),
-        attempt(with()),
+        attempt(range("switch".into()).map(|_| Keyword::Switch)),
+        attempt(range("this".into()).map(|_| Keyword::This)),
+        attempt(range("throw".into()).map(|_| Keyword::Throw)),
+        attempt(range("try".into()).map(|_| Keyword::Try)),
+        attempt(range("typeof".into()).map(|_| Keyword::TypeOf)),
+        attempt(range("var".into()).map(|_| Keyword::Var)),
+        attempt(range("void".into()).map(|_| Keyword::Void)),
+        attempt(range("while".into()).map(|_| Keyword::While)),
+        attempt(range("with".into()).map(|_| Keyword::With)),
     ))
 }
 
@@ -155,17 +165,18 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        attempt(_implements()),
-        attempt(_interface()),
-        attempt(_package()),
-        attempt(_private()),
-        attempt(_protected()),
-        attempt(_public()),
-        attempt(_static()),
-        attempt(_yield()),
-        attempt(_let()),
+        attempt(range("implements".into()).map(|_| Keyword::Implements)),
+        attempt(range("interface".into()).map(|_| Keyword::Interface)),
+        attempt(range("package".into()).map(|_| Keyword::Package)),
+        attempt(range("private".into()).map(|_| Keyword::Private)),
+        attempt(range("protected".into()).map(|_| Keyword::Protected)),
+        attempt(range("public".into()).map(|_| Keyword::Public)),
+        attempt(range("static".into()).map(|_| Keyword::Static)),
+        attempt(range("yield".into()).map(|_| Keyword::Yield)),
+        attempt(range("let".into()).map(|_| Keyword::Let)),
     ))
 }
 
@@ -183,12 +194,13 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
-        attempt(export()),
-        attempt(import()),
-        attempt(_super()),
-        attempt(_enum()),
+        attempt(range("export".into()).map(|_| Keyword::Export)),
+        attempt(range("import".into()).map(|_| Keyword::Import)),
+        attempt(range("super".into()).map(|_| Keyword::Super)),
+        attempt(range("enum".into()).map(|_| Keyword::Enum)),
     ))
 }
 
@@ -198,8 +210,9 @@ where
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>
 {
-    recognize(string("await")).map(|_| Keyword::Await)
+    range("await".into()).map(|_| Keyword::Await)
 }
 fn _break<I>() -> impl Parser<Input = I, Output = Keyword>
 where

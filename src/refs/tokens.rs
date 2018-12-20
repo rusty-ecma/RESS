@@ -115,7 +115,8 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
         token_not_eof(),
@@ -130,7 +131,8 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>
+    combine::error::Info<char, <I as combine::StreamOnce>::Range>: std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((
         comment(),
