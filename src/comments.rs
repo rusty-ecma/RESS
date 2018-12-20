@@ -73,7 +73,7 @@ impl ToString for Comment {
     }
 }
 
-pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
+pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,

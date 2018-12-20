@@ -11,6 +11,7 @@ use combine::{
 
 use super::{is_line_term, is_source_char};
 use tokens::Token;
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum StringLit {
     Single(String),
@@ -111,7 +112,7 @@ impl ToString for Template {
     }
 }
 
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -190,7 +191,7 @@ where
     )).map(|s: String| s)
 }
 
-pub(crate) fn template_start<I>() -> impl Parser<Input = I, Output = Token>
+pub fn template_start<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -198,7 +199,7 @@ where
     choice((attempt(no_sub_template()), attempt(template_head()))).map(Token::Template)
 }
 
-pub(crate) fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
+pub fn template_continuation<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -297,10 +298,24 @@ mod test {
     }
 
     #[test]
+    fn template_no_sub_escaped() {
+        let empty = r#"`a\${b`"#;
+        let e_r = token().easy_parse(empty).unwrap();
+        assert_eq!(e_r, (Token::no_sub_template(r#"a\${b"#), ""));
+    }
+
+    #[test]
     fn template_head() {
         let h = "`things and stuff times ${";
         let r = token().easy_parse(h).unwrap();
         assert_eq!(r, (Token::template_head("things and stuff times "), ""));
+    }
+
+    #[test]
+    fn template_head_unicode_escapes() {
+        let h = r#"`\0\n\x0A\u000A\u{A}${"#;
+        let r = token().easy_parse(h).unwrap();
+        assert_eq!(r, (Token::template_head(r#"\0\n\x0A\u000A\u{A}"#), ""));
     }
 
     #[test]

@@ -16,7 +16,7 @@ use regex;
 use strings;
 use unicode;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone,)]
 /// A wrapper around a token that will include
 /// the byte span of the text that it was found
 /// at
@@ -39,7 +39,7 @@ impl Deref for Item {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 /// A location in the original source text
 pub struct Span {
     pub start: usize,
@@ -649,7 +649,7 @@ where
     ))
 }
 
-pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -700,7 +700,7 @@ where
     eof().map(|_| Token::EoF)
 }
 
-pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
+pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -709,7 +709,7 @@ where
         .map(|(start, body): (String, String)| Token::Ident(Ident(start + &body)))
 }
 
-pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,

@@ -6,6 +6,7 @@ use combine::{
     attempt, Parser, Stream,
 };
 use tokens::Token;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Punct {
     And,
@@ -186,7 +187,7 @@ impl ::std::string::ToString for Punct {
         }
     }
 }
-pub(crate) fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
+pub fn punctuation<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,

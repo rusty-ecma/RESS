@@ -27,15 +27,17 @@ extern crate combine;
 extern crate log;
 extern crate unic_ucd_ident;
 
+pub mod refs;
+
 use combine::Parser;
-mod comments;
-mod keywords;
+pub mod comments;
+pub mod keywords;
 pub mod numeric;
-mod punct;
-mod regex;
-mod strings;
-mod tokens;
-mod unicode;
+pub mod punct;
+pub mod regex;
+pub mod strings;
+pub mod tokens;
+pub mod unicode;
 pub use comments::{Comment, Kind as CommentKind};
 pub use keywords::Keyword;
 pub use numeric::Number;

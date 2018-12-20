@@ -310,7 +310,7 @@ impl Keyword {
     }
 }
 /// generate a parser that will return an instance of Token::Keyword on success
-pub(crate) fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,

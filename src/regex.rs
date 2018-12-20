@@ -40,7 +40,7 @@ impl ToString for RegEx {
     }
 }
 /// Parse a regex literal starting after the first /
-pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
+pub fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,

@@ -14,7 +14,7 @@ travis-ci = { repository = "FreeMasen/RESS", branch = "master" }
 appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github" }
 
 [dependencies]
-combine = "3.3"
+combine = "3"
 log = "0.4"
 unic-ucd-ident = { version = "0.7", features = ["id"] }
 
@@ -27,6 +27,7 @@ proptest = "0.8"
 walkdir = "2.2"
 pretty_env_logger = "0.2"
 regex_generate = "0.2.0"
+lazy_static = "1"
 
 [[example]]
 name = "major_libs"
