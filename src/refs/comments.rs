@@ -4,112 +4,115 @@ use combine::{
     optional,
     parser::{char::string, repeat::take_until},
     range::recognize,
-    Parser, Stream,
+    Parser, Stream, RangeStream,
 };
 use refs::tokens::{Comment, RefToken as Token};
 use strings::line_terminator_sequence;
 
-pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
+pub fn comment<'a, I>() -> impl Parser<Input = I, Output = Token>
 where
-    I: Stream<Item = char>,
-    I: combine::RangeStreamOnce,
+    I: RangeStream<Item = char, Range = &'a str>,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     choice((
-        attempt(multi_comment()),
-        attempt(single_comment()),
-        attempt(html_comment()),
+        attempt(multi_comment::<'a, I>()),
+        attempt(single_comment::<'a, I>()),
+        attempt(html_comment::<'a, I>()),
     ))
     .map(Token::Comment)
 }
 
-pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>
+pub(crate) fn single_comment<'a, I>() -> impl Parser<Input = I, Output = Comment>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
-        attempt(single_comment_eof()),
-        attempt(single_comment_new_line()),
+        attempt(single_comment_new_line::<'a, I>()),
+        attempt(single_comment_eof::<'a, I>()),
     ))
     .map(|_| Comment::SingleLine)
 }
 
-fn single_comment_eof<I>() -> impl Parser<Input = I, Output = I::Range>
+fn single_comment_eof<'a, I>() -> impl Parser<Input = I, Output = I::Range>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     recognize((string("//"), take_until::<String, _>(eof())))
 }
 
-fn single_comment_new_line<I>() -> impl Parser<Input = I, Output = I::Range>
+fn single_comment_new_line<'a, I>() -> impl Parser<Input = I, Output = I::Range>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     recognize((
         string("//"),
-        take_until::<String, _>(line_terminator_sequence()),
+        take_until::<String,_>(line_terminator_sequence()),
     ))
 }
 
-pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Comment>
+pub(crate) fn multi_comment<'a, I>() -> impl Parser<Input = I, Output = Comment>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     recognize((
         multi_line_comment_start(),
-        take_until::<String, _>(string("*/")),
+        take_until::<String, _>(multi_line_comment_end()),
+        multi_line_comment_end(),
     ))
     .map(|_| Comment::MultiLine)
 }
 
-fn multi_line_comment_start<I>() -> impl Parser<Input = I, Output = I::Range>
+fn multi_line_comment_start<'a, I>() -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    recognize(string("/*"))
+    combine::range::range("/*".into()).map(|_|())
 }
 
-fn html_comment<I>() -> impl Parser<Input = I, Output = Comment>
+fn multi_line_comment_end<'a, I>() -> impl Parser<Input = I, Output = ()>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
+{
+    combine::range::range("*/".into()).map(|_|())
+}
+
+fn html_comment<'a, I>() -> impl Parser<Input = I, Output = Comment>
+where
+    I: Stream<Item = char>,
+    I: combine::RangeStreamOnce,
+    <I as combine::StreamOnce>::Range: combine::stream::Range,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     recognize((
-        string("<!--"),
-        take_until::<String, _>(string("-->")),
-        string("-->"),
+        combine::range::range("<!--".into()),
+        take_until::<String, _>(combine::range::range("-->".into())),
+        combine::range::range("-->".into()),
         optional(take_until::<String, _>(attempt(line_terminator_sequence()))),
     ))
     .map(|_| Comment::Html)
@@ -126,7 +129,7 @@ multi-line comment*/",
         "<!-- This is an HTML comment --> with a trailer",
     ];
     #[test]
-    fn comments_ref() {
+    fn ref_comments() {
         for c in COMMENTS.iter() {
             let result = comment().parse(*c);
             assert!(result.is_ok());

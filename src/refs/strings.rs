@@ -7,21 +7,17 @@ use combine::{
         item::satisfy,
         range::recognize,
     },
-    Parser, Stream,
+    Parser, Stream, RangeStream,
 };
 
 use super::super::{is_line_term, is_source_char};
 use refs::tokens::{RefToken as Token, StringLit, Template};
 
-pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn literal<'a, I>() -> impl Parser<Input = I, Output = Token>
 where
-    I: Stream<Item = char>,
-    I: combine::RangeStreamOnce,
+    I: RangeStream<Item = char, Range = &'a str>,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    std::string::String: std::iter::Extend<<I as combine::StreamOnce>::Range>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
 {
     choice((attempt(single_quote()), attempt(double_quote()))).map(Token::String)
 }

@@ -2,25 +2,20 @@ use combine::{
     attempt, choice,
     error::ParseError,
     not_followed_by,
-    parser::char::string,
-    range::{range, recognize},
-    Parser, Stream,
+    range::range,
+    Parser, Stream, RangeStream,
 };
 
-use refs::tokens::{raw_ident_part, RefToken as Token};
-// use tokens::raw_ident_part;
+use refs::tokens::{RefToken as Token};
+use tokens::raw_ident_part;
 use keywords::Keyword;
 
 /// generate a parser that will return an instance of Token::Keyword on success
-pub fn literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn literal<'a, I>() -> impl Parser<Input = I, Output = Token>
 where
-    I: Stream<Item = char>,
-    I: combine::RangeStreamOnce,
+    I: RangeStream<Item = char, Range = &'a str>,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    combine::error::Info<char, <I as combine::StreamOnce>::Range>:
-        std::convert::From<<I as combine::StreamOnce>::Range>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
 {
     choice((future_reserved(), strict_mode_reserved(), reserved()))
         .skip(not_followed_by(raw_ident_part()))
@@ -55,24 +50,24 @@ where
 /// - void
 /// - while
 /// - with
-pub(crate) fn reserved<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((reserved_a_to_d(), reserved_e_to_r(), reserved_s_to_z()))
 }
 
-pub(crate) fn reserved_a_to_d<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved_a_to_d<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
         attempt(range("await".into()).map(|_| Keyword::Await)),
@@ -89,13 +84,13 @@ where
     ))
 }
 
-pub(crate) fn reserved_e_to_r<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved_e_to_r<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
         attempt(range("else".into()).map(|_| Keyword::Else)),
@@ -110,13 +105,13 @@ where
     ))
 }
 
-pub(crate) fn reserved_s_to_z<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn reserved_s_to_z<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
         attempt(range("switch".into()).map(|_| Keyword::Switch)),
@@ -144,13 +139,13 @@ where
 /// - static
 /// - yield
 /// - let
-pub(crate) fn strict_mode_reserved<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn strict_mode_reserved<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
         attempt(range("implements".into()).map(|_| Keyword::Implements)),
@@ -173,13 +168,13 @@ where
 /// - import
 /// - super
 /// - enum
-pub(crate) fn future_reserved<I>() -> impl Parser<Input = I, Output = Keyword>
+pub(crate) fn future_reserved<'a, I>() -> impl Parser<Input = I, Output = Keyword>
 where
     I: Stream<Item = char>,
     I: combine::RangeStreamOnce,
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
-    <I as combine::StreamOnce>::Range: std::convert::From<&'static str>,
+    <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
         attempt(range("export".into()).map(|_| Keyword::Export)),
@@ -237,7 +232,9 @@ mod test {
             "with",
         ];
         for key in keywords.iter() {
-            let result = match literal().easy_parse(*key) {
+            let s = key.to_string();
+            let s = s.as_str();
+            let result = match literal().easy_parse(s) {
                 Ok(pair) => pair,
                 Err(e) => panic!("failed parsing {}\n{}", key, e),
             };

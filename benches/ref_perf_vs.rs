@@ -384,9 +384,33 @@ pub fn token(b: &mut Bencher) {
 
 #[bench]
 pub fn token_ref(b: &mut Bencher) {
+    println!("[");
     b.iter(|| {
         for t in TOKENS.iter() {
+            println!("{:?}", t);
             black_box(ress::refs::tokens::token().parse(*t).unwrap());
         }
+        println!("];")
     })
+}
+
+
+#[bench]
+fn scanner(b: &mut Bencher) {
+    let js = include_str!("../node_modules/jquery/dist/jquery.js") ;
+    use ress::{Scanner, Item};
+    b.iter(|| {
+        let s = Scanner::new(js);
+        black_box(s.collect::<Vec<Item>>())
+    });
+}
+
+#[bench]
+fn scanner_ref(b: &mut Bencher) {
+    let js = include_str!("../node_modules/jquery/dist/jquery.js");
+    use ress::refs::{RefScanner as Scanner, RefItem as Item};
+    b.iter(|| {
+        let s = Scanner::new(js);
+        black_box(s.collect::<Vec<Item>>())
+    });
 }
