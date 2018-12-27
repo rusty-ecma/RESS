@@ -15,7 +15,12 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    recognize((attempt(regex_body::<'a, I>()), c_char('/'), attempt(regex_flags::<'a, I>()))).map(|_| Token::RegEx)
+    recognize((
+        attempt(regex_body::<'a, I>()),
+        c_char('/'),
+        attempt(regex_flags::<'a, I>()),
+    ))
+    .map(|_| Token::RegEx)
 }
 
 fn regex_flags<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -37,10 +42,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    recognize((
-        regex_first_char(),
-        many::<Vec<()>, _>(regex_char())
-    )).map(|_| ())
+    recognize((regex_first_char(), many::<Vec<()>, _>(regex_char()))).map(|_| ())
 }
 
 fn regex_first_char<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -55,7 +57,8 @@ where
         attempt(regex_body_first_source_char()),
         attempt(regular_expression_backslash_sequence()),
         attempt(regular_expression_class()),
-    )).map(|_|())
+    ))
+    .map(|_| ())
 }
 
 fn regex_body_first_source_char<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -68,7 +71,8 @@ where
 {
     recognize(satisfy(|c: char| {
         is_source_char(c) && !is_line_term(c) && c != '*' && c != '\\' && c != '/' && c != '['
-    })).map(|_| ())
+    }))
+    .map(|_| ())
 }
 
 fn regex_body_source_char<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -81,7 +85,8 @@ where
 {
     recognize(satisfy(|c: char| {
         is_source_char(c) && !is_line_term(c) && c != '\\' && c != '/' && c != '['
-    })).map(|_|())
+    }))
+    .map(|_| ())
 }
 
 fn regex_char<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -96,7 +101,8 @@ where
         attempt(regex_body_source_char()),
         attempt(regular_expression_backslash_sequence()),
         attempt(regular_expression_class()),
-    )).map(|_|())
+    ))
+    .map(|_| ())
 }
 
 fn regular_expression_class<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -111,7 +117,8 @@ where
         c_char('['),
         c_char(']'),
         many::<Vec<()>, _>(regular_expression_class_char()),
-    )).map(|_|())
+    ))
+    .map(|_| ())
 }
 
 fn regular_expression_class_char<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -123,11 +130,15 @@ where
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
     choice((
-        attempt(recognize(satisfy(|c: char| {
-            is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}'
-        })).map(|_|())),
+        attempt(
+            recognize(satisfy(|c: char| {
+                is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}'
+            }))
+            .map(|_| ()),
+        ),
         attempt(regular_expression_backslash_sequence()),
-    )).map(|_| ())
+    ))
+    .map(|_| ())
 }
 pub(crate) fn source_char_not_line_term<'a, I>() -> impl Parser<Input = I, Output = ()>
 where
@@ -148,5 +159,5 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    recognize(c_char('\\').and(source_char_not_line_term())).map(|_|())
+    recognize(c_char('\\').and(source_char_not_line_term())).map(|_| ())
 }

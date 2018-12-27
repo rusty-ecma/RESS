@@ -7,11 +7,11 @@ pub mod regex;
 pub mod strings;
 pub mod tokens;
 
-use tokens::{Span};
+use super::{is_line_term, whitespace_or_line_term, ScannerState};
 use keywords::Keyword;
 use punct::Punct;
 pub use refs::tokens::RefToken;
-use super::{is_line_term, whitespace_or_line_term, ScannerState};
+use tokens::Span;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RefItem {
@@ -21,10 +21,7 @@ pub struct RefItem {
 
 impl RefItem {
     pub fn new(token: RefToken, span: Span) -> Self {
-        Self {
-            token,
-            span,
-        }
+        Self { token, span }
     }
 }
 
@@ -192,7 +189,10 @@ impl RefScanner {
                     if advance_cursor {
                         self.spans.push(span.clone());
                         self.cursor = self.stream.len()
-                            - pair.1.trim_start_matches(super::whitespace_or_line_term).len();
+                            - pair
+                                .1
+                                .trim_start_matches(super::whitespace_or_line_term)
+                                .len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace.chars().any(super::is_line_term);
                     }
@@ -352,45 +352,44 @@ impl RefScanner {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-//     #[test]
-//     fn tokenizer() {
-//         let js = "
-// 'use strict';
-// function thing() {
-//     let x = 0;
-//     console.log('stuff');
-// }";
-//         let expectation = vec![
-//             RefToken::String(StringLit::Single),
-//             RefToken::Punct(Punct::SemiColon),
-//             RefToken::Keyword(Keyword::Function),
-//             RefToken::Ident,
-//             RefToken::Punct(Punct::OpenParen),
-//             RefToken::Punct(Punct::CloseParen),
-//             RefToken::Punct(Punct::OpenBrace),
-//             RefToken::Keyword(Keyword::Let),
-//             RefToken::Ident,
-//             RefToken::Punct(Punct::Assign),
-//             RefToken::Numeric(super::tokens::Number::Dec),
-//             RefToken::punct(Punct::SemiColon),
-//             RefToken::Ident,
-//             RefToken::Punct(Punct::Period),
-//             RefToken::Ident,
-//             RefToken::Punct(Punct::OpenParen),
-//             RefToken::String(StringLit::Single),
-//             RefToken::punct(Punct::CloseParen),
-//             RefToken::punct(Punct::SemiColon),
-//             RefToken::punct(Punct::CloseBrace),
-//             RefToken::EoF,
-//         ];
-//         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
-//             assert_eq!(tok.0, tok.1);
-//         }
-//     }
+    //     #[test]
+    //     fn tokenizer() {
+    //         let js = "
+    // 'use strict';
+    // function thing() {
+    //     let x = 0;
+    //     console.log('stuff');
+    // }";
+    //         let expectation = vec![
+    //             RefToken::String(StringLit::Single),
+    //             RefToken::Punct(Punct::SemiColon),
+    //             RefToken::Keyword(Keyword::Function),
+    //             RefToken::Ident,
+    //             RefToken::Punct(Punct::OpenParen),
+    //             RefToken::Punct(Punct::CloseParen),
+    //             RefToken::Punct(Punct::OpenBrace),
+    //             RefToken::Keyword(Keyword::Let),
+    //             RefToken::Ident,
+    //             RefToken::Punct(Punct::Assign),
+    //             RefToken::Numeric(super::tokens::Number::Dec),
+    //             RefToken::punct(Punct::SemiColon),
+    //             RefToken::Ident,
+    //             RefToken::Punct(Punct::Period),
+    //             RefToken::Ident,
+    //             RefToken::Punct(Punct::OpenParen),
+    //             RefToken::String(StringLit::Single),
+    //             RefToken::punct(Punct::CloseParen),
+    //             RefToken::punct(Punct::SemiColon),
+    //             RefToken::punct(Punct::CloseBrace),
+    //             RefToken::EoF,
+    //         ];
+    //         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
+    //             assert_eq!(tok.0, tok.1);
+    //         }
+    //     }
 
     #[test]
     fn ref_scanner() {
@@ -403,9 +402,9 @@ this.y = 0;
         let expected = vec![
             RefToken::Punct(Punct::OpenParen), //"("
             RefToken::Keyword(Keyword::Function),
-            RefToken::Punct(Punct::OpenParen), //"("
+            RefToken::Punct(Punct::OpenParen),  //"("
             RefToken::Punct(Punct::CloseParen), //")"
-            RefToken::Punct(Punct::OpenBrace), //"{"
+            RefToken::Punct(Punct::OpenBrace),  //"{"
             RefToken::Keyword(Keyword::This),
             RefToken::Punct(Punct::Period), //"."
             RefToken::Ident,
@@ -417,12 +416,12 @@ this.y = 0;
             RefToken::Ident,
             RefToken::Punct(Punct::Assign), //"="
             RefToken::Numeric(tokens::Number::Dec),
-            RefToken::Punct(Punct::SemiColon), //";"
+            RefToken::Punct(Punct::SemiColon),  //";"
             RefToken::Punct(Punct::CloseBrace), //"}"
             RefToken::Punct(Punct::CloseParen), //")"
-            RefToken::Punct(Punct::OpenParen), //"("
+            RefToken::Punct(Punct::OpenParen),  //"("
             RefToken::Punct(Punct::CloseParen), //")"
-            RefToken::Punct(Punct::SemiColon), //";"
+            RefToken::Punct(Punct::SemiColon),  //";"
             RefToken::EoF,
         ];
         validate(s, expected);

@@ -4,7 +4,7 @@ use combine::{
     optional,
     parser::{char::string, repeat::take_until},
     range::recognize,
-    Parser, Stream, RangeStream,
+    Parser, RangeStream, Stream,
 };
 use refs::tokens::{Comment, RefToken as Token};
 use strings::line_terminator_sequence;
@@ -59,7 +59,7 @@ where
 {
     recognize((
         string("//"),
-        take_until::<String,_>(line_terminator_sequence()),
+        take_until::<String, _>(line_terminator_sequence()),
     ))
 }
 
@@ -87,7 +87,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    combine::range::range("/*".into()).map(|_|())
+    combine::range::range("/*".into()).map(|_| ())
 }
 
 fn multi_line_comment_end<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -98,7 +98,7 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
     <I as combine::StreamOnce>::Range: std::convert::From<&'a str>,
 {
-    combine::range::range("*/".into()).map(|_|())
+    combine::range::range("*/".into()).map(|_| ())
 }
 
 fn html_comment<'a, I>() -> impl Parser<Input = I, Output = Comment>

@@ -73,7 +73,6 @@ fn run_ref_test(js: &str) {
     let mut s = ress::refs::RefScanner::new(js);
     let mut i = 0;
     while let Some(item) = s.next() {
-
         debug!("{}, {:?} {:?}", i, item.token, s.string_for(&item.span));
         i += 1;
     }

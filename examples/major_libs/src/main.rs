@@ -41,12 +41,12 @@ impl ::std::default::Default for Args {
 impl Args {
     fn pristine(&self) -> bool {
         !self.angular
-        && !self.jquery
-        && !self.react
-        && !self.react_dom
-        && !self.vue
-        && !self.moment
-        && !self.dexie
+            && !self.jquery
+            && !self.react
+            && !self.react_dom
+            && !self.vue
+            && !self.moment
+            && !self.dexie
     }
 }
 

@@ -4,7 +4,7 @@ use combine::{
     many, many1, optional,
     parser::char::{char as c_char, digit, hex_digit, oct_digit},
     range::recognize,
-    Parser, Stream, RangeStream,
+    Parser, RangeStream, Stream,
 };
 
 use refs::tokens::{Number, RefToken as Token};
@@ -46,7 +46,8 @@ where
         optional((c_char('.'), many::<String, _>(digit()))),
         //optionally followed by e|E and any number of digits
         optional(exponent()),
-    )).map(|_|())
+    ))
+    .map(|_| ())
 }
 
 fn exponent<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -61,7 +62,8 @@ where
         choice([c_char('e'), c_char('E')]),
         optional(choice([c_char('-'), c_char('+')])),
         many1::<String, _>(digit()),
-    )).map(|_|())
+    ))
+    .map(|_| ())
 }
 
 fn no_leading_decimal<'a, I>() -> impl Parser<Input = I, Output = ()>
@@ -76,7 +78,8 @@ where
         c_char('.'),
         many1::<String, _>(digit()),
         optional(exponent()),
-    )).map(|_| ())
+    ))
+    .map(|_| ())
 }
 
 pub fn non_decimal<'a, I>() -> impl Parser<Input = I, Output = Number>

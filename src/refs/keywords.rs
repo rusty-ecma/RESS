@@ -1,14 +1,10 @@
 use combine::{
-    attempt, choice,
-    error::ParseError,
-    not_followed_by,
-    range::range,
-    Parser, Stream, RangeStream,
+    attempt, choice, error::ParseError, not_followed_by, range::range, Parser, RangeStream, Stream,
 };
 
-use refs::tokens::{RefToken as Token};
-use tokens::raw_ident_part;
 use keywords::Keyword;
+use refs::tokens::RefToken as Token;
+use tokens::raw_ident_part;
 
 /// generate a parser that will return an instance of Token::Keyword on success
 pub fn literal<'a, I>() -> impl Parser<Input = I, Output = Token>

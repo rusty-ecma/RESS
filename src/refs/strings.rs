@@ -7,7 +7,7 @@ use combine::{
         item::satisfy,
         range::recognize,
     },
-    Parser, Stream, RangeStream,
+    Parser, RangeStream, Stream,
 };
 
 use super::super::{is_line_term, is_source_char};
