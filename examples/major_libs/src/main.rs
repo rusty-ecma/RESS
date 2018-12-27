@@ -159,9 +159,9 @@ fn test_js(text: &str, name: &str, refs: bool) {
     let size = text.len();
     let now = SystemTime::now();
     if refs {
-        test_ref(text, name);
+        test_ref(text);
     } else {
-        test(text, name);
+        test(text);
     }
     if let Ok(e) = now.elapsed() {
         report(size, e, "scanner", name)
@@ -170,12 +170,12 @@ fn test_js(text: &str, name: &str, refs: bool) {
     }
 }
 
-fn test_ref(text: &str, name: &str) {
+fn test_ref(text: &str) {
     let s = ress::refs::RefScanner::new(text);
     let _: Vec<ress::refs::RefItem> = s.collect();
 }
 
-fn test(text: &str, name: &str) {
+fn test(text: &str) {
     let s = ress::Scanner::new(text);
     let _: Vec<ress::Item> = s.collect();
 }
