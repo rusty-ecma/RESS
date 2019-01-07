@@ -35,6 +35,7 @@ pub struct RefScanner {
     template: usize,
     replacement: usize,
     pub pending_new_line: bool,
+    curly_count: usize,
 }
 
 impl RefScanner {
@@ -50,6 +51,7 @@ impl RefScanner {
             template: 0,
             replacement: 0,
             pending_new_line: false,
+            curly_count: 0,
         }
     }
 }
@@ -105,6 +107,7 @@ impl RefScanner {
             last_paren: self.last_open_paren_idx,
             template: self.template,
             replacement: self.replacement,
+            curly_count: self.curly_count,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -114,6 +117,7 @@ impl RefScanner {
         self.last_open_paren_idx = state.last_paren;
         self.template = state.template;
         self.replacement = state.replacement;
+        self.curly_count = state.curly_count;
     }
 
     fn get_next_token<'a>(&mut self, advance_cursor: bool) -> Option<RefItem> {
@@ -149,7 +153,9 @@ impl RefScanner {
                             self.cursor, e,
                         ),
                     }
-                } else if self.template > 0 && pair.0.matches_punct(&Punct::CloseBrace) {
+                } else if self.template > 0
+                    && pair.0.matches_punct(&Punct::CloseBrace)
+                    && self.curly_count == 0 {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() && advance_cursor {
@@ -174,6 +180,12 @@ impl RefScanner {
                         ),
                     }
                 } else {
+                    if self.template > 0 && pair.0.matches_punct(&Punct::OpenBrace) {
+                        self.curly_count = self.curly_count.saturating_add(1);
+                    }
+                    if self.template > 0 && pair.0.matches_punct(&Punct::CloseBrace) {
+                        self.curly_count = self.curly_count.saturating_sub(1);
+                    }
                     if pair.0.matches_punct(&Punct::OpenParen) && advance_cursor {
                         self.last_open_paren_idx = self.spans.len();
                     }
