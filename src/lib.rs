@@ -60,22 +60,24 @@ pub struct Scanner {
     template: usize,
     replacement: usize,
     pub pending_new_line: bool,
+    curly_count: usize,
 }
 
 impl Scanner {
     /// Create a new Scanner with the raw JS text
     pub fn new(text: impl Into<String>) -> Self {
         let text = text.into();
-        let cursor = text.len() - text.trim_left_matches(whitespace).len();
+        let cursor = text.len() - text.trim_start_matches(whitespace).len();
         Scanner {
             stream: text,
             eof: false,
             cursor,
-            spans: vec![],
+            spans: Vec::new(),
             last_open_paren_idx: 0,
             template: 0,
             replacement: 0,
             pending_new_line: false,
+            curly_count: 0,
         }
     }
 }
@@ -131,6 +133,7 @@ impl Scanner {
             last_paren: self.last_open_paren_idx,
             template: self.template,
             replacement: self.replacement,
+            curly_count: self.curly_count,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -140,6 +143,7 @@ impl Scanner {
         self.last_open_paren_idx = state.last_paren;
         self.template = state.template;
         self.replacement = state.replacement;
+        self.curly_count = state.curly_count;
     }
 
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
@@ -174,6 +178,7 @@ impl Scanner {
                     }
                 } else if self.template > 0
                     && pair.0.matches_punct(Punct::CloseBrace)
+                    && self.curly_count == 0
                 {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
@@ -199,6 +204,12 @@ impl Scanner {
                         ),
                     }
                 } else {
+                    if self.template > 0 && pair.0.matches_punct(Punct::OpenBrace) {
+                        self.curly_count = self.curly_count.saturating_add(1);
+                    }
+                    if self.template > 0 && pair.0.matches_punct(Punct::CloseBrace) {
+                        self.curly_count = self.curly_count.saturating_sub(1);
+                    }
                     if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
                         self.last_open_paren_idx = self.spans.len();
                     }
@@ -421,6 +432,7 @@ pub struct ScannerState {
     pub last_paren: usize,
     pub template: usize,
     pub replacement: usize,
+    pub curly_count: usize,
 }
 
 #[cfg(test)]
