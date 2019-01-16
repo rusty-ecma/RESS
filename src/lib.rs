@@ -155,8 +155,8 @@ impl Scanner {
         let result = tokens::token().parse(&self.stream[self.cursor..]);
         match result {
             Ok(pair) => {
-                if pair.0.matches_punct(Punct::ForwardSlash) && self.is_regex_start() {
-                    match regex::regex_tail().parse(pair.1) {
+                if (pair.0.matches_punct(Punct::ForwardSlash) || pair.0.matches_punct(Punct::DivideAssign)) && self.is_regex_start() {
+                    match regex::regex_tail().parse(&self.stream[self.cursor+1..]) {
                         Ok(regex_pair) => {
                             let full_len = self.stream.len();
                             let span_end = full_len - regex_pair.1.len();
@@ -164,9 +164,12 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len()
-                                    - regex_pair.1.trim_left_matches(whitespace_or_line_term).len();
+                                    - regex_pair
+                                        .1
+                                        .trim_start_matches(whitespace_or_line_term)
+                                        .len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(|c| is_line_term(c));
+                                self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
                             debug!(target: "ress", "{}: {:?}", if advance_cursor { "next regex item" } else {"look ahead"}, regex_pair.0);
                             Some(Item::new(regex_pair.0, span))
