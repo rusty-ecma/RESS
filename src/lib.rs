@@ -60,7 +60,7 @@ pub struct Scanner {
     template: usize,
     replacement: usize,
     pub pending_new_line: bool,
-    curly_count: usize,
+    curly_stack: Vec<OpenCurlyKind>,
 }
 
 impl Scanner {
@@ -77,7 +77,7 @@ impl Scanner {
             template: 0,
             replacement: 0,
             pending_new_line: false,
-            curly_count: 0,
+            curly_stack: Vec::new(),
         }
     }
 }
@@ -133,7 +133,7 @@ impl Scanner {
             last_paren: self.last_open_paren_idx,
             template: self.template,
             replacement: self.replacement,
-            curly_count: self.curly_count,
+            curly_stack: self.curly_stack.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
@@ -143,7 +143,7 @@ impl Scanner {
         self.last_open_paren_idx = state.last_paren;
         self.template = state.template;
         self.replacement = state.replacement;
-        self.curly_count = state.curly_count;
+        self.curly_stack = state.curly_stack;
     }
 
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
@@ -181,7 +181,7 @@ impl Scanner {
                     }
                 } else if self.template > 0
                     && pair.0.matches_punct(Punct::CloseBrace)
-                    && self.curly_count == 0
+                    && self.looking_for_template_end()
                 {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
@@ -208,10 +208,10 @@ impl Scanner {
                     }
                 } else {
                     if self.template > 0 && pair.0.matches_punct(Punct::OpenBrace) {
-                        self.curly_count = self.curly_count.saturating_add(1);
+                        self.curly_stack.push(OpenCurlyKind::Block);
                     }
                     if self.template > 0 && pair.0.matches_punct(Punct::CloseBrace) {
-                        self.curly_count = self.curly_count.saturating_sub(1);
+                        let _ = self.curly_stack.pop();
                     }
                     if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
                         self.last_open_paren_idx = self.spans.len();
@@ -220,6 +220,7 @@ impl Scanner {
                         self.eof = true;
                     }
                     if pair.0.is_template_head() && advance_cursor && !pair.0.is_template_tail() {
+                        self.curly_stack.push(OpenCurlyKind::Template);
                         self.template += 1;
                     }
                     let full_len = self.stream.len();
@@ -242,6 +243,14 @@ impl Scanner {
                 "Failed to parse token last successful parse ended {}\nError: {}",
                 self.cursor, e,
             ),
+        }
+    }
+
+    fn looking_for_template_end(&self) -> bool {
+        if let Some(last) = self.curly_stack.last() {
+            last == &OpenCurlyKind::Template
+        } else {
+            false
         }
     }
 
@@ -428,14 +437,20 @@ pub mod error {
         }
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
+pub enum OpenCurlyKind {
+    Template,
+    Block,
+}
+
+#[derive(Clone)]
 pub struct ScannerState {
     pub cursor: usize,
     pub spans_len: usize,
     pub last_paren: usize,
     pub template: usize,
     pub replacement: usize,
-    pub curly_count: usize,
+    pub curly_stack: Vec<OpenCurlyKind>,
 }
 
 #[cfg(test)]
