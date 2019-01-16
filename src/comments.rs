@@ -19,6 +19,7 @@ pub enum Kind {
     Single,
     Multi,
     Html,
+    Arrow,
 }
 
 impl Comment {
@@ -50,6 +51,10 @@ impl Comment {
         Comment::new_html(content, Some(tail.to_owned()))
     }
 
+    pub fn new_arrow(content: &str) -> Self {
+        Self::from_parts(content.to_owned(), Kind::Arrow, None)
+    }
+
     pub fn is_multi_line(&self) -> bool {
         self.kind == Kind::Multi
     }
@@ -61,6 +66,10 @@ impl Comment {
     pub fn is_html(&self) -> bool {
         self.kind == Kind::Multi
     }
+
+    pub fn is_arrow(&self) -> bool {
+        self.kind == Kind::Arrow
+    }
 }
 
 impl ToString for Comment {
@@ -69,6 +78,7 @@ impl ToString for Comment {
             Kind::Single => format!("//{}", self.content),
             Kind::Multi => format!("/*{}*/", self.content),
             Kind::Html => format!("<!--{}-->", self.content),
+            Kind::Arrow => format!("-->{}", self.content),
         }
     }
 }
@@ -82,6 +92,7 @@ where
         attempt(multi_comment()),
         attempt(single_comment()),
         attempt(html_comment()),
+        attempt(arrow_comment()),
     )).map(Token::Comment)
 }
 
@@ -98,6 +109,21 @@ where
         ))),
     )
         .map(|(_, content): (_, String)| Comment::new_single_line(&content))
+}
+
+pub(crate) fn arrow_comment<I>() -> impl Parser<Input = I, Output = Comment>
+where
+    I: Stream<Item = char>,
+    I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        string("-->"),
+        take_until(choice((
+            attempt(strings::line_terminator_sequence()),
+            attempt(eof().map(|_| String::new())),
+        ))),
+    )
+        .map(|(_, content): (_, String)| Comment::new_arrow(&content))
 }
 
 pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Comment>
@@ -181,6 +207,7 @@ mod test {
             Kind::Single => ("//", ""),
             Kind::Multi => ("/*", "*/"),
             Kind::Html => ("<!--", "-->"),
+            Kind::Arrow => ("-->", ""),
         };
         s.lines()
             .map(|l| {
@@ -212,6 +239,14 @@ mod test {
             eprintln!("testing {:?}", s);
             let r = token().easy_parse(s.as_str()).unwrap();
             assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Html)));
+        }
+    }
+    proptest!{
+        #[test]
+        fn arrow_comments_prop(s in r#"-->.*"#) {
+            eprintln!("testing {:?}", s);
+            let r = token().easy_parse(s.as_str()).unwrap();
+            assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Arrow)));
         }
     }
 
