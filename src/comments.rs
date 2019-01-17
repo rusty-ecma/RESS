@@ -1,9 +1,9 @@
 use combine::{
-    choice, eof,
+    attempt, choice, eof,
     error::ParseError,
     optional,
     parser::{char::string, repeat::take_until},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 use strings;
 use tokens::Token;
@@ -19,7 +19,6 @@ pub enum Kind {
     Single,
     Multi,
     Html,
-    Arrow,
 }
 
 impl Comment {
@@ -51,10 +50,6 @@ impl Comment {
         Comment::new_html(content, Some(tail.to_owned()))
     }
 
-    pub fn new_arrow(content: &str) -> Self {
-        Self::from_parts(content.to_owned(), Kind::Arrow, None)
-    }
-
     pub fn is_multi_line(&self) -> bool {
         self.kind == Kind::Multi
     }
@@ -66,10 +61,6 @@ impl Comment {
     pub fn is_html(&self) -> bool {
         self.kind == Kind::Multi
     }
-
-    pub fn is_arrow(&self) -> bool {
-        self.kind == Kind::Arrow
-    }
 }
 
 impl ToString for Comment {
@@ -78,7 +69,6 @@ impl ToString for Comment {
             Kind::Single => format!("//{}", self.content),
             Kind::Multi => format!("/*{}*/", self.content),
             Kind::Html => format!("<!--{}-->", self.content),
-            Kind::Arrow => format!("-->{}", self.content),
         }
     }
 }
@@ -92,8 +82,8 @@ where
         attempt(multi_comment()),
         attempt(single_comment()),
         attempt(html_comment()),
-        attempt(arrow_comment()),
-    )).map(Token::Comment)
+    ))
+    .map(Token::Comment)
 }
 
 pub(crate) fn single_comment<I>() -> impl Parser<Input = I, Output = Comment>
@@ -109,21 +99,6 @@ where
         ))),
     )
         .map(|(_, content): (_, String)| Comment::new_single_line(&content))
-}
-
-pub(crate) fn arrow_comment<I>() -> impl Parser<Input = I, Output = Comment>
-where
-    I: Stream<Item = char>,
-    I::Error: ParseError<I::Item, I::Range, I::Position>,
-{
-    (
-        string("-->"),
-        take_until(choice((
-            attempt(strings::line_terminator_sequence()),
-            attempt(eof().map(|_| String::new())),
-        ))),
-    )
-        .map(|(_, content): (_, String)| Comment::new_arrow(&content))
 }
 
 pub(crate) fn multi_comment<I>() -> impl Parser<Input = I, Output = Comment>
@@ -196,7 +171,8 @@ mod test {
                         .replace("//", "")
                         .replace("/*", "")
                         .replace("*/", "")
-                }).collect::<Vec<String>>()
+                })
+                .collect::<Vec<String>>()
                 .join("\n");
             assert_eq!(p, (Token::comment(&comment_contents, is_multi), ""));
         }
@@ -207,17 +183,17 @@ mod test {
             Kind::Single => ("//", ""),
             Kind::Multi => ("/*", "*/"),
             Kind::Html => ("<!--", "-->"),
-            Kind::Arrow => ("-->", ""),
         };
         s.lines()
             .map(|l| {
                 l.trim()
                     .trim_left_matches(left_matches)
                     .trim_right_matches(right_matches)
-            }).collect::<Vec<&str>>()
+            })
+            .collect::<Vec<&str>>()
             .join("\n")
     }
-    proptest!{
+    proptest! {
         #[test]
         fn multi_line_comments_prop(s in r#"(/\*(.+[\n\r*])+\*/)"#) {
             let r = token().easy_parse(s.as_str()).unwrap();
@@ -225,7 +201,7 @@ mod test {
         }
     }
 
-    proptest!{
+    proptest! {
         #[test]
         fn single_line_comments_prop(s in r#"(//.*)+"#) {
             let r = token().easy_parse(s.as_str()).unwrap();
@@ -233,7 +209,7 @@ mod test {
         }
     }
 
-    proptest!{
+    proptest! {
         #[test]
         fn html_comments_prop(s in r#"<!--.*-->"#) {
             eprintln!("testing {:?}", s);
@@ -241,13 +217,4 @@ mod test {
             assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Html)));
         }
     }
-    proptest!{
-        #[test]
-        fn arrow_comments_prop(s in r#"-->.*"#) {
-            eprintln!("testing {:?}", s);
-            let r = token().easy_parse(s.as_str()).unwrap();
-            assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Arrow)));
-        }
-    }
-
 }
