@@ -217,5 +217,4 @@ mod test {
             assert!(r.0.is_comment(), r.0.matches_comment_str(&format_test_comment(&s, Kind::Html)));
         }
     }
-
 }
