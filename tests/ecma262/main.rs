@@ -79,7 +79,6 @@ fn run_ref_test(js: &str) {
 }
 
 fn ensure_logging() {
-    ::std::env::set_var("RUST_LOG", "debug");
     let _ = pretty_env_logger::try_init();
 }
 
