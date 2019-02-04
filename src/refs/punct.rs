@@ -38,7 +38,7 @@ where
 {
     choice((
         attempt(recognize(c_char('}'))).map(|_| Punct::CloseBrace),
-        normal_punct_not_close_brace(),
+        attempt(normal_punct_not_close_brace()),
     ))
 }
 
@@ -50,28 +50,28 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        open_brace(),
-        open_paren(),
-        close_paren(),
-        period(),
-        semi(),
-        comma(),
-        open_bracket(),
-        close_bracket(),
-        colon(),
-        question(),
-        tilde(),
-        gt(),
-        lt(),
-        assign(),
-        bang(),
-        plus(),
-        minus(),
-        mul(),
-        modulo(),
-        bit_and(),
-        pipe(),
-        xor(),
+        attempt(open_brace()),
+        attempt(open_paren()),
+        attempt(close_paren()),
+        attempt(period()),
+        attempt(semi()),
+        attempt(comma()),
+        attempt(open_bracket()),
+        attempt(close_bracket()),
+        attempt(colon()),
+        attempt(question()),
+        attempt(tilde()),
+        attempt(gt()),
+        attempt(lt()),
+        attempt(assign()),
+        attempt(bang()),
+        attempt(plus()),
+        attempt(minus()),
+        attempt(mul()),
+        attempt(modulo()),
+        attempt(bit_and()),
+        attempt(pipe()),
+        attempt(xor()),
     ))
 }
 
@@ -92,7 +92,11 @@ where
     <I as combine::StreamOnce>::Range: combine::stream::Range,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    choice((four_char_punct(), three_char_punct(), two_char_punct()))
+    choice((
+        attempt(four_char_punct()), 
+        attempt(three_char_punct()), 
+        attempt(two_char_punct())
+        ))
 }
 
 fn four_char_punct<I>() -> impl Parser<Input = I, Output = Punct>
@@ -134,23 +138,23 @@ where
         attempt(logical_and()),
         attempt(logical_or()),
         attempt(equal()),
-        not_equal(),
+        attempt(not_equal()),
         attempt(add_assign()),
         attempt(sub_assign()),
         attempt(mul_assign()),
-        div_assign(),
-        increment(),
-        decrement(),
+        attempt(div_assign()),
+        attempt(increment()),
+        attempt(decrement()),
         attempt(lhs()),
         attempt(rhs()),
-        and_assign(),
-        or_assign(),
-        xor_assign(),
-        mod_assign(),
-        leq(),
-        geq(),
-        fat_arrow(),
-        exp(),
+        attempt(and_assign()),
+        attempt(or_assign()),
+        attempt(xor_assign()),
+        attempt(mod_assign()),
+        attempt(leq()),
+        attempt(geq()),
+        attempt(fat_arrow()),
+        attempt(exp()),
     ))
 }
 
@@ -604,4 +608,23 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     recognize(string("**")).map(|_| Punct::Exponent)
+}
+
+
+#[cfg(test)]
+mod test {
+    use crate::{
+        Punct, 
+        refs::{
+            RefToken
+        }, 
+    };
+    use combine::Parser;
+    #[test]
+    fn gt_eq() {
+        let js = ">=";
+        let expectation = RefToken::Punct(Punct::GreaterThanEqual);
+        let parsed = super::punctuation().parse(js).unwrap().0;
+        assert_eq!(expectation, parsed)
+    }
 }

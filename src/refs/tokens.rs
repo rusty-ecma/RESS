@@ -105,6 +105,15 @@ pub enum RefToken {
 }
 
 impl RefToken {
+    pub fn is_bool(&self) -> bool {
+        match self {
+            RefToken::Boolean(_) => true,
+            _ => false,
+        }
+    }
+    pub fn is_null(&self) -> bool {
+        self == &RefToken::Null
+    }
     pub fn is_comment(&self) -> bool {
         match self {
             RefToken::Comment(_) => true,
@@ -149,13 +158,13 @@ impl RefToken {
 
     pub fn is_template_tail(&self) -> bool {
         match self {
-            RefToken::Template(t) => t == &Template::Tail,
+            RefToken::Template(t) => t == &Template::Tail || t == &Template::NoSub,
             _ => false,
         }
     }
     pub fn is_template_head(&self) -> bool {
         match self {
-            RefToken::Template(t) => t == &Template::Head,
+            RefToken::Template(t) => t == &Template::Head || t == &Template::NoSub,
             _ => false,
         }
     }
@@ -165,9 +174,60 @@ impl RefToken {
             _ => false,
         }
     }
+    pub fn is_literal(&self) -> bool {
+        match self {
+            RefToken::String(_)
+            | RefToken::Numeric(_)
+            | RefToken::Null
+            | RefToken::RegEx
+            | RefToken::Boolean(_)
+            | RefToken::Template(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_string(&self) -> bool {
+        match self {
+            RefToken::String(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_regex(&self) -> bool {
+        match self {
+            RefToken::RegEx => true,
+            _ => false
+        }
+    }
+
+    pub fn is_number(&self) -> bool {
+        match self {
+            RefToken::Numeric(_) => true,
+            _ => false,
+        }
+    }
 
     pub fn is_eof(&self) -> bool {
         self == &RefToken::EoF
+    }
+
+    pub fn is_strict_reserved(&self) -> bool {
+        match self {
+            RefToken::Keyword(ref k) => k.is_strict_reserved(),
+            _ => false,
+        }
+    }
+    pub fn is_restricted(&self) -> bool {
+        match self {
+            RefToken::Keyword(ref k) => k.is_reserved(),
+            _ => false,
+        }
+    }
+    pub fn is_future_reserved(&self) -> bool {
+        match self {
+            RefToken::Keyword(ref k) => k.is_future_reserved(),
+            _ => false,
+        }
     }
 }
 

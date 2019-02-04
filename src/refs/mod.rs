@@ -7,7 +7,7 @@ pub mod regex;
 pub mod strings;
 pub mod tokens;
 
-use super::{is_line_term, whitespace_or_line_term, ScannerState};
+use super::{is_line_term, whitespace_or_line_term, ScannerState, OpenCurlyKind};
 use keywords::Keyword;
 use punct::Punct;
 pub use refs::tokens::RefToken;
@@ -23,6 +23,18 @@ impl RefItem {
     pub fn new(token: RefToken, span: Span) -> Self {
         Self { token, span }
     }
+    pub fn is_string(&self) -> bool {
+        self.token.is_string()
+    }
+    pub fn is_eof(&self) -> bool {
+        self.token.is_eof()
+    }
+    pub fn is_template(&self) -> bool {
+        self.token.is_template_head()
+        || self.token.is_template_body() 
+        || self.token.is_template_tail()
+
+    }
 }
 
 #[allow(unused)]
@@ -32,10 +44,9 @@ pub struct RefScanner {
     pub cursor: usize,
     pub spans: Vec<Span>,
     last_open_paren_idx: usize,
-    template: usize,
     replacement: usize,
     pub pending_new_line: bool,
-    curly_count: usize,
+    curly_stack: Vec<OpenCurlyKind>,
 }
 
 impl RefScanner {
@@ -46,12 +57,11 @@ impl RefScanner {
             stream: text,
             eof: false,
             cursor,
-            spans: vec![],
+            spans: Vec::new(),
             last_open_paren_idx: 0,
-            template: 0,
             replacement: 0,
             pending_new_line: false,
-            curly_count: 0,
+            curly_stack: Vec::new(),
         }
     }
 }
@@ -105,9 +115,8 @@ impl RefScanner {
             cursor: self.cursor,
             spans_len: self.spans.len(),
             last_paren: self.last_open_paren_idx,
-            template: self.template,
             replacement: self.replacement,
-            curly_count: self.curly_count,
+            curly_stack: self.curly_stack.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
@@ -115,9 +124,8 @@ impl RefScanner {
         self.cursor = state.cursor;
         self.spans.truncate(state.spans_len);
         self.last_open_paren_idx = state.last_paren;
-        self.template = state.template;
         self.replacement = state.replacement;
-        self.curly_count = state.curly_count;
+        self.curly_stack = state.curly_stack;
     }
 
     fn get_next_token<'a>(&mut self, advance_cursor: bool) -> Option<RefItem> {
@@ -129,8 +137,10 @@ impl RefScanner {
         let result = self::tokens::token().parse(&self.stream[self.cursor..]);
         match result {
             Ok(pair) => {
-                if pair.0.matches_punct(&Punct::ForwardSlash) && self.is_regex_start() {
-                    match regex::regex_tail().parse(pair.1) {
+                if (pair.0.matches_punct(&Punct::ForwardSlash) 
+                    || pair.0.matches_punct(&Punct::DivideAssign))
+                    && self.is_regex_start() {
+                    match regex::regex_tail().parse(&self.stream[self.cursor + 1..]) {
                         Ok(regex_pair) => {
                             let full_len = self.stream.len();
                             let span_end = full_len - regex_pair.1.len();
@@ -153,13 +163,11 @@ impl RefScanner {
                             self.cursor, e,
                         ),
                     }
-                } else if self.template > 0
-                    && pair.0.matches_punct(&Punct::CloseBrace)
-                    && self.curly_count == 0 {
+                } else if pair.0.matches_punct(&Punct::CloseBrace) && self.looking_for_template_end() {
                     match strings::template_continuation().parse(pair.1) {
                         Ok(pair) => {
                             if pair.0.is_template_tail() && advance_cursor {
-                                self.template = self.template.saturating_sub(1);
+                                let _ = self.curly_stack.pop();
                             }
                             let full_len = self.stream.len();
                             let span_end = full_len - pair.1.len();
@@ -171,7 +179,7 @@ impl RefScanner {
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
-                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
+                            debug!("{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
                             Some(RefItem::new(pair.0, span))
                         }
                         Err(e) => panic!(
@@ -180,11 +188,11 @@ impl RefScanner {
                         ),
                     }
                 } else {
-                    if self.template > 0 && pair.0.matches_punct(&Punct::OpenBrace) {
-                        self.curly_count = self.curly_count.saturating_add(1);
+                    if pair.0.matches_punct(&Punct::OpenBrace) {
+                        self.curly_stack.push(OpenCurlyKind::Block);
                     }
-                    if self.template > 0 && pair.0.matches_punct(&Punct::CloseBrace) {
-                        self.curly_count = self.curly_count.saturating_sub(1);
+                    if pair.0.matches_punct(&Punct::CloseBrace) {
+                        let _ = self.curly_stack.pop();
                     }
                     if pair.0.matches_punct(&Punct::OpenParen) && advance_cursor {
                         self.last_open_paren_idx = self.spans.len();
@@ -193,7 +201,7 @@ impl RefScanner {
                         self.eof = true;
                     }
                     if pair.0.is_template_head() && advance_cursor && !pair.0.is_template_tail() {
-                        self.template += 1;
+                        self.curly_stack.push(OpenCurlyKind::Template);
                     }
                     let full_len = self.stream.len();
                     let span_end = full_len - pair.1.len();
@@ -216,6 +224,14 @@ impl RefScanner {
                 "Failed to parse token last successful parse ended {}\nError: {}",
                 self.cursor, e,
             ),
+        }
+    }
+
+    fn looking_for_template_end(&self) -> bool {
+        if let Some(last) = self.curly_stack.last() {
+            last == &OpenCurlyKind::Template
+        } else {
+            false
         }
     }
 
