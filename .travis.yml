@@ -12,7 +12,7 @@ matrix:
       before_cache:
         - rm -rf /home/travis/.cargo/registry
       script:
-        - cargo test
+        - cargo test --features moz_central
         - cargo run --example major_libs --release
       after_script:
         - git add proptest-regressions
