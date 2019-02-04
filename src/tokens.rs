@@ -1,11 +1,11 @@
 use std::ops::Deref;
 
 use combine::{
-    choice, eof,
+    attempt, choice, eof,
     error::ParseError,
     many, not_followed_by,
     parser::char::{char as c_char, string},
-    attempt, Parser, Stream,
+    Parser, Stream,
 };
 
 use comments;
@@ -34,12 +34,12 @@ impl Item {
 
 impl Deref for Item {
     type Target = Token;
-    fn deref<'a>(&'a self) -> &'a Self::Target {
+    fn deref(&self) -> &Self::Target {
         &self.token
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 /// A location in the original source text
 pub struct Span {
     pub start: usize,
@@ -119,7 +119,7 @@ pub enum BooleanLiteral {
 }
 impl BooleanLiteral {
     /// Test if this instance represents `true`
-    pub fn is_true(&self) -> bool {
+    pub fn is_true(self) -> bool {
         match self {
             BooleanLiteral::True => true,
             _ => false,
@@ -475,7 +475,7 @@ impl Token {
     pub fn is_template_no_sub(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_no_sub(),
-            _ => false
+            _ => false,
         }
     }
     pub fn is_template_head(&self) -> bool {
@@ -623,7 +623,7 @@ impl ToString for Token {
         }
     }
 }
-parser!{
+parser! {
     pub fn token[I]()(I) -> Token
         where [I: Stream<Item = char>]
     {
@@ -646,10 +646,10 @@ where
         attempt(strings::literal()),
         attempt(punct::punctuation()),
         attempt(strings::template_start()),
-    )).map(|t| t)
+    ))
 }
 
-pub(crate) fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn boolean_literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -700,7 +700,7 @@ where
     eof().map(|_| Token::EoF)
 }
 
-pub(crate) fn ident<I>() -> impl Parser<Input = I, Output = Token>
+pub fn ident<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -709,7 +709,7 @@ where
         .map(|(start, body): (String, String)| Token::Ident(Ident(start + &body)))
 }
 
-pub(crate) fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
+pub fn null_literal<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -729,7 +729,8 @@ where
         attempt(c_char('$').map(|c: char| c.to_string())),
         attempt(c_char('_').map(|c: char| c.to_string())),
         attempt(unicode::char_literal()),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 
 pub(crate) fn ident_part<I>() -> impl Parser<Input = I, Output = String>

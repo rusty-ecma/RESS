@@ -24,7 +24,7 @@ where
         c_char('{'),
         many(hex_digit()).then_partial(|s: &mut String| {
             if let Ok(num) = u32::from_str_radix(&s, 16) {
-                if num <= 1114111 {
+                if num <= 1_114_111 {
                     value(s.to_owned()).left()
                 } else {
                     unexpected_any("unicode code point must be <= 1114111").right()

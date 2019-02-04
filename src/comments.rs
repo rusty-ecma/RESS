@@ -73,7 +73,7 @@ impl ToString for Comment {
     }
 }
 
-pub(crate) fn comment<I>() -> impl Parser<Input = I, Output = Token>
+pub fn comment<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -187,8 +187,8 @@ mod test {
         s.lines()
             .map(|l| {
                 l.trim()
-                    .trim_left_matches(left_matches)
-                    .trim_right_matches(right_matches)
+                    .trim_start_matches(left_matches)
+                    .trim_end_matches(right_matches)
             })
             .collect::<Vec<&str>>()
             .join("\n")

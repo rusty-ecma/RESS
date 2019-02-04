@@ -7,3 +7,4 @@ Cargo.lock
 *.log
 *.js
 package-lock.json
+moz-central

@@ -1,7 +1,7 @@
 use super::{is_line_term, is_source_char};
 use combine::{
-    between, choice, error::ParseError, many, parser::char::char as c_char, satisfy, attempt, Parser,
-    Stream,
+    attempt, between, choice, error::ParseError, many, parser::char::char as c_char, satisfy,
+    Parser, Stream,
 };
 use tokens::{ident_part, Token};
 
@@ -40,7 +40,7 @@ impl ToString for RegEx {
     }
 }
 /// Parse a regex literal starting after the first /
-pub(crate) fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
+pub fn regex_tail<I>() -> impl Parser<Input = I, Output = Token>
 where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -70,7 +70,8 @@ where
         attempt(regex_body_first_source_char()),
         attempt(regular_expression_backslash_sequence()),
         attempt(regular_expression_class()),
-    )).map(|c: String| c)
+    ))
+    .map(|c: String| c)
 }
 
 fn regex_body_first_source_char<I>() -> impl Parser<Input = I, Output = String>
@@ -80,7 +81,8 @@ where
 {
     satisfy(|c: char| {
         is_source_char(c) && !is_line_term(c) && c != '*' && c != '\\' && c != '/' && c != '['
-    }).map(|c: char| c.to_string())
+    })
+    .map(|c: char| c.to_string())
 }
 
 fn regex_body_source_char<I>() -> impl Parser<Input = I, Output = String>
@@ -101,7 +103,8 @@ where
         attempt(regex_body_source_char()),
         attempt(regular_expression_backslash_sequence()),
         attempt(regular_expression_class()),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 
 fn regular_expression_class<I>() -> impl Parser<Input = I, Output = String>
@@ -113,7 +116,8 @@ where
         c_char('['),
         c_char(']'),
         many(regular_expression_class_char()),
-    ).map(|s: String| format!("[{}]", s))
+    )
+    .map(|s: String| format!("[{}]", s))
 }
 
 fn regular_expression_class_char<I>() -> impl Parser<Input = I, Output = String>
@@ -122,11 +126,15 @@ where
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     choice((
-        attempt(satisfy(|c: char| {
-            is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}'
-        }).map(|c: char| c.to_string())),
+        attempt(
+            satisfy(|c: char| {
+                is_source_char(c) && !is_line_term(c) && c != '\u{005C}' && c != '\u{005D}'
+            })
+            .map(|c: char| c.to_string()),
+        ),
         attempt(regular_expression_backslash_sequence()),
-    )).map(|s: String| s)
+    ))
+    .map(|s: String| s)
 }
 pub(crate) fn source_char_not_line_term<I>() -> impl Parser<Input = I, Output = char>
 where

@@ -27,15 +27,17 @@ extern crate combine;
 extern crate log;
 extern crate unic_ucd_ident;
 
+pub mod refs;
+
 use combine::Parser;
-mod comments;
-mod keywords;
-mod numeric;
-mod punct;
-mod regex;
-mod strings;
-mod tokens;
-mod unicode;
+pub mod comments;
+pub mod keywords;
+pub mod numeric;
+pub mod punct;
+pub mod regex;
+pub mod strings;
+pub mod tokens;
+pub mod unicode;
 pub use comments::{Comment, Kind as CommentKind};
 pub use keywords::Keyword;
 pub use numeric::Number;
@@ -191,7 +193,7 @@ impl Scanner {
                             if advance_cursor {
                                 self.spans.push(span.clone());
                                 self.cursor = self.stream.len()
-                                    - pair.1.trim_left_matches(whitespace_or_line_term).len();
+                                    - pair.1.trim_start_matches(whitespace_or_line_term).len();
                                 let whitespace = &self.stream[prev_cursor..self.cursor];
                                 self.pending_new_line = whitespace.chars().any(is_line_term);
                             }
@@ -225,7 +227,7 @@ impl Scanner {
                     if advance_cursor {
                         self.spans.push(span.clone());
                         self.cursor = self.stream.len()
-                            - pair.1.trim_left_matches(whitespace_or_line_term).len();
+                            - pair.1.trim_start_matches(whitespace_or_line_term).len();
                         let whitespace = &self.stream[prev_cursor..self.cursor];
                         self.pending_new_line = whitespace.chars().any(|c| is_line_term(c));
                     }
@@ -618,7 +620,7 @@ this.y = 0;
 
         // explicit reference to token
         assert!(i.token.is_keyword());
-        // implitic deref to token
+        // implicit deref to token
         assert!(i.is_keyword());
     }
 

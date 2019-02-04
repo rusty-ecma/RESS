@@ -82,5 +82,6 @@ fn check_js(js: &str) -> Vec<usize> {
             } else {
                 None
             }
-        }).collect()
+        })
+        .collect()
 }
