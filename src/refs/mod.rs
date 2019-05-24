@@ -38,8 +38,8 @@ impl RefItem {
 }
 
 #[allow(unused)]
-pub struct RefScanner {
-    pub stream: String,
+pub struct RefScanner<'a> {
+    pub stream: &'a str,
     pub eof: bool,
     pub cursor: usize,
     pub spans: Vec<Span>,
@@ -49,9 +49,8 @@ pub struct RefScanner {
     curly_stack: Vec<OpenCurlyKind>,
 }
 
-impl RefScanner {
-    pub fn new(text: impl Into<String>) -> Self {
-        let text = text.into();
+impl<'a> RefScanner<'a> {
+    pub fn new(text: &'a str) -> Self {
         let cursor = text.len() - text.trim_start_matches(super::whitespace).len();
         Self {
             stream: text,
@@ -66,14 +65,14 @@ impl RefScanner {
     }
 }
 
-impl Iterator for RefScanner {
+impl<'a> Iterator for RefScanner<'a> {
     type Item = RefItem;
     fn next(&mut self) -> Option<RefItem> {
         self.get_next_token(true)
     }
 }
 
-impl RefScanner {
+impl<'b> RefScanner<'b> {
     /// Attempts to look ahead 1 token
     ///
     /// Similar to how `Peekable::peek` works however the
@@ -372,10 +371,14 @@ impl RefScanner {
     }
 
     pub fn string_for(&self, span: &Span) -> Option<String> {
+        Some(self.str_for(span)?.to_string())
+    }
+
+    pub fn str_for(&self, span: &Span) -> Option<&'b str> {
         if self.stream.len() < span.start || self.stream.len() < span.end {
             None
         } else {
-            Some(self.stream[span.start..span.end].to_string())
+            Some(&self.stream[span.start..span.end])
         }
     }
 }
