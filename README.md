@@ -18,7 +18,7 @@ extern crate ress;
 
 use ress::tokenize;
 
-static &str JS = include_str!("index.js");
+static JS: &str = include_str!("index.js");
 
 fn main() {
     let tokens = tokenize(JS);
@@ -37,7 +37,7 @@ extern crate ress;
 
 use ress::{Scanner};
 
-const &str JS = include_str!("index.js");
+static JS: &str = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
