@@ -8,6 +8,8 @@ use std::path::{Path, PathBuf};
 use std::fs::read_to_string;
 use ress::*;
 
+
+
 #[test]
 fn moz_central() {
     let moz_central_path = Path::new("./moz-central");
@@ -35,31 +37,15 @@ fn walk(path: &Path) {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     if ext == "js" {
-                        if path.ends_with("gc/bug-1459860.js")
-                        || path.ends_with("basic/testBug756918.js")
-                        || path.ends_with("basic/bug738841.js")
-                        || path.ends_with("ion/bug1331405.js")
-                        || path.ends_with("basic/testThatGenExpsActuallyDecompile.js")
-                        || path.ends_with("jaeger/bug672122.js")
-                        || path.ends_with("gc/bug-924690.js")
-                        || path.ends_with("auto-regress/bug732719.js")
-                        || path.ends_with("auto-regress/bug740509.js")
-                        || path.ends_with("auto-regress/bug521279.js")
-                        || path.ends_with("auto-regress/bug701248.js")
-                        || path.ends_with("auto-regress/bug1390082-1.js")
-                        || path.ends_with("auto-regress/bug680797.js")
-                        || path.ends_with("auto-regress/bug521163.js")
-                        || path.ends_with("auto-regress/bug1448582-5.js")
-                        || path.ends_with("tests/backup-point-bug1315634.js")
-                        || path.ends_with("auto-regress/bug650574.js")
-                        || path.ends_with("baseline/setcall.js") {
-                            return;
+                        let result = ::std::panic::catch_unwind(|| {
+                            let js = read_to_string(&path).unwrap();
+                            for _ in refs::RefScanner::new(js.as_str()) {
+                                
+                            }
+                        });
+                        if let Err(e) = result {
+                            panic!("path: {:?}\n{:?}", path, e);
                         }
-                        let js = read_to_string(&path).unwrap();
-                        for _ in refs::RefScanner::new(js.as_str()) {
-                            
-                        }
-
                     }
                 }
             } else {

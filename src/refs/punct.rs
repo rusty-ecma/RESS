@@ -39,6 +39,7 @@ where
     choice((
         attempt(recognize(c_char('}'))).map(|_| Punct::CloseBrace),
         attempt(normal_punct_not_close_brace()),
+        attempt(recognize(c_char('#')).map(|_| Punct::Private)),
     ))
 }
 

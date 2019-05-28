@@ -61,6 +61,7 @@ pub enum Punct {
     GreaterThanEqual,
     LessThanEqual,
     Exponent,
+    Private,
 }
 
 impl<'a> From<&'a str> for Punct {
@@ -118,6 +119,7 @@ impl<'a> From<&'a str> for Punct {
             ">=" => Punct::GreaterThanEqual,
             "<=" => Punct::LessThanEqual,
             "**" => Punct::Exponent,
+            "#" => Punct::Private,
             _ => panic!("Unknown punctuation: {}", s),
         }
     }
@@ -184,6 +186,7 @@ impl ::std::string::ToString for Punct {
             Punct::GreaterThanEqual => ">=".into(),
             Punct::LessThanEqual => "<=".into(),
             Punct::Exponent => "**".into(),
+            Punct::Private => "#".into(),
         }
     }
 }
@@ -244,6 +247,7 @@ where
         attempt(c_char('&')),
         attempt(c_char('|')),
         attempt(c_char('^')),
+        attempt(c_char('#')),
     ])
     .map(|c: char| c)
 }
