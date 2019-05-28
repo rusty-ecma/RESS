@@ -2,6 +2,8 @@
 extern crate flate2;
 extern crate ress;
 extern crate tar;
+#[macro_use]
+extern crate log;
 
 use flate2::read::GzDecoder;
 use std::path::{Path, PathBuf};
@@ -10,6 +12,7 @@ use ress::*;
 
 #[test]
 fn moz_central() {
+    let _ = pretty_env_logger::try_init();
     let moz_central_path = Path::new("./moz-central");
     if !moz_central_path.exists() {
         get_moz_central_test_files(&moz_central_path);
@@ -55,7 +58,11 @@ fn walk(path: &Path) {
                         || path.ends_with("baseline/setcall.js") {
                             return;
                         }
+                        debug!(target: "moz_central", "testing {:?}", path);
                         let js = read_to_string(&path).unwrap();
+                        if js.starts_with("// |jit-test| --enable-experimental-fields") {
+                            return;
+                        }
                         for _ in refs::RefScanner::new(js.as_str()) {
                             
                         }
