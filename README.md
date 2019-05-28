@@ -18,11 +18,11 @@ extern crate ress;
 
 use ress::tokenize;
 
-static &str JS = include_str!("index.js");
+static JS: &str = include_str!("index.js");
 
 fn main() {
     let tokens = tokenize(JS);
-    it !tokens.iter().any(|t| t.is_punct_with(";")) {
+    it !tokens.iter().any(|t| t.matches_punct_str(";")) {
         panic!("No semi-colon!? You nave!");
     } else {
         println!("At least you are sane at one point");
@@ -37,12 +37,12 @@ extern crate ress;
 
 use ress::{Scanner};
 
-const &str JS = include_str!("index.js");
+static JS: &str = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
     for token in s {
-        if token.is_punct_with(";") {
+        if token.matches_punct_str(";") {
             panic!("A semi-colon!? Heathen!");
         }
     }
@@ -64,7 +64,7 @@ In either method the major construct that you would be dealing with is a `Token`
 - Regular Expression Literal
 - Comment
 
-In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword.
+In its current state it should be able to tokenize any valid JavaScript (any pending specifications at [tc39](https://github.com/tc39/proposals) may not be included). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword.
 
 For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this
 ```rust
@@ -113,25 +113,46 @@ s.set_state(start);
 assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
 ```
 
+In addition to the standard `Scanner` api, there is also a `RefScanner`, `RefToken` and `RefItem` defined in the `refs` module which will provide better performance by removing the Strings from the enum variants. When using this api, to get the original text you would need to request that from the `RefScanner` via the `string_for` or `str_for` methods.
+
+
+```rust
+let js = "function thing() {
+    return 0;
+}";
+let scanner = RefScanner::new(js);
+let ident_spans = scanner
+    .filter_map(|item| {
+        match item.token {
+            RefToken::Ident => Some(item.span),
+            _ => None,
+        }
+    })
+    .collect();
+for span in ident_spans {
+    // Should print thing
+    println!("{}", scanner.string_for(span));
+}
+```
+
 ## Why?
 Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
+
 ```sh
 $ cargo run --example clear-comments -- ./in.js ./out.js
 ```
 
-Ideally this project will be the starting point for building a full JS Abstract Syntax Tree (AST) in Rust. The next step would be to build a companion crate that will raise the tokens into a full (AST) ([work in progress](https://github.com/freemasen/resp)). And once we have an AST building JS dev tools in rust would be significantly easier.
-
 # Performance
 I am sure there are a lot of low hanging fruit in this area.
-The below stats are from running `cargo +nightly bench` on a Dell XPS 13 9350 (2.3ghz i5-6200U & 8bg RAM).
+The below stats are from running `cargo +nightly bench` on a Dell Precision 5530 (2.6ghz i7-8850H & 16bg RAM).
 
-|Lib           |Size     |Time     |+/-     |
-|---           |---      |---      |---     |
-|Angular 1.5.6 |1.16mb   |333.33ms |17.29ms |
-|jquery        |271.75kb |171.48ms |73.16ms |
-|React         |59.09kb  | 24.60ms | 4,83ms |
-|React-dom     |641.51kb |288.60ms |25.61ms |
-|Vue           |289.30kb |187.04ms |60.05ms |
+|Lib         |Size     |Time     |+/-      |
+|---         |---      |---      |---      |
+|Angular 1.5 |1.16mb   |184.02ms | 9.970ms |
+|jquery      |271.75kb | 86.07ms | 7.788ms |
+|React       |59.09kb  | 23.69ms | 0.265ms |
+|React-dom   |641.51kb |188.65ms |15.796ms |
+|Vue         |289.30kb |106.69ms |21.595ms |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 
