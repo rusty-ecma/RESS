@@ -74,7 +74,7 @@ fn check_js(js: &str) -> Vec<usize> {
     RefScanner::new(js)
         .filter_map(|item| {
             // If this token matches the `Punct::SemiColon`
-            if let RefToken::Punct(ref inner) = item.token() {
+            if let RefToken::Punct(ref inner) = item.token {
                 match inner {
                     // we want to return the first position of this token
                     // since semi-colons are only 1 character wide we would
