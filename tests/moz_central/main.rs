@@ -2,8 +2,6 @@
 extern crate flate2;
 extern crate ress;
 extern crate tar;
-#[macro_use]
-extern crate log;
 
 use flate2::read::GzDecoder;
 use std::path::{Path, PathBuf};
