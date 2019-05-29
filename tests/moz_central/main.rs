@@ -38,26 +38,6 @@ fn walk(path: &Path) {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     if ext == "js" {
-                        if path.ends_with("gc/bug-1459860.js")
-                        || path.ends_with("basic/testBug756918.js")
-                        || path.ends_with("basic/bug738841.js")
-                        || path.ends_with("ion/bug1331405.js")
-                        || path.ends_with("basic/testThatGenExpsActuallyDecompile.js")
-                        || path.ends_with("jaeger/bug672122.js")
-                        || path.ends_with("gc/bug-924690.js")
-                        || path.ends_with("auto-regress/bug732719.js")
-                        || path.ends_with("auto-regress/bug740509.js")
-                        || path.ends_with("auto-regress/bug521279.js")
-                        || path.ends_with("auto-regress/bug701248.js")
-                        || path.ends_with("auto-regress/bug1390082-1.js")
-                        || path.ends_with("auto-regress/bug680797.js")
-                        || path.ends_with("auto-regress/bug521163.js")
-                        || path.ends_with("auto-regress/bug1448582-5.js")
-                        || path.ends_with("tests/backup-point-bug1315634.js")
-                        || path.ends_with("auto-regress/bug650574.js")
-                        || path.ends_with("baseline/setcall.js") {
-                            return;
-                        }
                         debug!(target: "moz_central", "testing {:?}", path);
                         let js = read_to_string(&path).unwrap();
                         if js.starts_with("// |jit-test| --enable-experimental-fields") {
