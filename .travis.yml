@@ -14,10 +14,6 @@ matrix:
       script:
         - cargo test --features moz_central
         - cargo run --example major_libs --release
-      after_script:
-        - git add proptest-regressions
-        - git commit -m "proptest-regressions update [ci skip]"
-        - git push
       stages:
         after_script:
           - if branch in (master, next)
