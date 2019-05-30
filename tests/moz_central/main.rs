@@ -2,13 +2,13 @@
 extern crate flate2;
 extern crate ress;
 extern crate tar;
-#[macro_use]
-extern crate log;
 
 use flate2::read::GzDecoder;
 use std::path::{Path, PathBuf};
 use std::fs::read_to_string;
 use ress::*;
+
+
 
 #[test]
 fn moz_central() {
@@ -38,15 +38,15 @@ fn walk(path: &Path) {
             if path.is_file() {
                 if let Some(ext) = path.extension() {
                     if ext == "js" {
-                        debug!(target: "moz_central", "testing {:?}", path);
-                        let js = read_to_string(&path).unwrap();
-                        if js.starts_with("// |jit-test| --enable-experimental-fields") {
-                            return;
+                        let result = ::std::panic::catch_unwind(|| {
+                            let js = read_to_string(&path).unwrap();
+                            for _ in refs::RefScanner::new(js.as_str()) {
+                                
+                            }
+                        });
+                        if let Err(e) = result {
+                            panic!("path: {:?}\n{:?}", path, e);
                         }
-                        for _ in refs::RefScanner::new(js.as_str()) {
-                            
-                        }
-
                     }
                 }
             } else {
