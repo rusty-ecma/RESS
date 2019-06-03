@@ -1,5 +1,7 @@
 use unic_ucd_ident::{is_id_continue, is_id_start};
-use resbuf::JSBuffer;
+
+mod buffer;
+
 use crate::{
     refs::{
         RefToken as Token,
@@ -14,7 +16,7 @@ pub struct RawToken {
 }
 
 pub struct Tokenizer<'a> {
-    stream: JSBuffer<'a>,
+    stream: buffer::JSBuffer<'a>,
     current_start: usize,
 }
 
@@ -40,46 +42,48 @@ impl<'a> Tokenizer<'a> {
             return self.ident();
         }
         if next_char == '"' || next_char == '\'' {
-            return self.string(next_char == '"');
+            return self.string(next_char);
         }
         if next_char == '(' || next_char == ')' || next_char == ';' {
-            return self.punct(&next_char);
+            return self.punct(next_char);
         }
-        self.punct(&next_char)
+        self.punct(next_char)
     }
 
     fn ident(&mut self) -> RawToken {
         unimplemented!()
     }
 
-    fn string(&mut self, double: bool) -> RawToken {
-        let quote_str = if double {
-            "\""
-        } else {
-            "'"
-        };
-        let mut found_match = false;
+    fn string(&mut self, quote: char) -> RawToken {
+        let mut escaped = false;
         loop {
-            if self.look_ahead_matches(&format!(r#"\{}"#, quote_str)) {
-                self.stream.skip(2)
-            } else if self.look_ahead_matches(quote_str) {
+            // TODO: add new line validation (escaped only)
+            if self.look_ahead_matches(r#"\"#) {
+                if escaped {
+                    escaped = false;
+                } else {
+                    escaped = true;
+                }
+                self.stream.skip(1)
+            } else if self.stream.look_ahead_matches(&[quote as u8]) {
                 self.stream.skip(1);
-                break;
+                if !escaped {
+                    break;
+                }
+                escaped = false;
             } else {
                 self.stream.skip(1);
-            }
-            if self.stream.at_end() {
-                panic!("unclosed string literal starting at {}", self.current_start);
+                escaped = false;
             }
         }
-        let inner = if double {
+        let inner = if quote == '"' {
             StringLit::Double
         } else {
             StringLit::Single
         };
         self.gen_token(Token::String(inner))
     }
-    fn punct(&mut self, c: &char) -> RawToken {
+    fn punct(&mut self, c: char) -> RawToken {
         match c {
             '(' => self.gen_punct(Punct::OpenParen),
             '{' => self.gen_punct(Punct::OpenBrace),
@@ -257,6 +261,47 @@ impl<'a> Tokenizer<'a> {
             start: self.current_start,
             end: self.stream.idx,
             ty,
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    static STRINGS: &[&str] = &[
+    r#""things and stuff""#,
+    r#"'people and places'"#,
+    r#""with and escaped \"""#,
+    r#"'another escaped \''"#,
+    r#""with a new \
+line""#,
+    r#"'another new line \
+hahaha'"#,
+    "\"sequence double quoted\\\r\nis hard\"",
+    "'new line sequence\\\r\nmight be harder'",
+    ];
+    #[test]
+    fn tokenizer_strings() {
+        for s in STRINGS {
+            let item = Tokenizer::new(s).next_();
+            match &item.ty {
+                Token::String(ref lit) => {
+                    if &s[0..1] == "'" {
+                        match lit {
+                            StringLit::Single => (),
+                            StringLit::Double => panic!("Expected single quote string, found double"),
+                        }
+                    } else {
+                        match lit {
+                            StringLit::Single => panic!("expected double quote string, found single"),
+                            StringLit::Double => (),
+                        }
+                    }
+                },
+                _ => panic!("Expected string, found {:?}", item.ty),
+            }
+            assert_eq!(s.len(), item.end - item.start);
+            
         }
     }
 }
