@@ -64,72 +64,134 @@ pub enum Punct {
     Private,
 }
 
-impl<'a> From<&'a str> for Punct {
-    fn from(s: &'a str) -> Self {
+impl<'a> ::std::convert::TryFrom<&'a str> for Punct {
+    type Error = String;
+    fn try_from(s: &'a str) -> Result<Punct, Self::Error> {
         match s {
-            "{" => Punct::OpenBrace,
-            "}" => Punct::CloseBrace,
-            "(" => Punct::OpenParen,
-            ")" => Punct::CloseParen,
-            "." => Punct::Period,
-            ";" => Punct::SemiColon,
-            "," => Punct::Comma,
-            "[" => Punct::OpenBracket,
-            "]" => Punct::CloseBracket,
-            ":" => Punct::Colon,
-            "?" => Punct::QuestionMark,
-            "~" => Punct::BitwiseNot,
-            ">" => Punct::GreaterThan,
-            "<" => Punct::LessThan,
-            "=" => Punct::Assign,
-            "!" => Punct::Not,
-            "+" => Punct::Plus,
-            "-" => Punct::Minus,
-            "*" => Punct::Asterisk,
-            "%" => Punct::Modulo,
-            "|" => Punct::Pipe,
-            "&" => Punct::And,
-            "^" => Punct::Caret,
-            "/" => Punct::ForwardSlash,
-            ">>>=" => Punct::UnsignedRightShiftAssign,
-            "..." => Punct::Spread,
-            "===" => Punct::StrictEquals,
-            "!==" => Punct::StrictNotEquals,
-            ">>>" => Punct::UnsignedRightShift,
-            "<<=" => Punct::LeftShiftAssign,
-            ">>=" => Punct::RightShiftAssign,
-            "**=" => Punct::ExponentAssign,
-            "&&" => Punct::LogicalAnd,
-            "||" => Punct::LogicalOr,
-            "==" => Punct::Equal,
-            "!=" => Punct::NotEqual,
-            "+=" => Punct::AddAssign,
-            "-=" => Punct::SubtractAssign,
-            "*=" => Punct::MultiplyAssign,
-            "/=" => Punct::DivideAssign,
-            "++" => Punct::Increment,
-            "--" => Punct::Decrement,
-            "<<" => Punct::LeftShift,
-            ">>" => Punct::RightShift,
-            "&=" => Punct::BitwiseAndAssign,
-            "|=" => Punct::BitwiseOrAssign,
-            "^=" => Punct::BitwiseXOrAssign,
-            "%=" => Punct::ModuloAssign,
-            "=>" => Punct::FatArrow,
-            ">=" => Punct::GreaterThanEqual,
-            "<=" => Punct::LessThanEqual,
-            "**" => Punct::Exponent,
-            "#" => Punct::Private,
-            _ => panic!("Unknown punctuation: {}", s),
+            "{" => Ok(Punct::OpenBrace),
+            "}" => Ok(Punct::CloseBrace),
+            "(" => Ok(Punct::OpenParen),
+            ")" => Ok(Punct::CloseParen),
+            "." => Ok(Punct::Period),
+            ";" => Ok(Punct::SemiColon),
+            "," => Ok(Punct::Comma),
+            "[" => Ok(Punct::OpenBracket),
+            "]" => Ok(Punct::CloseBracket),
+            ":" => Ok(Punct::Colon),
+            "?" => Ok(Punct::QuestionMark),
+            "~" => Ok(Punct::BitwiseNot),
+            ">" => Ok(Punct::GreaterThan),
+            "<" => Ok(Punct::LessThan),
+            "=" => Ok(Punct::Assign),
+            "!" => Ok(Punct::Not),
+            "+" => Ok(Punct::Plus),
+            "-" => Ok(Punct::Minus),
+            "*" => Ok(Punct::Asterisk),
+            "%" => Ok(Punct::Modulo),
+            "|" => Ok(Punct::Pipe),
+            "&" => Ok(Punct::And),
+            "^" => Ok(Punct::Caret),
+            "/" => Ok(Punct::ForwardSlash),
+            ">>>=" => Ok(Punct::UnsignedRightShiftAssign),
+            "..." => Ok(Punct::Spread),
+            "===" => Ok(Punct::StrictEquals),
+            "!==" => Ok(Punct::StrictNotEquals),
+            ">>>" => Ok(Punct::UnsignedRightShift),
+            "<<=" => Ok(Punct::LeftShiftAssign),
+            ">>=" => Ok(Punct::RightShiftAssign),
+            "**=" => Ok(Punct::ExponentAssign),
+            "&&" => Ok(Punct::LogicalAnd),
+            "||" => Ok(Punct::LogicalOr),
+            "==" => Ok(Punct::Equal),
+            "!=" => Ok(Punct::NotEqual),
+            "+=" => Ok(Punct::AddAssign),
+            "-=" => Ok(Punct::SubtractAssign),
+            "*=" => Ok(Punct::MultiplyAssign),
+            "/=" => Ok(Punct::DivideAssign),
+            "++" => Ok(Punct::Increment),
+            "--" => Ok(Punct::Decrement),
+            "<<" => Ok(Punct::LeftShift),
+            ">>" => Ok(Punct::RightShift),
+            "&=" => Ok(Punct::BitwiseAndAssign),
+            "|=" => Ok(Punct::BitwiseOrAssign),
+            "^=" => Ok(Punct::BitwiseXOrAssign),
+            "%=" => Ok(Punct::ModuloAssign),
+            "=>" => Ok(Punct::FatArrow),
+            ">=" => Ok(Punct::GreaterThanEqual),
+            "<=" => Ok(Punct::LessThanEqual),
+            "**" => Ok(Punct::Exponent),
+            "#" => Ok(Punct::Private),
+            _ => Err(format!("{} is not a known punct", s))
         }
     }
 }
 
-impl From<String> for Punct {
-    fn from(s: String) -> Punct {
-        Self::from(s.as_str())
-    }
-}
+// impl<'a> From<&'a str> for Punct {
+//     fn from(s: &'a str) -> Self {
+//         match s {
+//             "{" => Punct::OpenBrace,
+//             "}" => Punct::CloseBrace,
+//             "(" => Punct::OpenParen,
+//             ")" => Punct::CloseParen,
+//             "." => Punct::Period,
+//             ";" => Punct::SemiColon,
+//             "," => Punct::Comma,
+//             "[" => Punct::OpenBracket,
+//             "]" => Punct::CloseBracket,
+//             ":" => Punct::Colon,
+//             "?" => Punct::QuestionMark,
+//             "~" => Punct::BitwiseNot,
+//             ">" => Punct::GreaterThan,
+//             "<" => Punct::LessThan,
+//             "=" => Punct::Assign,
+//             "!" => Punct::Not,
+//             "+" => Punct::Plus,
+//             "-" => Punct::Minus,
+//             "*" => Punct::Asterisk,
+//             "%" => Punct::Modulo,
+//             "|" => Punct::Pipe,
+//             "&" => Punct::And,
+//             "^" => Punct::Caret,
+//             "/" => Punct::ForwardSlash,
+//             ">>>=" => Punct::UnsignedRightShiftAssign,
+//             "..." => Punct::Spread,
+//             "===" => Punct::StrictEquals,
+//             "!==" => Punct::StrictNotEquals,
+//             ">>>" => Punct::UnsignedRightShift,
+//             "<<=" => Punct::LeftShiftAssign,
+//             ">>=" => Punct::RightShiftAssign,
+//             "**=" => Punct::ExponentAssign,
+//             "&&" => Punct::LogicalAnd,
+//             "||" => Punct::LogicalOr,
+//             "==" => Punct::Equal,
+//             "!=" => Punct::NotEqual,
+//             "+=" => Punct::AddAssign,
+//             "-=" => Punct::SubtractAssign,
+//             "*=" => Punct::MultiplyAssign,
+//             "/=" => Punct::DivideAssign,
+//             "++" => Punct::Increment,
+//             "--" => Punct::Decrement,
+//             "<<" => Punct::LeftShift,
+//             ">>" => Punct::RightShift,
+//             "&=" => Punct::BitwiseAndAssign,
+//             "|=" => Punct::BitwiseOrAssign,
+//             "^=" => Punct::BitwiseXOrAssign,
+//             "%=" => Punct::ModuloAssign,
+//             "=>" => Punct::FatArrow,
+//             ">=" => Punct::GreaterThanEqual,
+//             "<=" => Punct::LessThanEqual,
+//             "**" => Punct::Exponent,
+//             "#" => Punct::Private,
+//             _ => panic!("Unknown punctuation: {}", s),
+//         }
+//     }
+// }
+
+// impl From<String> for Punct {
+//     fn from(s: String) -> Punct {
+//         Self::try_from(s.as_str()).unwrap()
+//     }
+// }
 
 impl ::std::string::ToString for Punct {
     fn to_string(&self) -> String {
@@ -195,8 +257,9 @@ where
     I: Stream<Item = char>,
     I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
+    use std::convert::TryFrom;
     choice((attempt(multi_punct()), attempt(single_punct())))
-        .map(|t: String| Token::Punct(Punct::from(t)))
+        .map(|t: String| Token::Punct(Punct::try_from(t.as_str()).unwrap()))
 }
 
 fn single_punct<I>() -> impl Parser<Input = I, Output = String>

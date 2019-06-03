@@ -26,6 +26,7 @@ extern crate combine;
 #[macro_use]
 extern crate log;
 extern crate unic_ucd_ident;
+extern crate resbuf;
 
 pub mod refs;
 
@@ -38,6 +39,7 @@ pub mod regex;
 pub mod strings;
 pub mod tokens;
 pub mod unicode;
+mod tokenizer;
 pub use comments::{Comment, Kind as CommentKind};
 pub use keywords::Keyword;
 pub use numeric::Number;
@@ -45,6 +47,7 @@ pub use punct::Punct;
 pub use regex::RegEx;
 pub use strings::{StringLit, Template};
 pub use tokens::{BooleanLiteral as Boolean, Ident, Item, Span, Token};
+
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`

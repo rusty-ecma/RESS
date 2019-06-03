@@ -275,7 +275,8 @@ impl Token {
     ///
     /// panics if the augment isn't valid js punctuation
     pub fn punct(s: &str) -> Token {
-        Token::Punct(s.into())
+        use std::convert::TryFrom;
+        Token::Punct(crate::Punct::try_from(s).unwrap())
     }
     ///Create and instance of Token::String from a &str wrapped in double quotes
     pub fn double_quoted_string(s: &str) -> Token {
@@ -563,8 +564,9 @@ impl Token {
         self == &Token::Punct(p)
     }
     pub fn matches_punct_str(&self, s: &str) -> bool {
+        use std::convert::TryFrom;
         match self {
-            Token::Punct(ref p) => p == &s.into(),
+            Token::Punct(ref p) => p == &crate::Punct::try_from(s).unwrap(),
             _ => false,
         }
     }
