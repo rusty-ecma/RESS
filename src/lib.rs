@@ -39,7 +39,7 @@ pub mod regex;
 pub mod strings;
 pub mod tokens;
 pub mod unicode;
-mod tokenizer;
+pub mod tokenizer;
 pub use comments::{Comment, Kind as CommentKind};
 pub use keywords::Keyword;
 pub use numeric::Number;

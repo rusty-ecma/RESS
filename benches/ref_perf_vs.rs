@@ -221,6 +221,15 @@ fn punct_ref(b: &mut Bencher) {
 }
 
 #[bench]
+fn punct_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for punct in PUNCTS {
+            black_box(ress::tokenizer::Tokenizer::new(punct).next_());
+        }
+    })
+}
+
+#[bench]
 fn strings(b: &mut Bencher) {
     b.iter(|| {
         for s in STRINGS {

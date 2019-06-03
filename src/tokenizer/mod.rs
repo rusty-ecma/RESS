@@ -23,7 +23,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn next_(&mut self) -> RawToken {
+    pub fn next_(&mut self) -> RawToken {
         self.current_start = self.stream.idx;
         let next_char = match self.stream.next_char() {
             Some(ch) => ch,
@@ -42,7 +42,7 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(&next_char);
         }
-        unimplemented!();
+        self.punct(&next_char)
     }
 
     fn ident(&mut self) -> RawToken {
@@ -52,7 +52,7 @@ impl<'a> Tokenizer<'a> {
     fn string(&mut self) -> RawToken {
         unimplemented!()
     }
-    fn punct(&mut self, c: &char) -> Token {
+    fn punct(&mut self, c: &char) -> RawToken {
         match c {
             '(' => self.gen_punct(Punct::OpenParen),
             '{' => self.gen_punct(Punct::OpenBrace),
