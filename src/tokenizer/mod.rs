@@ -1,7 +1,10 @@
 use unic_ucd_ident::{is_id_continue, is_id_start};
 use resbuf::JSBuffer;
 use crate::{
-    refs::RefToken as Token,
+    refs::{
+        RefToken as Token,
+        tokens::StringLit,
+    },
     Punct,
 };
 pub struct RawToken {
@@ -37,7 +40,7 @@ impl<'a> Tokenizer<'a> {
             return self.ident();
         }
         if next_char == '"' || next_char == '\'' {
-            return self.string();
+            return self.string(next_char == '"');
         }
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(&next_char);
@@ -49,8 +52,32 @@ impl<'a> Tokenizer<'a> {
         unimplemented!()
     }
 
-    fn string(&mut self) -> RawToken {
-        unimplemented!()
+    fn string(&mut self, double: bool) -> RawToken {
+        let quote_str = if double {
+            "\""
+        } else {
+            "'"
+        };
+        let mut found_match = false;
+        loop {
+            if self.look_ahead_matches(&format!(r#"\{}"#, quote_str)) {
+                self.stream.skip(2)
+            } else if self.look_ahead_matches(quote_str) {
+                self.stream.skip(1);
+                break;
+            } else {
+                self.stream.skip(1);
+            }
+            if self.stream.at_end() {
+                panic!("unclosed string literal starting at {}", self.current_start);
+            }
+        }
+        let inner = if double {
+            StringLit::Double
+        } else {
+            StringLit::Single
+        };
+        self.gen_token(Token::String(inner))
     }
     fn punct(&mut self, c: &char) -> RawToken {
         match c {
@@ -68,7 +95,7 @@ impl<'a> Tokenizer<'a> {
             '~' => self.gen_punct(Punct::BitwiseNot),
             '.' => {
                 // ...
-                if self.stream.look_ahead_matches("..") {
+                if self.look_ahead_matches("..") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::Spread)
                 } else {
@@ -76,19 +103,19 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '>' => {
-                if self.stream.look_ahead_matches(">>=") {
+                if self.look_ahead_matches(">>=") {
                     self.stream.skip(3);
                     self.gen_punct(Punct::UnsignedRightShiftAssign)
-                } else if self.stream.look_ahead_matches(">>")  {
+                } else if self.look_ahead_matches(">>")  {
                     self.stream.skip(2);
                     self.gen_punct(Punct::UnsignedRightShift)
-                } else if self.stream.look_ahead_matches(">=") {
+                } else if self.look_ahead_matches(">=") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::RightShiftAssign)
-                } else if self.stream.look_ahead_matches(">") {
+                } else if self.look_ahead_matches(">") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::RightShift)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::GreaterThanEqual)
                 } else {
@@ -96,13 +123,13 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '<' => {
-                if self.stream.look_ahead_matches("<=") {
+                if self.look_ahead_matches("<=") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::LeftShiftAssign)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LessThanEqual)
-                } else if self.stream.look_ahead_matches("<") {
+                } else if self.look_ahead_matches("<") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LeftShift)
                 } else {
@@ -110,13 +137,13 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '=' => {
-                if self.stream.look_ahead_matches("==") {
+                if self.look_ahead_matches("==") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::StrictEquals)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::Equal)
-                } else if self.stream.look_ahead_matches(">") {
+                } else if self.look_ahead_matches(">") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::FatArrow)
                 } else {
@@ -124,10 +151,10 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '!' => {
-                if self.stream.look_ahead_matches("==") {
+                if self.look_ahead_matches("==") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::StrictNotEquals)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::NotEqual)
                 } else {
@@ -135,13 +162,13 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '*' => {
-                if self.stream.look_ahead_matches("*=") {
+                if self.look_ahead_matches("*=") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::ExponentAssign)
-                } else if self.stream.look_ahead_matches("*") {
+                } else if self.look_ahead_matches("*") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::Exponent)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::MultiplyAssign)
                 } else {
@@ -149,10 +176,10 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '&' => {
-                if self.stream.look_ahead_matches("&") {
+                if self.look_ahead_matches("&") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LogicalAnd)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::BitwiseAndAssign)
                 } else {
@@ -160,10 +187,10 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '|' => {
-                if self.stream.look_ahead_matches("|") {
+                if self.look_ahead_matches("|") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LogicalOr)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::BitwiseOrAssign)
                 } else {
@@ -171,10 +198,10 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '+' => {
-                if self.stream.look_ahead_matches("+") {
+                if self.look_ahead_matches("+") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::Increment)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::AddAssign)
                 } else {
@@ -182,10 +209,10 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '-' => {
-                if self.stream.look_ahead_matches("-") {
+                if self.look_ahead_matches("-") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::Decrement)
-                } else if self.stream.look_ahead_matches("=") {
+                } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::SubtractAssign)
                 } else {
@@ -193,7 +220,7 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '/' => {
-                if self.stream.look_ahead_matches("=") {
+                if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::DivideAssign)
                 } else {
@@ -201,7 +228,7 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '%' => {
-                if self.stream.look_ahead_matches("=") {
+                if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::ModuloAssign)
                 } else {
@@ -209,7 +236,7 @@ impl<'a> Tokenizer<'a> {
                 }
             },
             '^' => {
-                if self.stream.look_ahead_matches("=") {
+                if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::BitwiseXOrAssign)
                 } else {
@@ -218,6 +245,9 @@ impl<'a> Tokenizer<'a> {
             }
             _ => unimplemented!()
         }
+    }
+    fn look_ahead_matches(&self, s: &str) -> bool {
+        self.stream.look_ahead_matches(s.as_bytes())
     }
     fn gen_punct(&self, p: Punct) -> RawToken {
         self.gen_token(Token::Punct(p))

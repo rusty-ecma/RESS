@@ -248,6 +248,16 @@ fn strings_ref(b: &mut Bencher) {
 }
 
 #[bench]
+fn strings_new(b: &mut Bencher) {
+    b.iter(|| {
+        for s in STRINGS {
+            println!("{}", s);
+            black_box(ress::tokenizer::Tokenizer::new(s).next_());
+        }
+    })
+}
+
+#[bench]
 fn comments(b: &mut Bencher) {
     b.iter(|| {
         for c in COMMENTS {
