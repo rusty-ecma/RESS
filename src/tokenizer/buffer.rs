@@ -148,6 +148,28 @@ impl <'a> JSBuffer<'a> {
         }
         !at_end
     }
+    /// check if current char is a valid 
+    /// js whitespace character
+    pub fn at_whitespace(&mut self) -> bool {
+        self.buffer[self.idx] == 9
+        || self.buffer[self.idx] == 11
+        || self.buffer[self.idx] == 12
+        || self.buffer[self.idx] == 32
+        || {
+            let c = if let Some(c) = self.next_char() {
+                let _ = self.prev_char();
+                c
+            } else {
+                return false;
+            };
+            c == '\u{00A0}'
+            || c == '\u{FEFF}'
+            || match unic_ucd::category::GeneralCategory::of(c) {
+                unic_ucd::category::GeneralCategory::SpaceSeparator => true,
+                _ => false
+            }
+        }
+    }
 }
 
 impl<'a> From<&'a str> for JSBuffer<'a> {

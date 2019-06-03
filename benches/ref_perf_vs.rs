@@ -393,6 +393,15 @@ fn idents_ref(b: &mut Bencher) {
 }
 
 #[bench]
+fn idents_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for i in IDENTS {
+            black_box(ress::tokenizer::Tokenizer::new(i).next_());
+        }
+    })
+}
+
+#[bench]
 pub fn token(b: &mut Bencher) {
     b.iter(|| {
         for t in TOKENS.iter() {

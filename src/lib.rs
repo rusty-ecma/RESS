@@ -26,6 +26,7 @@ extern crate combine;
 #[macro_use]
 extern crate log;
 extern crate unic_ucd_ident;
+extern crate unic_ucd;
 
 pub mod refs;
 

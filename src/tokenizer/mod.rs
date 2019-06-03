@@ -5,7 +5,10 @@ mod buffer;
 use crate::{
     refs::{
         RefToken as Token,
-        tokens::StringLit,
+        tokens::{
+            StringLit,
+            Number,
+        }
     },
     Punct,
 };
@@ -38,8 +41,8 @@ impl<'a> Tokenizer<'a> {
                 ty: Token::EoF
             }
         };
-        if is_id_start(next_char) {
-            return self.ident();
+        if is_id_start(next_char) || next_char == '$' || next_char == '_' || next_char == '\\' {
+            return self.ident(next_char);
         }
         if next_char == '"' || next_char == '\'' {
             return self.string(next_char);
@@ -47,17 +50,72 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(next_char);
         }
+        if next_char == '.' {
+            return self.number(next_char);
+        }
         self.punct(next_char)
     }
 
-    fn ident(&mut self) -> RawToken {
-        unimplemented!()
+    fn ident(&mut self, start: char) -> RawToken {
+        if start == '\\' {
+            self.escaped_ident_part();
+        }
+        while let Some(c) = self.stream.next_char() {
+            if c == '\\' {
+                self.escaped_ident_part();
+            }
+            if !is_id_continue(c)
+            && c != '$'
+            && c != '\u{200C}'
+            && c != '\u{200D}' {
+                // if we have moved past the last valid identifier, go back 1
+                let _ = self.stream.prev_char();
+                break;
+            }
+        }
+        self.gen_token(Token::Ident)
+    }
+    /// picking up after the \
+    fn escaped_ident_part(&mut self) {
+        if let Some('u') = self.stream.next_char() {
+            if let Some(c) = self.stream.next_char() {
+                if c == '{' {
+                    self.escaped_with_code_point();
+                } else {
+                    self.escaped_with_hex4(c)
+                }
+            } 
+        } else {
+            panic!("invalid unicode escape sequence starting at {}", self.current_start);
+        }
+    }
+
+    fn escaped_with_code_point(&mut self) {
+        let mut code: u32 = 0;
+        let mut last_char: char = '{';
+        while let Some(c) = self.stream.next_char() {
+            last_char = c;
+            if c == '}' {
+                break;
+            }
+            assert!(c.is_digit(16));
+            code += u32::from_str_radix(c.encode_utf8(&mut [0;4]), 16)
+                .expect("invalid hex digit in escaped unicode codepoint");
+        }
+        assert!(code < 0x10FFF);
+        assert!(last_char == '}');
+    }
+
+    fn escaped_with_hex4(&mut self, start: char) {
+        assert!(start.is_digit(16));
+        for _ in 0..3 {
+            assert!(self.stream.next_char().unwrap().is_digit(16))
+        }
     }
 
     fn string(&mut self, quote: char) -> RawToken {
         let mut escaped = false;
         loop {
-            // TODO: add new line validation (escaped only)
             if self.look_ahead_matches(r#"\"#) {
                 if escaped {
                     escaped = false;
@@ -65,6 +123,18 @@ impl<'a> Tokenizer<'a> {
                     escaped = true;
                 }
                 self.stream.skip(1)
+            } else if self.look_ahead_matches("\r\n") {
+                if !escaped {
+                    panic!("unescaped new line in string literal")
+                } else {
+                    self.stream.skip(2);
+                    escaped = false;
+                }
+            } else if (self.look_ahead_matches("\n") 
+                || self.look_ahead_matches("\r")
+                || self.look_ahead_matches("\u{2028}")
+                || self.look_ahead_matches("\u{2029}")) && !escaped {
+                panic!("unescaped new line in string literal");
             } else if self.stream.look_ahead_matches(&[quote as u8]) {
                 self.stream.skip(1);
                 if !escaped {
@@ -247,8 +317,51 @@ impl<'a> Tokenizer<'a> {
                     self.gen_punct(Punct::Caret)
                 }
             }
-            _ => unimplemented!()
+            _ => unimplemented!("unknown punct {}", c),
         }
+    }
+    fn number(&mut self, start: char) -> RawToken {
+        assert!(start == '.' || start.is_digit(10));
+        if let Some(next) = self.stream.next_char() {
+            if start == '.' {
+                if !next.is_digit(10) {
+                    let _ = self.stream.prev_char();
+                    return self.punct(start);
+                }
+                self.dec_number(true)
+            } else if start == '0' {
+                if next == 'o' || next == 'O' {
+                    self.oct_number()
+                } else if next == 'x' || next == 'X' {
+                    self.hex_number()
+                } else if next == 'b' || next == 'B' {
+                    self.bin_number()
+                } else {
+                    self.dec_number(false)
+                }
+            } else {
+                self.dec_number(false)
+            }
+        } else {
+            self.gen_number(Number::Dec)
+        }
+    }
+    fn hex_number(&mut self) -> RawToken {
+
+        unimplemented!()
+    }
+    fn oct_number(&mut self) -> RawToken {
+
+        unimplemented!()
+    }
+    fn bin_number(&mut self) -> RawToken {
+
+        unimplemented!()
+    }
+
+    fn dec_number(&mut self, seen_point: bool) -> RawToken {
+
+        unimplemented!()
     }
     fn look_ahead_matches(&self, s: &str) -> bool {
         self.stream.look_ahead_matches(s.as_bytes())
@@ -256,12 +369,19 @@ impl<'a> Tokenizer<'a> {
     fn gen_punct(&self, p: Punct) -> RawToken {
         self.gen_token(Token::Punct(p))
     }
+    fn gen_number(&self, n: Number) -> RawToken {
+        self.gen_token(Token::Numeric(n))
+    }
     fn gen_token(&self, ty: Token) -> RawToken {
         RawToken {
             start: self.current_start,
             end: self.stream.idx,
             ty,
         }
+    }
+
+    fn at_whitespace(&mut self) -> bool {
+        self.stream.at_whitespace()
     }
 }
 
@@ -302,6 +422,36 @@ hahaha'"#,
             }
             assert_eq!(s.len(), item.end - item.start);
             
+        }
+    }
+
+    #[test]
+    fn tokenizer_idents() {
+        static IDENTS: &[&str] = &[
+            r#"$"#,
+            r#"_"#,
+            r#"\u0078"#,
+            r#"x$"#,
+            r#"x_"#,
+            r#"x\u0030"#,
+            r#"xa"#,
+            r#"x0"#,
+            r#"x0a"#,
+            r#"x0123456789"#,
+            r#"qwertyuiopasdfghjklzxcvbnm"#,
+            r#"QWERTYUIOPASDFGHJKLZXCVBNM"#,
+            r#"œ一"#,
+            r#"ǻ둘"#,
+            r#"ɤ〩"#,
+            r#"φ"#,
+            r#"ﬁⅷ"#,
+            r#"ユニコード"#,
+            r#"x‌‍"#,
+        ];
+        for i in IDENTS {
+            println!("attempting {}", i);
+            let item = Tokenizer::new(i).next_();
+            assert!(item.ty.is_ident());
         }
     }
 }
