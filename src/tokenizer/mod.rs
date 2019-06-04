@@ -1,6 +1,7 @@
 use unic_ucd_ident::{is_id_continue, is_id_start};
 
 mod buffer;
+pub mod scanner;
 
 use crate::{
     refs::{
@@ -8,6 +9,8 @@ use crate::{
         tokens::{
             StringLit,
             Number,
+            Template,
+            Comment,
         },
     },
     Punct,
@@ -15,9 +18,9 @@ use crate::{
     OpenCurlyKind,
 };
 pub struct RawToken {
-    ty: Token,
-    start: usize,
-    end: usize,
+    pub ty: Token,
+    pub start: usize,
+    pub end: usize,
 }
 
 pub struct Tokenizer<'a> {
@@ -57,11 +60,57 @@ impl<'a> Tokenizer<'a> {
         if next_char == '.' || next_char.is_digit(10) {
             return self.number(next_char);
         }
-        if next_char == '`' 
-        || (next_char == '}' && self.curly_stack.last() == Some(&OpenCurlyKind::Template)) {
+        if next_char == '`' {
+            return self.template(next_char);
+        }
+        if next_char == '}' && self.curly_stack.last() == Some(&OpenCurlyKind::Template) {
+            self.curly_stack.pop();
             return self.template(next_char);
         }
         self.punct(next_char)
+    }
+
+    pub fn next_regex(&mut self) -> RawToken {
+        let mut end_of_body = false;
+        if self.look_ahead_matches("\\/") {
+            self.stream.skip(2);
+        }
+        while let Some(c) = self.stream.next_char() {
+            if !end_of_body 
+            && (c == '\r' 
+            || c == '\n' 
+            || c == '\u{00A0}'
+            || c == '\u{FEFF}') {
+                panic!("new line in regex literal at {}", self.stream.idx);
+            } else if c == '\\' {
+                if self.look_ahead_matches("/") {
+                    self.stream.skip(1);
+                }
+            } else if c == '/' {
+                end_of_body = true;
+                continue;
+            } 
+            if end_of_body {
+                if c == '\\'{
+                    if self.look_ahead_matches("u{") {
+                        self.stream.skip(2);
+                        self.escaped_with_code_point();
+                    } else if self.look_ahead_matches("u") {
+                        self.stream.skip(1);
+                        let start = self.stream.next_char()
+                            .expect("unexpected end of file when parsing regex");
+                        self.escaped_with_hex4(start);
+                    }
+                } else if !is_id_continue(c) {
+                    let _ = self.stream.prev_char();
+                    return self.gen_regex();
+                }
+            }
+        }
+        if end_of_body {
+            return self.gen_regex()
+        } 
+        panic!("unterminated regex at {}", self.current_start);
     }
 
     fn ident(&mut self, start: char) -> RawToken {
@@ -84,6 +133,10 @@ impl<'a> Tokenizer<'a> {
         }
         if let Some(k) = self.at_keyword() {
             self.gen_token(Token::Keyword(k))
+        } else if let Some(b) = self.at_bool() {
+            self.gen_token(Token::Boolean(b))
+        } else if &self.stream.buffer[self.current_start..self.stream.idx] == b"null" {
+            self.gen_token(Token::Null)
         } else {
             self.gen_token(Token::Ident)
         }
@@ -136,6 +189,14 @@ impl<'a> Tokenizer<'a> {
             _ => None,
         }
     } 
+
+    fn at_bool(&self) -> Option<bool> {
+        match &self.stream.buffer[self.current_start..self.stream.idx] {
+            b"true" => Some(true),
+            b"false" => Some(false),
+            _ => None,
+        }
+    }
     /// picking up after the \
     fn escaped_ident_part(&mut self) {
         if let Some('u') = self.stream.next_char() {
@@ -273,6 +334,9 @@ impl<'a> Tokenizer<'a> {
                 } else if self.look_ahead_matches("<") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LeftShift)
+                } else if self.look_ahead_matches("!--") {
+                    self.stream.skip(3);
+                    self.html_comment()
                 } else {
                     self.gen_punct(Punct::LessThan)
                 }
@@ -296,7 +360,7 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip(2);
                     self.gen_punct(Punct::StrictNotEquals)
                 } else if self.look_ahead_matches("=") {
-                    self.stream.skip(2);
+                    self.stream.skip(1);
                     self.gen_punct(Punct::NotEqual)
                 } else {
                     self.gen_punct(Punct::Not)
@@ -364,6 +428,10 @@ impl<'a> Tokenizer<'a> {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::DivideAssign)
+                } else if self.look_ahead_matches("*") {
+                    self.multi_comment()
+                } else if self.look_ahead_matches("/") {
+                    self.single_comment()
                 } else {
                     self.gen_punct(Punct::ForwardSlash)
                 }
@@ -384,13 +452,15 @@ impl<'a> Tokenizer<'a> {
                     self.gen_punct(Punct::Caret)
                 }
             }
-            _ => unimplemented!("unknown punct {}", c),
+            _ => unimplemented!("unknown punct {:?} {}", c, self.current_start),
         }
     }
     fn number(&mut self, start: char) -> RawToken {
-        assert!(start == '.' || start.is_digit(10));
         if let Some(next) = self.stream.next_char() {
-            if start == '.' {
+            if start.is_digit(10) && !next.is_digit(10) {
+                let _ = self.stream.prev_char();
+                self.dec_number(false)
+            } else if start == '.' {
                 if !next.is_digit(10) {
                     let _ = self.stream.prev_char();
                     return self.punct(start);
@@ -419,7 +489,103 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn template(&mut self, start: char) -> RawToken {
-        unimplemented!("template");
+        if self.look_ahead_matches("${") {
+            self.stream.skip(2);
+            self.curly_stack.push(OpenCurlyKind::Template);
+            return self.gen_template(Template::Head);
+        } else if self.look_ahead_matches("\\${") {
+            self.stream.skip(2);
+        } else if self.look_ahead_matches("`") {
+            self.stream.skip(1);
+            if start == '`' {
+                return self.gen_template(Template::NoSub);
+            } else {
+                return self.gen_template(Template::Tail);
+            }
+        }
+        let mut escaped = false;
+        while let Some(c) = self.stream.next_char() {
+            if self.look_ahead_matches("`") {
+                self.stream.skip(1);
+                if start == '`' {
+                    return self.gen_template(Template::NoSub);
+                } else {
+                    return self.gen_template(Template::Tail);
+                }
+            } else if self.look_ahead_matches("${") {
+                self.stream.skip(2);
+                self.curly_stack.push(OpenCurlyKind::Template);
+                if start == '`' {
+                    return self.gen_template(Template::Head);
+                } else {
+                    return self.gen_template(Template::Body);
+                }
+            } else if self.look_ahead_matches("\\${") {
+                self.stream.skip(2);
+            } else if self.look_ahead_matches("\\`") {
+                self.stream.skip(1);
+            }
+            if c == '\\' {
+                if escaped {
+                    escaped = false;
+                } else {
+                    escaped = true;
+                }
+            }
+            if escaped && c == '0' {
+                if let Some(next) = self.stream.next_char() {
+                    if next.is_digit(10) {
+                        panic!("Template contains octal literal at {}", self.stream.idx.saturating_sub(1));
+                    } else {
+                        let _ = self.stream.prev_char();
+                    }
+                }
+            } else if escaped && c.is_digit(8) {
+                panic!("Template contains octal literal starting at {}", self.stream.idx);
+            }
+        }
+        panic!("unterminated template");
+    }
+    fn single_comment(&mut self) -> RawToken {
+        while !self.at_new_line() {
+            if let None = self.stream.next_char() {
+                break;
+            }
+        }
+        self.gen_token(Token::Comment(Comment::SingleLine))
+    }
+    fn multi_comment(&mut self) -> RawToken {
+        if self.look_ahead_matches("*/") {
+            self.stream.skip(2);
+            return self.gen_token(Token::Comment(Comment::MultiLine));
+        }
+        while let Some(_) = self.stream.next_char() {
+            if self.look_ahead_matches("*/") {
+                self.stream.skip(2);
+                return self.gen_token(Token::Comment(Comment::MultiLine));
+            }
+        }
+        panic!("unterminated multi-line comment starting at {}", self.current_start);
+    }
+    fn html_comment(&mut self) -> RawToken {
+        let mut found_end = false;
+        if self.look_ahead_matches("-->") {
+            self.stream.skip(3);
+            found_end = true;
+        }
+        while let Some(_) = self.stream.next_char() {
+            if self.look_ahead_matches("-->") {
+                self.stream.skip(3);
+                found_end = true;
+            }
+        }
+        while !self.at_new_line() && !self.stream.at_end() {
+            self.stream.skip(1)
+        }
+        if found_end {
+            return self.gen_token(Token::Comment(Comment::Html))
+        }
+        panic!("unterminated html comment starting at {}", self.current_start);
     }
     fn hex_number(&mut self) -> RawToken {
         if let Some(c) = self.stream.next_char() {
@@ -469,10 +635,10 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(Number::Bin)
     }
-
     fn dec_number(&mut self, seen_point: bool) -> RawToken {
         let mut maybe_e: Option<char> = None;
-        if !seen_point {
+        
+        if seen_point {
             while let Some(c) = self.stream.next_char() {
                 if !c.is_digit(10) && c != '.' {
                     maybe_e = Some(c);
@@ -515,6 +681,16 @@ impl<'a> Tokenizer<'a> {
     fn gen_number(&self, n: Number) -> RawToken {
         self.gen_token(Token::Numeric(n))
     }
+    fn gen_template(&self, t: Template) -> RawToken {
+        self.gen_token(Token::Template(t))
+    }
+    fn gen_regex(&self) -> RawToken {
+        RawToken {
+            start: self.current_start.saturating_sub(1),
+            end: self.stream.idx,
+            ty: Token::RegEx,
+        }
+    }
     fn gen_token(&self, ty: Token) -> RawToken {
         RawToken {
             start: self.current_start,
@@ -523,8 +699,14 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn at_whitespace(&mut self) -> bool {
-        self.stream.at_whitespace()
+    pub fn skip_whitespace(&mut self) {
+        while self.stream.at_whitespace() {
+            self.stream.skip(1);
+        }
+    }
+
+    fn at_new_line(&mut self) -> bool {
+        self.stream.at_new_line()
     }
 }
 
@@ -678,38 +860,43 @@ mod test {
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
-            let item = t.next_();
+            let item = t.next_regex();
             assert!(item.ty.is_regex());
         }
     }
 
     #[test]
-    fn tokenizer_template_start() {
-        static TEMPLATE_STARTS: &[&str] = &[
-            "`things and stuff times ${",
-            "`things and stuff`",
-            r#"`a\${b`"#,
-            r#"`\0\n\x0A\u000A\u{A}${"#,
-        ];
-        for s in TEMPLATE_STARTS {
-            let mut t = Tokenizer::new(s);
-            let item = t.next_();
-            assert!(item.ty.is_template_head());
-        }
-    }
-    #[test]
-    fn tokenizer_template_cont() {
-        static TEMPLATE_CONTINUATIONS: &[&str] = &[
-            " and animals and minerals`",
-            "`}`",
-            " and animals and minerals`",
-            " and places and people ${",
-        ];;
-        for s in TEMPLATE_CONTINUATIONS {
-            let mut t = Tokenizer::new(s);
-            let item = t.next_();
-            assert!(item.ty.is_template_body() || item.ty.is_template_tail());
-        }
+    fn tokenizer_template() {
+        let subbed = "`things and stuff times ${} and animals and minerals`";
+        let mut t = Tokenizer::new(subbed);
+        let start = t.next_();
+        assert!(start.ty.is_template_head());
+        let end = t.next_();
+        assert!(end.ty.is_template_tail());
+        let no_sub = "`things and stuff`";
+        t = Tokenizer::new(no_sub);
+        let one = t.next_();
+        assert!(one.ty.is_template_head());
+        assert!(one.ty.is_template_tail());
+        let escaped_sub = r#"`\0\n\x0A\u000A\u{A}${}`"#;
+        t = Tokenizer::new(escaped_sub);
+        let start = t.next_();
+        assert!(start.ty.is_template_head());
+        let end = t.next_();
+        assert!(end.ty.is_template_tail());
+        let escaped_no_sub = r#"`a\${b`"#;
+        t = Tokenizer::new(escaped_no_sub);
+        let one = t.next_();
+        assert!(one.ty.is_template_head());
+        assert!(one.ty.is_template_tail());
+        let double_sub = "`things and stuff times ${} and animals and minerals ${} and places and people`";
+        t = Tokenizer::new(double_sub);
+        let start = t.next_();
+        assert!(start.ty.is_template_head());
+        let mid = t.next_();
+        assert!(mid.ty.is_template_body());
+        let end = t.next_();
+        assert!(end.ty.is_template_tail());
     }
 
     #[test]
@@ -775,6 +962,22 @@ mod test {
             let mut t = Tokenizer::new(k);
             let item = t.next_();
             assert!(item.ty.is_keyword())
+        }
+    }
+
+    #[test]
+    fn tokenizer_comments() {
+        static COMMENTS: &[&str] = &[
+            "//this is a comment",
+            "/*this is a
+        multi-line comment*/",
+            "<!-- This is an HTML comment -->",
+            "<!-- This is an HTML comment --> with a trailer",
+        ];
+        for c in COMMENTS {
+            let mut t = Tokenizer::new(c);
+            let item = t.next_();
+            assert!(item.ty.is_comment());
         }
     }
 }

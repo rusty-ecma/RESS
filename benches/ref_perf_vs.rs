@@ -138,7 +138,7 @@ static TEMPLATE_STARTS: &[&str] = &[
 
 static TEMPLATE_CONTINUATIONS: &[&str] = &[
     " and animals and minerals`",
-    "`}`",
+    "`",
     " and animals and minerals`",
     " and places and people ${",
 ];
@@ -189,7 +189,7 @@ fn keywords(b: &mut Bencher) {
         for key in KEYWORDS {
             black_box(ress::keywords::literal().parse(*key).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -198,7 +198,7 @@ fn keywords_ref(b: &mut Bencher) {
         for key in KEYWORDS {
             black_box(ress::refs::keywords::literal().parse(*key).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -207,7 +207,7 @@ fn keywords_tok(b: &mut Bencher) {
         for key in KEYWORDS {
             black_box(ress::tokenizer::Tokenizer::new(key).next_());
         }
-    })
+    });
 }
 
 #[bench]
@@ -234,7 +234,7 @@ fn punct_tok(b: &mut Bencher) {
         for punct in PUNCTS {
             black_box(ress::tokenizer::Tokenizer::new(punct).next_());
         }
-    })
+    });
 }
 
 #[bench]
@@ -243,7 +243,7 @@ fn strings(b: &mut Bencher) {
         for s in STRINGS {
             black_box(ress::strings::literal().parse(*s).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -252,7 +252,7 @@ fn strings_ref(b: &mut Bencher) {
         for s in STRINGS {
             black_box(ress::refs::strings::literal().parse(*s).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -262,7 +262,7 @@ fn strings_tok(b: &mut Bencher) {
             println!("{}", s);
             black_box(ress::tokenizer::Tokenizer::new(s).next_());
         }
-    })
+    });
 }
 
 #[bench]
@@ -271,7 +271,7 @@ fn comments(b: &mut Bencher) {
         for c in COMMENTS {
             black_box(ress::comments::comment().parse(*c).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -280,7 +280,15 @@ fn comments_refs(b: &mut Bencher) {
         for c in COMMENTS {
             black_box(ress::refs::comments::comment().parse(*c).unwrap());
         }
-    })
+    });
+}
+#[bench]
+fn comments_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for c in COMMENTS {
+            black_box(ress::tokenizer::Tokenizer::new(c).next_());
+        }
+    });
 }
 
 #[bench]
@@ -289,7 +297,7 @@ fn numbers(b: &mut Bencher) {
         for n in NUMBERS {
             black_box(ress::numeric::literal().parse(*n).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -298,7 +306,7 @@ fn numbers_ref(b: &mut Bencher) {
         for n in NUMBERS {
             black_box(ress::refs::numbers::literal().parse(*n).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -307,7 +315,7 @@ fn numbers_tok(b: &mut Bencher) {
         for n in NUMBERS {
             black_box(ress::tokenizer::Tokenizer::new(n).next_());
         }
-    })
+    });
 }
 
 #[bench]
@@ -316,7 +324,7 @@ fn regex(b: &mut Bencher) {
         for r in REGEX {
             black_box(ress::regex::regex_tail().parse(*r).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -325,7 +333,16 @@ fn regex_ref(b: &mut Bencher) {
         for r in REGEX {
             black_box(ress::refs::regex::regex_tail().parse(*r).unwrap());
         }
-    })
+    });
+}
+
+#[bench]
+fn regex_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for r in REGEX {
+            black_box(ress::tokenizer::Tokenizer::new(r).next_regex());
+        }
+    });
 }
 
 #[bench]
@@ -337,7 +354,7 @@ fn templates(b: &mut Bencher) {
         for t in TEMPLATE_STARTS {
             black_box(ress::strings::template_start().parse(*t).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -353,7 +370,25 @@ fn templates_ref(b: &mut Bencher) {
         for t in TEMPLATE_STARTS {
             black_box(ress::refs::strings::template_start().parse(*t).unwrap());
         }
-    })
+    });
+}
+
+#[bench]
+fn templates_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for s in TEMPLATE_CONTINUATIONS {
+            let s = format!("`${{}}{}", s);
+            println!("attempting {}", s);
+            let mut t = ress::tokenizer::Tokenizer::new(&s);
+            let _ = t.next_();
+            black_box(t.next_());
+        }
+    });
+    b.iter(|| {
+        for s in TEMPLATE_STARTS {
+            black_box(ress::tokenizer::Tokenizer::new(s).next_());
+        }
+    });
 }
 
 #[bench]
@@ -362,7 +397,7 @@ fn bools(b: &mut Bencher) {
         for b in BOOLS {
             black_box(ress::tokens::boolean_literal().parse(*b).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -371,7 +406,16 @@ fn bools_ref(b: &mut Bencher) {
         for b in BOOLS {
             black_box(ress::refs::tokens::boolean_literal().parse(*b).unwrap());
         }
-    })
+    });
+}
+
+#[bench]
+fn bools_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for b in BOOLS {
+            black_box(ress::tokenizer::Tokenizer::new(b).next_());
+        }
+    });
 }
 
 #[bench]
@@ -392,12 +436,21 @@ fn null_ref(b: &mut Bencher) {
 }
 
 #[bench]
+fn null_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for b in NULL {
+            black_box(ress::tokenizer::Tokenizer::new(b).next_());
+        }
+    });
+}
+
+#[bench]
 fn idents(b: &mut Bencher) {
     b.iter(|| {
         for i in IDENTS {
             black_box(ress::tokens::ident().parse(*i).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -406,7 +459,7 @@ fn idents_ref(b: &mut Bencher) {
         for i in IDENTS {
             black_box(ress::refs::tokens::ident().parse(*i).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
@@ -415,7 +468,7 @@ fn idents_tok(b: &mut Bencher) {
         for i in IDENTS {
             black_box(ress::tokenizer::Tokenizer::new(i).next_());
         }
-    })
+    });
 }
 
 #[bench]
@@ -424,19 +477,26 @@ pub fn token(b: &mut Bencher) {
         for t in TOKENS.iter() {
             black_box(ress::tokens::token().parse(*t).unwrap());
         }
-    })
+    });
 }
 
 #[bench]
 pub fn token_ref(b: &mut Bencher) {
-    println!("[");
     b.iter(|| {
         for t in TOKENS.iter() {
-            println!("{:?}", t);
             black_box(ress::refs::tokens::token().parse(*t).unwrap());
         }
         println!("];")
-    })
+    });
+}
+
+#[bench]
+pub fn token_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for s in TOKENS.iter() {
+            black_box(ress::tokenizer::Tokenizer::new(s).next_());
+        }
+    });
 }
 
 #[bench]
@@ -454,6 +514,17 @@ fn scanner_ref(b: &mut Bencher) {
     let js = include_str!("../node_modules/jquery/dist/jquery.js");
     use ress::refs::{RefItem as Item, RefScanner as Scanner};
     b.iter(|| {
+        let s = Scanner::new(js);
+        black_box(s.collect::<Vec<Item>>())
+    });
+}
+
+#[bench]
+fn scanner_tok(b: &mut Bencher) {
+    let js = include_str!("../node_modules/jquery/dist/jquery.js");
+    use ress::tokenizer::scanner::TokScanner as Scanner;
+    use ress::tokenizer::scanner::RefItem as Item;
+     b.iter(|| {
         let s = Scanner::new(js);
         black_box(s.collect::<Vec<Item>>())
     });

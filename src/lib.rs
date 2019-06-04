@@ -436,7 +436,7 @@ pub mod error {
         }
     }
 }
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum OpenCurlyKind {
     Template,
     Block,

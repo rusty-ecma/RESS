@@ -1,34 +1,20 @@
-use combine::Parser;
-pub mod comments;
-pub mod keywords;
-pub mod numbers;
-pub mod punct;
-pub mod regex;
-pub mod strings;
-pub mod tokens;
 
-use super::{is_line_term, whitespace_or_line_term, ScannerState, OpenCurlyKind};
-use keywords::Keyword;
-use punct::Punct;
-pub use refs::tokens::RefToken;
+
+use crate::{
+    ScannerState,
+    Keyword,
+    Punct,
+};
+
+
+use refs::tokens::RefToken;
 use tokens::Span;
+use crate::tokenizer::Tokenizer;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RefItem {
     pub token: RefToken,
     pub span: Span,
-}
-
-impl From<crate::tokenizer::RawToken> for RefItem {
-    fn from(other: crate::tokenizer::RawToken) -> Self {
-        Self {
-            token: other.ty,
-            span: Span {
-                start: other.start,
-                end: other.end
-            }
-        }
-    }
 }
 
 impl RefItem {
@@ -50,41 +36,38 @@ impl RefItem {
 }
 
 #[allow(unused)]
-pub struct RefScanner<'a> {
-    pub stream: &'a str,
+pub struct TokScanner<'a> {
+    pub stream: Tokenizer<'a>,
     pub eof: bool,
-    pub cursor: usize,
     pub spans: Vec<Span>,
     last_open_paren_idx: usize,
-    replacement: usize,
     pub pending_new_line: bool,
-    curly_stack: Vec<OpenCurlyKind>,
+    original: &'a str,
 }
 
-impl<'a> RefScanner<'a> {
+impl<'a> TokScanner<'a> {
     pub fn new(text: &'a str) -> Self {
-        let cursor = text.len() - text.trim_start_matches(super::whitespace).len();
+        let mut stream = Tokenizer::new(text);
+        stream.skip_whitespace();
         Self {
-            stream: text,
+            stream,
             eof: false,
-            cursor,
             spans: Vec::new(),
             last_open_paren_idx: 0,
-            replacement: 0,
             pending_new_line: false,
-            curly_stack: Vec::new(),
+            original: text
         }
     }
 }
 
-impl<'a> Iterator for RefScanner<'a> {
+impl<'a> Iterator for TokScanner<'a> {
     type Item = RefItem;
     fn next(&mut self) -> Option<RefItem> {
         self.get_next_token(true)
     }
 }
 
-impl<'b> RefScanner<'b> {
+impl<'b> TokScanner<'b> {
     /// Attempts to look ahead 1 token
     ///
     /// Similar to how `Peekable::peek` works however the
@@ -109,34 +92,33 @@ impl<'b> RefScanner<'b> {
     /// next valid js token
     pub fn skip_comments(&mut self) {
         debug!(target: "ress", "skipping comments");
-        let mut new_cursor = self.cursor;
+        let mut new_cursor = self.stream.stream.idx;
         while let Some(ref item) = self.next() {
             if let RefToken::Comment(_) = item.token {
-                new_cursor = self.cursor;
+                new_cursor = self.stream.stream.idx;
             } else {
                 break;
             }
         }
-        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.cursor));
-        self.cursor = new_cursor;
+        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.stream.stream.idx));
+        self.stream.stream.idx = new_cursor;
     }
     /// Get a copy of the scanner's current state
     pub fn get_state(&self) -> ScannerState {
         ScannerState {
-            cursor: self.cursor,
+            cursor: self.stream.stream.idx,
             spans_len: self.spans.len(),
             last_paren: self.last_open_paren_idx,
-            replacement: self.replacement,
-            curly_stack: self.curly_stack.clone(),
+            replacement: 0,
+            curly_stack: self.stream.curly_stack.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
     pub fn set_state(&mut self, state: ScannerState) {
-        self.cursor = state.cursor;
+        self.stream.stream.idx = state.cursor;
         self.spans.truncate(state.spans_len);
         self.last_open_paren_idx = state.last_paren;
-        self.replacement = state.replacement;
-        self.curly_stack = state.curly_stack;
+        self.stream.curly_stack = state.curly_stack;
     }
     #[inline]
     fn get_next_token<'a>(&mut self, advance_cursor: bool) -> Option<RefItem> {
@@ -144,106 +126,31 @@ impl<'b> RefScanner<'b> {
             debug!(target: "ress", "end of iterator, returning None");
             return None;
         };
-        let prev_cursor = self.cursor;
-        let result = self::tokens::token().parse(&self.stream[self.cursor..]);
-        match result {
-            Ok(pair) => {
-                if (pair.0.matches_punct(&Punct::ForwardSlash) 
-                    || pair.0.matches_punct(&Punct::DivideAssign))
-                    && self.is_regex_start() {
-                    match regex::regex_tail().parse(&self.stream[self.cursor + 1..]) {
-                        Ok(regex_pair) => {
-                            let full_len = self.stream.len();
-                            let span_end = full_len - regex_pair.1.len();
-                            let span = Span::new(self.cursor, span_end);
-                            if advance_cursor {
-                                self.spans.push(span.clone());
-                                self.cursor = self.stream.len()
-                                    - regex_pair
-                                        .1
-                                        .trim_start_matches(whitespace_or_line_term)
-                                        .len();
-                                let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(is_line_term);
-                            }
-                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next regex item" } else {"look ahead"}, regex_pair.0);
-                            Some(RefItem::new(regex_pair.0, span))
-                        }
-                        Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {}",
-                            self.cursor, e,
-                        ),
-                    }
-                } else if pair.0.matches_punct(&Punct::CloseBrace) && self.looking_for_template_end() {
-                    match strings::template_continuation().parse(pair.1) {
-                        Ok(pair) => {
-                            if pair.0.is_template_tail() && advance_cursor {
-                                let _ = self.curly_stack.pop();
-                            }
-                            let full_len = self.stream.len();
-                            let span_end = full_len - pair.1.len();
-                            let span = Span::new(self.cursor, span_end);
-                            if advance_cursor {
-                                self.spans.push(span.clone());
-                                self.cursor = self.stream.len()
-                                    - pair.1.trim_start_matches(whitespace_or_line_term).len();
-                                let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(is_line_term);
-                            }
-                            debug!("{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
-                            Some(RefItem::new(pair.0, span))
-                        }
-                        Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {}",
-                            self.cursor, e,
-                        ),
-                    }
-                } else {
-                    if pair.0.matches_punct(&Punct::OpenBrace) {
-                        self.curly_stack.push(OpenCurlyKind::Block);
-                    }
-                    if pair.0.matches_punct(&Punct::CloseBrace) {
-                        let _ = self.curly_stack.pop();
-                    }
-                    if pair.0.matches_punct(&Punct::OpenParen) && advance_cursor {
-                        self.last_open_paren_idx = self.spans.len();
-                    }
-                    if pair.0.is_eof() && advance_cursor {
-                        self.eof = true;
-                    }
-                    if pair.0.is_template_head() && advance_cursor && !pair.0.is_template_tail() {
-                        self.curly_stack.push(OpenCurlyKind::Template);
-                    }
-                    let full_len = self.stream.len();
-                    let span_end = full_len - pair.1.len();
-                    let span = Span::new(self.cursor, span_end);
-                    if advance_cursor {
-                        self.spans.push(span.clone());
-                        self.cursor = self.stream.len()
-                            - pair
-                                .1
-                                .trim_start_matches(super::whitespace_or_line_term)
-                                .len();
-                        let whitespace = &self.stream[prev_cursor..self.cursor];
-                        self.pending_new_line = whitespace.chars().any(super::is_line_term);
-                    }
-                    info!(target: "ress", "{}: {:?}", if advance_cursor { "next item" } else {"look ahead"}, pair.0);
-                    Some(RefItem::new(pair.0, span))
-                }
-            }
-            Err(e) => panic!(
-                "Failed to parse token last successful parse ended {}\nError: {}",
-                self.cursor, e,
-            ),
+        let prev_cursor = self.stream.stream.idx;
+        let mut next = self.stream.next_();
+        if next.ty.is_punct() &&
+            &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/" 
+            && self.is_regex_start() {
+            next = self.stream.next_regex();
         }
-    }
-
-    fn looking_for_template_end(&self) -> bool {
-        if let Some(last) = self.curly_stack.last() {
-            last == &OpenCurlyKind::Template
+        let ret = RefItem::new(next.ty, Span::new(next.start, next.end));
+        if ret.is_eof() {
+            self.eof = true;
+        }
+        if !advance_cursor {
+            self.stream.stream.idx = prev_cursor;
         } else {
-            false
+            match &ret.token {
+                RefToken::Punct(ref p) => match p {
+                    Punct::OpenParen => self.last_open_paren_idx = self.spans.len(),
+                    _ => (),
+                },
+                _ => (),
+            }
+            self.spans.push(ret.span);
         }
+        self.stream.skip_whitespace();
+        Some(ret)
     }
 
     fn is_regex_start(&self) -> bool {
@@ -371,15 +278,12 @@ impl<'b> RefScanner<'b> {
         if self.spans.len() < n {
             return None;
         }
-        self.token_for(&self.spans[self.last_open_paren_idx - n])
+        self.token_for(&self.spans[self.last_open_paren_idx.saturating_sub(n)])
     }
 
     fn token_for(&self, span: &Span) -> Option<RefToken> {
-        if let Ok(t) = self::tokens::token().parse(&self.stream[span.start..span.end]) {
-            Some(t.0)
-        } else {
-            None
-        }
+        let raw = Tokenizer::new(&self.original[span.start..span.end]).next_();
+        Some(raw.ty)
     }
 
     pub fn string_for(&self, span: &Span) -> Option<String> {
@@ -387,10 +291,10 @@ impl<'b> RefScanner<'b> {
     }
 
     pub fn str_for(&self, span: &Span) -> Option<&'b str> {
-        if self.stream.len() < span.start || self.stream.len() < span.end {
+        if self.original.len() < span.start || self.original.len() < span.end {
             None
         } else {
-            Some(&self.stream[span.start..span.end])
+            Some(&self.original[span.start..span.end])
         }
     }
 }
@@ -435,13 +339,14 @@ mod test {
     //     }
 
     #[test]
-    fn ref_scanner() {
-        let s = super::RefScanner::new(
+    fn tok_scanner() {
+        let s = super::TokScanner::new(
             "(function() {
 this.x = 100;
 this.y = 0;
 })();",
         );
+        use crate::refs::tokens;
         let expected = vec![
             RefToken::Punct(Punct::OpenParen), //"("
             RefToken::Keyword(Keyword::Function),
@@ -468,6 +373,13 @@ this.y = 0;
             RefToken::EoF,
         ];
         validate(s, expected);
+    }
+
+    #[test]
+    fn tok_scanner_jq() {
+        let js = include_str!("../../node_modules/jquery/dist/jquery.js");
+        let t = TokScanner::new(js);
+        let _: Vec<_> = t.collect();
     }
 
     // #[test]
@@ -541,8 +453,9 @@ this.y = 0;
     //     }
     // }
 
-    fn validate(s: RefScanner, expected: Vec<RefToken>) {
+    fn validate(s: TokScanner, expected: Vec<RefToken>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            println!("{:?}, {:?}", lhs.token, rhs);
             assert_eq!((i, lhs.token), (i, rhs));
         }
     }

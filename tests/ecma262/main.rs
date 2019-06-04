@@ -22,6 +22,13 @@ fn ref_es5() {
     let js = get_js(EsVersion::Es5);
     run_ref_test(&js);
 }
+#[test]
+fn tok_es5() {
+    println!("testing es5");
+    ensure_logging();
+    let js = get_js(EsVersion::Es5);
+    run_tok_test(&js);
+}
 
 #[test]
 fn es2015_script() {
@@ -39,6 +46,14 @@ fn ref_es2015_script() {
 }
 
 #[test]
+fn tok_es2015_script() {
+    println!("testing es2015 script");
+    ensure_logging();
+    let js = get_js(EsVersion::Es2015Script);
+    run_tok_test(&js);
+}
+
+#[test]
 fn es2015_module() {
     ensure_logging();
     debug!("testing es2015 module");
@@ -51,6 +66,14 @@ fn ref_es2015_module() {
     debug!("testing es2015 module");
     let js = get_js(EsVersion::Es2015Module);
     run_ref_test(&js);
+}
+
+#[test]
+fn tok_es2015_module() {
+    println!("testing es2015_module");
+    ensure_logging();
+    let js = get_js(EsVersion::Es2015Module);
+    run_tok_test(&js);
 }
 
 fn run_test(js: &str) {
@@ -71,6 +94,14 @@ fn run_test(js: &str) {
 
 fn run_ref_test(js: &str) {
     let mut s = ress::refs::RefScanner::new(js);
+    let mut i = 0;
+    while let Some(item) = s.next() {
+        debug!("{}, {:?} {:?}", i, item.token, s.string_for(&item.span));
+        i += 1;
+    }
+}
+fn run_tok_test(js: &str) {
+    let mut s = ress::tokenizer::scanner::TokScanner::new(js);
     let mut i = 0;
     while let Some(item) = s.next() {
         debug!("{}, {:?} {:?}", i, item.token, s.string_for(&item.span));

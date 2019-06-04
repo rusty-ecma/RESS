@@ -111,11 +111,11 @@ impl <'a> JSBuffer<'a> {
     pub fn at_end(&self) -> bool {
         self.idx >= self.buffer.len()
     }
-    /// Check if the buffer has [count] chars
-    /// before it ends
-    pub fn has(&self, count: usize) -> bool {
-        self.buffer.len() > self.idx.saturating_add(count)
-    }
+    // /// Check if the buffer has [count] chars
+    // /// before it ends
+    // pub fn has(&self, count: usize) -> bool {
+    //     self.buffer.len() > self.idx.saturating_add(count)
+    // }
     /// Check if the next few bytes match the provided bytes
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
         let end = self.idx.saturating_add(s.len());
@@ -129,31 +129,36 @@ impl <'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
-    /// Skip characters until the provided bytes are found
-    /// or the end of the buffer. If no match is found
-    /// this will return false and reset the index to
-    /// the original value
-    pub fn skip_until(&mut self, s: &[u8]) -> bool {
-        let current_idx = self.idx;
-        let mut end = self.idx.saturating_add(s.len());
-        let mut at_end = self.at_end();
-        while !at_end
-        && &self.buffer[self.idx..end] != s {
-            self.idx = self.idx.saturating_add(1);
-            end = end.saturating_add(1);
-            at_end = self.at_end()
-        }
-        if at_end {
-            self.idx = current_idx;
-        }
-        !at_end
-    }
+    // /// Skip characters until the provided bytes are found
+    // /// or the end of the buffer. If no match is found
+    // /// this will return false and reset the index to
+    // /// the original value
+    // pub fn skip_until(&mut self, s: &[u8]) -> bool {
+    //     let current_idx = self.idx;
+    //     let mut end = self.idx.saturating_add(s.len());
+    //     let mut at_end = self.at_end();
+    //     while !at_end
+    //     && &self.buffer[self.idx..end] != s {
+    //         self.idx = self.idx.saturating_add(1);
+    //         end = end.saturating_add(1);
+    //         at_end = self.at_end()
+    //     }
+    //     if at_end {
+    //         self.idx = current_idx;
+    //     }
+    //     !at_end
+    // }
     /// check if current char is a valid 
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {
+        if self.at_end() {
+            return false;
+        }
         self.buffer[self.idx] == 9
+        || self.buffer[self.idx] == 10
         || self.buffer[self.idx] == 11
         || self.buffer[self.idx] == 12
+        || self.buffer[self.idx] == 13
         || self.buffer[self.idx] == 32
         || {
             let c = if let Some(c) = self.next_char() {
@@ -164,11 +169,27 @@ impl <'a> JSBuffer<'a> {
             };
             c == '\u{00A0}'
             || c == '\u{FEFF}'
+            || c == '\u{2028}'
+            || c == '\u{2029}'
             || match unic_ucd::category::GeneralCategory::of(c) {
                 unic_ucd::category::GeneralCategory::SpaceSeparator => true,
                 _ => false
             }
         }
+    }
+
+    pub fn at_new_line(&mut self) -> bool {
+        let c = if let Some(c) = self.next_char() {
+            let _ = self.prev_char();
+            c
+        } else {
+            return false;
+        };
+        self.look_ahead_matches(b"\r\n")
+        || c == '\n'
+        || c == '\r'
+        || c == '\u{00A0}'
+        || c == '\u{FEFF}'
     }
 }
 
@@ -218,15 +239,15 @@ mod test {
         assert!(buf.at_end());
     }
 
-    #[test]
-    fn skip_until() {
-        let js = "'things and stuff'";
-        let mut buf = JSBuffer::from(js);
-        assert_eq!(buf.next_char().unwrap(), '\'');
-        buf.skip_until(&['\'' as u8]);
-        assert_eq!(buf.next_char().unwrap(), '\'');
-        assert!(buf.at_end());
-    }
+    // #[test]
+    // fn skip_until() {
+    //     let js = "'things and stuff'";
+    //     let mut buf = JSBuffer::from(js);
+    //     assert_eq!(buf.next_char().unwrap(), '\'');
+    //     buf.skip_until(&['\'' as u8]);
+    //     assert_eq!(buf.next_char().unwrap(), '\'');
+    //     assert!(buf.at_end());
+    // }
 
     #[test]
     fn look_ahead_matches() {

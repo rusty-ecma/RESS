@@ -2,7 +2,7 @@
 #![feature(test)]
 extern crate ress;
 extern crate test;
-use ress::refs::RefScanner as Scanner;
+use ress::tokenizer::scanner::TokScanner as Scanner;
 use test::{Bencher, black_box};
 use std::fs::read_to_string;
 use std::path::PathBuf;
