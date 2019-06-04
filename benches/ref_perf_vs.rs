@@ -87,7 +87,6 @@ static NUMBERS: &[&str] = &[
     "0.00",
     "10.00",
     ".0",
-    ".0",
     "0e0",
     "0E0",
     "0.e0",
@@ -99,7 +98,7 @@ static NUMBERS: &[&str] = &[
     "0b0",
     "0b0100101",
     "0o0",
-    "0o777",
+    "0o01234567",
     "2e308",
 ];
 static REGEX: &[&str] = &[
@@ -203,6 +202,15 @@ fn keywords_ref(b: &mut Bencher) {
 }
 
 #[bench]
+fn keywords_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for key in KEYWORDS {
+            black_box(ress::tokenizer::Tokenizer::new(key).next_());
+        }
+    })
+}
+
+#[bench]
 fn punct(b: &mut Bencher) {
     b.iter(|| {
         for punct in PUNCTS {
@@ -248,7 +256,7 @@ fn strings_ref(b: &mut Bencher) {
 }
 
 #[bench]
-fn strings_new(b: &mut Bencher) {
+fn strings_tok(b: &mut Bencher) {
     b.iter(|| {
         for s in STRINGS {
             println!("{}", s);
@@ -289,6 +297,15 @@ fn numbers_ref(b: &mut Bencher) {
     b.iter(|| {
         for n in NUMBERS {
             black_box(ress::refs::numbers::literal().parse(*n).unwrap());
+        }
+    })
+}
+
+#[bench]
+fn numbers_tok(b: &mut Bencher) {
+    b.iter(|| {
+        for n in NUMBERS {
+            black_box(ress::tokenizer::Tokenizer::new(n).next_());
         }
     })
 }

@@ -8,9 +8,11 @@ use crate::{
         tokens::{
             StringLit,
             Number,
-        }
+        },
     },
     Punct,
+    Keyword,
+    OpenCurlyKind,
 };
 pub struct RawToken {
     ty: Token,
@@ -21,13 +23,15 @@ pub struct RawToken {
 pub struct Tokenizer<'a> {
     stream: buffer::JSBuffer<'a>,
     current_start: usize,
+    curly_stack: Vec<OpenCurlyKind>,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(stream: &'a str) -> Self {
         Tokenizer {
             current_start: 0,
-            stream: stream.into()
+            stream: stream.into(),
+            curly_stack: Vec::new(),
         }
     }
 
@@ -50,14 +54,19 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(next_char);
         }
-        if next_char == '.' {
+        if next_char == '.' || next_char.is_digit(10) {
             return self.number(next_char);
+        }
+        if next_char == '`' 
+        || (next_char == '}' && self.curly_stack.last() == Some(&OpenCurlyKind::Template)) {
+            return self.template(next_char);
         }
         self.punct(next_char)
     }
 
     fn ident(&mut self, start: char) -> RawToken {
         if start == '\\' {
+            // TODO validate escaped ident start
             self.escaped_ident_part();
         }
         while let Some(c) = self.stream.next_char() {
@@ -73,8 +82,60 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        self.gen_token(Token::Ident)
+        if let Some(k) = self.at_keyword() {
+            self.gen_token(Token::Keyword(k))
+        } else {
+            self.gen_token(Token::Ident)
+        }
     }
+
+    fn at_keyword(&self) -> Option<Keyword> {
+        match &self.stream.buffer[self.current_start..self.stream.idx] {
+            b"await" => Some(Keyword::Await),
+            b"break" => Some(Keyword::Break),
+            b"case" => Some(Keyword::Case),
+            b"catch" => Some(Keyword::Catch),
+            b"class" => Some(Keyword::Class),
+            b"const" => Some(Keyword::Const),
+            b"continue" => Some(Keyword::Continue),
+            b"debugger" => Some(Keyword::Debugger),
+            b"default" => Some(Keyword::Default),
+            b"delete" => Some(Keyword::Delete),
+            b"do" => Some(Keyword::Do),
+            b"else" => Some(Keyword::Else),
+            b"finally" => Some(Keyword::Finally),
+            b"for" => Some(Keyword::For),
+            b"function" => Some(Keyword::Function),
+            b"if" => Some(Keyword::If),
+            b"instanceof" => Some(Keyword::InstanceOf),
+            b"in" => Some(Keyword::In),
+            b"new" => Some(Keyword::New),
+            b"return" => Some(Keyword::Return),
+            b"switch" => Some(Keyword::Switch),
+            b"this" => Some(Keyword::This),
+            b"throw" => Some(Keyword::Throw),
+            b"try" => Some(Keyword::Try),
+            b"typeof" => Some(Keyword::TypeOf),
+            b"var" => Some(Keyword::Var),
+            b"void" => Some(Keyword::Void),
+            b"while" => Some(Keyword::While),
+            b"with" => Some(Keyword::With),
+            b"export" => Some(Keyword::Export),
+            b"import" => Some(Keyword::Import),
+            b"super" => Some(Keyword::Super),
+            b"enum" => Some(Keyword::Enum),
+            b"implements" => Some(Keyword::Implements),
+            b"interface" => Some(Keyword::Interface),
+            b"package" => Some(Keyword::Package),
+            b"private" => Some(Keyword::Private),
+            b"protected" => Some(Keyword::Protected),
+            b"public" => Some(Keyword::Public),
+            b"static" => Some(Keyword::Static),
+            b"yield" => Some(Keyword::Yield),
+            b"let" => Some(Keyword::Let),
+            _ => None,
+        }
+    } 
     /// picking up after the \
     fn escaped_ident_part(&mut self) {
         if let Some('u') = self.stream.next_char() {
@@ -156,9 +217,15 @@ impl<'a> Tokenizer<'a> {
     fn punct(&mut self, c: char) -> RawToken {
         match c {
             '(' => self.gen_punct(Punct::OpenParen),
-            '{' => self.gen_punct(Punct::OpenBrace),
+            '{' => {
+                self.curly_stack.push(OpenCurlyKind::Block);
+                self.gen_punct(Punct::OpenBrace)
+            }
             ')' => self.gen_punct(Punct::CloseParen),
-            '}' => self.gen_punct(Punct::CloseBrace),
+            '}' => {
+                let _ = self.curly_stack.pop();
+                self.gen_punct(Punct::CloseBrace)
+            }
             ';' => self.gen_punct(Punct::SemiColon),
             ',' => self.gen_punct(Punct::Comma),
             '[' => self.gen_punct(Punct::OpenBracket),
@@ -337,31 +404,107 @@ impl<'a> Tokenizer<'a> {
                 } else if next == 'b' || next == 'B' {
                     self.bin_number()
                 } else {
-                    self.dec_number(false)
+                    self.dec_number(next == '.')
                 }
+            } else {
+                self.dec_number(next == '.')
+            }
+        } else {
+            let _ = self.stream.prev_char();
+            if start == '.' {
+                self.gen_punct(Punct::Period)
             } else {
                 self.dec_number(false)
             }
-        } else {
-            self.gen_number(Number::Dec)
         }
     }
+    fn template(&mut self, start: char) -> RawToken {
+        unimplemented!("template");
+    }
     fn hex_number(&mut self) -> RawToken {
-
-        unimplemented!()
+        if let Some(c) = self.stream.next_char() {
+            if !c.is_digit(16) {
+                panic!("empty hex literal")
+            }
+        } else {
+            panic!("empty hex literal")
+        }
+        while let Some(c) = self.stream.next_char() {
+            if !c.is_digit(16) {
+                let _ = self.stream.prev_char();
+                break;
+            }
+        }
+        self.gen_number(Number::Hex)
     }
     fn oct_number(&mut self) -> RawToken {
-
-        unimplemented!()
+        if let Some(c) = self.stream.next_char() {
+            if !c.is_digit(8) {
+                panic!("empty octal literal");
+            }
+        } else {
+            panic!("empty octal literal");
+        }
+        while let Some(c) = self.stream.next_char() {
+            if !c.is_digit(8) {
+                let _ = self.stream.prev_char();
+                break;
+            }
+        }
+        self.gen_number(Number::Oct)
     }
     fn bin_number(&mut self) -> RawToken {
-
-        unimplemented!()
+        if let Some(c)  = self.stream.next_char() {
+            if !c.is_digit(2) {
+                panic!("empty bin literal");
+            }
+        } else {
+            panic!("empty bin literal");
+        }
+        while let Some(c) = self.stream.next_char() {
+            if !c.is_digit(2) {
+                let _ = self.stream.prev_char();
+                break;
+            }
+        }
+        self.gen_number(Number::Bin)
     }
 
     fn dec_number(&mut self, seen_point: bool) -> RawToken {
-
-        unimplemented!()
+        let mut maybe_e: Option<char> = None;
+        if !seen_point {
+            while let Some(c) = self.stream.next_char() {
+                if !c.is_digit(10) && c != '.' {
+                    maybe_e = Some(c);
+                    break;
+                }
+            }
+        } else {
+            while let Some(c) = self.stream.next_char() {
+                if !c.is_digit(10) {
+                    maybe_e = Some(c);
+                    break;
+                }
+            }
+        }
+        if let Some(maybe_e) = maybe_e {
+            if maybe_e != 'e' && maybe_e != 'E' {
+                let _ = self.stream.prev_char();
+            } else {
+                if let Some(c) = self.stream.next_char() {
+                    if c != '+' && c != '-' && !c.is_digit(10) {
+                        panic!("Invalid decimal starting at {}", self.current_start);
+                    }
+                }
+                while let Some(c) = self.stream.next_char() {
+                    if !c.is_digit(10) {
+                        let _ = self.stream.prev_char();
+                        break;
+                    }
+                }
+            }
+        }
+        self.gen_number(Number::Dec)
     }
     fn look_ahead_matches(&self, s: &str) -> bool {
         self.stream.look_ahead_matches(s.as_bytes())
@@ -388,20 +531,36 @@ impl<'a> Tokenizer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    static STRINGS: &[&str] = &[
-    r#""things and stuff""#,
-    r#"'people and places'"#,
-    r#""with and escaped \"""#,
-    r#"'another escaped \''"#,
-    r#""with a new \
-line""#,
-    r#"'another new line \
-hahaha'"#,
-    "\"sequence double quoted\\\r\nis hard\"",
-    "'new line sequence\\\r\nmight be harder'",
-    ];
+    #[test]
+    fn tokenizer_punct() {
+        static PUNCTS: &[&str] = &[
+            "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+", "-", "/",
+            "*", "%", "&", "|", "^", ">>>=", //3 char
+            "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
+            "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=", "^=", "%=",
+            "<=", ">=", "=>", "**",
+        ];
+        for p in PUNCTS {
+            let mut t = Tokenizer::new(p);
+            let item = t.next_();
+            println!("{:?}", item.ty);
+            assert!(item.ty.is_punct())
+        }
+    }
     #[test]
     fn tokenizer_strings() {
+        static STRINGS: &[&str] = &[
+        r#""things and stuff""#,
+        r#"'people and places'"#,
+        r#""with and escaped \"""#,
+        r#"'another escaped \''"#,
+        r#""with a new \
+        line""#,
+        r#"'another new line \
+        hahaha'"#,
+        "\"sequence double quoted\\\r\nis hard\"",
+        "'new line sequence\\\r\nmight be harder'",
+        ];
         for s in STRINGS {
             let item = Tokenizer::new(s).next_();
             match &item.ty {
@@ -421,7 +580,6 @@ hahaha'"#,
                 _ => panic!("Expected string, found {:?}", item.ty),
             }
             assert_eq!(s.len(), item.end - item.start);
-            
         }
     }
 
@@ -452,6 +610,171 @@ hahaha'"#,
             println!("attempting {}", i);
             let item = Tokenizer::new(i).next_();
             assert!(item.ty.is_ident());
+        }
+    }
+
+    #[test]
+    fn tokenizer_number() {
+         static NUMBERS: &[&str] = &[
+            "0",
+            "00",
+            "1234567890",
+            "01234567",
+            "0.",
+            "0.00",
+            "10.00",
+            ".0",
+            ".0",
+            "0e0",
+            "0E0",
+            "0.e0",
+            "0.00e+0",
+            ".00e-0",
+            "0x0",
+            "0X0",
+            "0x0123456789abcdefABCDEF",
+            "0b0",
+            "0b0100101",
+            "0o0",
+            "0o777",
+            "2e308",
+        ];
+        for n in NUMBERS {
+            println!("n: {}", n);
+            let mut t = Tokenizer::new(n);
+            let item = t.next_();
+            assert!(item.ty.is_number());
+        }
+    }
+
+    #[test]
+    fn tokenizer_regex() {
+        static REGEX: &[&str] = &[
+            r#"x/"#,
+            r#"|/"#,
+            r#"|||/"#,
+            r#"^$\b\B/"#,
+            r#"(?=(?!(?:(.))))/"#,
+            r#"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000/"#,
+            r#"\d\D\s\S\w\W/"#,
+            r#"\ca\cb\cc\cd\ce\cf\cg\ch\ci\cj\ck\cl\cm\cn\co\cp\cq\cr\cs\ct\cu\cv\cw\cx\cy\cz/"#,
+            r#"\cA\cB\cC\cD\cE\cF\cG\cH\cI\cJ\cK\cL\cM\cN\cO\cP\cQ\cR\cS\cT\cU\cV\cW\cX\cY\cZ/"#,
+            r#"[a-z-]/"#,
+            r#"[^\b\-^]/"#,
+            r#"[/\]\\]/"#,
+            r#"./i"#,
+            r#"./g"#,
+            r#"./m"#,
+            r#"./igm"#,
+            r#".*/"#,
+            r#".*?/"#,
+            r#".+/"#,
+            r#".+?/"#,
+            r#".?/"#,
+            r#".??/"#,
+            r#".{0}/"#,
+            r#".{0,}/"#,
+            r#".{0,0}/"#,
+        ];
+        for r in REGEX {
+            let mut t = Tokenizer::new(r);
+            let item = t.next_();
+            assert!(item.ty.is_regex());
+        }
+    }
+
+    #[test]
+    fn tokenizer_template_start() {
+        static TEMPLATE_STARTS: &[&str] = &[
+            "`things and stuff times ${",
+            "`things and stuff`",
+            r#"`a\${b`"#,
+            r#"`\0\n\x0A\u000A\u{A}${"#,
+        ];
+        for s in TEMPLATE_STARTS {
+            let mut t = Tokenizer::new(s);
+            let item = t.next_();
+            assert!(item.ty.is_template_head());
+        }
+    }
+    #[test]
+    fn tokenizer_template_cont() {
+        static TEMPLATE_CONTINUATIONS: &[&str] = &[
+            " and animals and minerals`",
+            "`}`",
+            " and animals and minerals`",
+            " and places and people ${",
+        ];;
+        for s in TEMPLATE_CONTINUATIONS {
+            let mut t = Tokenizer::new(s);
+            let item = t.next_();
+            assert!(item.ty.is_template_body() || item.ty.is_template_tail());
+        }
+    }
+
+    #[test]
+    fn tokenizer_bools() {
+        for b in &["true", "false"] {
+            let mut t = Tokenizer::new(b);
+            let item = t.next_();
+            assert!(item.ty.is_bool());
+        }
+    }
+
+    #[test]
+    fn tokenizer_null() {
+        let mut t = Tokenizer::new("null");
+        let item = t.next_();
+        assert!(item.ty.is_null());
+    }
+
+    #[test]
+    fn tokenizer_keyword() {
+        static KEYWORDS: &[&str] = &[
+            "implements",
+            "interface",
+            "package",
+            "private",
+            "protected",
+            "public",
+            "static",
+            "yield",
+            "let",
+            "enum",
+            "export",
+            "import",
+            "super",
+            "break",
+            "case",
+            "catch",
+            "continue",
+            "debugger",
+            "default",
+            "delete",
+            "do",
+            "else",
+            "finally",
+            "for",
+            "function",
+            "if",
+            "instanceof",
+            "in",
+            "new",
+            "return",
+            "switch",
+            "this",
+            "throw",
+            "try",
+            "typeof",
+            "var",
+            "void",
+            "while",
+            "with",
+        ];
+        for k in KEYWORDS {
+            let mut t = Tokenizer::new(k);
+            let item = t.next_();
+            assert!(item.ty.is_keyword())
         }
     }
 }
