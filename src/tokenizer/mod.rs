@@ -71,10 +71,12 @@ impl<'a> Tokenizer<'a> {
     }
 
     pub fn next_regex(&mut self) -> RawToken {
+        self.current_start = self.stream.idx;
         let mut end_of_body = false;
         if self.look_ahead_matches("\\/") {
             self.stream.skip(2);
         }
+        let mut in_class = false;
         while let Some(c) = self.stream.next_char() {
             if !end_of_body 
             && (c == '\r' 
@@ -82,11 +84,17 @@ impl<'a> Tokenizer<'a> {
             || c == '\u{00A0}'
             || c == '\u{FEFF}') {
                 panic!("new line in regex literal at {}", self.stream.idx);
+            } else if !end_of_body 
+            && c == '[' {
+                in_class = true;
+            } else if in_class
+            && c == ']' {
+                in_class = false;
             } else if c == '\\' {
                 if self.look_ahead_matches("/") {
                     self.stream.skip(1);
                 }
-            } else if c == '/' {
+            } else if c == '/' && !in_class {
                 end_of_body = true;
                 continue;
             } 

@@ -101,6 +101,7 @@ fn run_ref_test(js: &str) {
     }
 }
 fn run_tok_test(js: &str) {
+    ensure_logging();
     let mut s = ress::tokenizer::scanner::TokScanner::new(js);
     let mut i = 0;
     while let Some(item) = s.next() {

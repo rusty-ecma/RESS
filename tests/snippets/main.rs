@@ -154,3 +154,20 @@ ${(() => {
         println!("{:?}", item);
     }
 }
+
+#[test]
+fn tok_regex_error() {
+    let js = r"/[a-z-]/; /[^\b\-^]/; /[/\]\\]/;";
+    let expectation = vec![
+        ress::refs::RefToken::RegEx,
+        ress::refs::RefToken::Punct(ress::punct::Punct::SemiColon),
+        ress::refs::RefToken::RegEx,
+        ress::refs::RefToken::Punct(ress::punct::Punct::SemiColon),
+        ress::refs::RefToken::RegEx,
+        ress::refs::RefToken::Punct(ress::punct::Punct::SemiColon),
+    ];
+    let s = ress::tokenizer::scanner::TokScanner::new(js);
+    for (item, ex) in s.zip(expectation.iter()) {
+        assert_eq!(&item.token, ex);
+    }
+}

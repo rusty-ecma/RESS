@@ -149,6 +149,7 @@ impl<'b> TokScanner<'b> {
             }
             self.spans.push(ret.span);
         }
+        println!("{:?}: {:?}", ret, self.str_for(&ret.span));
         self.stream.skip_whitespace();
         Some(ret)
     }
