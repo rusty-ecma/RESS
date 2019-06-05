@@ -10,6 +10,7 @@ pub struct JSBuffer<'a> {
 const CONT_MASK: u8 = 0b0011_1111;
 const TAG_CONT_U8: u8 = 0b1000_0000;
 impl <'a> JSBuffer<'a> {
+    #[inline]
     pub fn next_char(&mut self) -> Option<char> {
         if self.at_end() {
             return None;
@@ -40,7 +41,7 @@ impl <'a> JSBuffer<'a> {
         }
         char::from_u32(ch)
     }
-
+    #[inline]
     pub fn prev_char(&mut self) -> Option<char> {
         // Decode UTF-8
         if self.idx == 0 {
@@ -70,7 +71,7 @@ impl <'a> JSBuffer<'a> {
 
         char::from_u32(ch)
     }
-    
+    #[inline]
     fn next_or_zero(&mut self) -> u8 {
         if self.at_end() {
             return 0;
@@ -79,7 +80,7 @@ impl <'a> JSBuffer<'a> {
         self.idx += 1;
         self.buffer[old]
     }
-
+    #[inline]
     fn prev_or_zero(&mut self) -> u8 {
         if self.idx < 1 {
             return 0;
@@ -87,14 +88,15 @@ impl <'a> JSBuffer<'a> {
         self.idx = self.idx.saturating_sub(1);
         self.buffer[self.idx]
     }
+    #[inline]
     fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { 
         (ch << 6) | (byte & CONT_MASK) as u32 
     }
-
+    #[inline]
     fn utf8_first_byte(byte: u8, width: u32) -> u32 { 
         (byte & (0x7F >> width)) as u32 
     }
-
+    #[inline]
     fn utf8_is_cont_byte(byte: u8) -> bool { 
         (byte & !CONT_MASK) == TAG_CONT_U8 
     }
@@ -177,7 +179,7 @@ impl <'a> JSBuffer<'a> {
             }
         }
     }
-
+    #[inline]
     pub fn at_new_line(&mut self) -> bool {
         let c = if let Some(c) = self.next_char() {
             let _ = self.prev_char();
@@ -190,6 +192,16 @@ impl <'a> JSBuffer<'a> {
         || c == '\r'
         || c == '\u{00A0}'
         || c == '\u{FEFF}'
+    }
+    #[inline]
+    pub fn at_decimal(&self) -> bool {
+        self.buffer[self.idx] > 47 
+        && self.buffer[self.idx] < 58
+    }
+    #[inline]
+    pub fn at_octal(&self) -> bool {
+        self.buffer[self.idx] > 47 
+        && self.buffer[self.idx] < 56
     }
 }
 

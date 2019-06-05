@@ -171,3 +171,11 @@ fn tok_regex_error() {
         assert_eq!(&item.token, ex);
     }
 }
+
+#[test]
+fn tok_regex_error2() {
+    
+    let js = r"/a.\f\n\r\t\v\0\[\-\/\\\x00\u0000/;";
+    let mut s = ress::tokenizer::scanner::TokScanner::new(js);
+    assert_eq!(ress::refs::RefToken::RegEx, s.next().unwrap().token);
+}

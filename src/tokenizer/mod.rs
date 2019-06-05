@@ -97,10 +97,14 @@ impl<'a> Tokenizer<'a> {
                 if c == '\\' {
                     if self.stream.at_new_line() {
                         panic!("new line in regex literal at {}", self.stream.idx);
+                    } else if self.look_ahead_matches("[") {
+                        self.stream.skip(1);
+                    } else if self.look_ahead_matches("/") {
+                        self.stream.skip(1);
                     }
                 } else if is_line_term(c) {
                     panic!("new line in regex literal at {}", self.stream.idx);
-                } else if in_class {
+                } else if in_class { // we ignore the /
                     if c == ']' {
                         in_class = false;
                     }
@@ -495,59 +499,56 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn template(&mut self, start: char) -> RawToken {
-        if self.look_ahead_matches("${") {
-            self.stream.skip(2);
-            self.curly_stack.push(OpenCurlyKind::Template);
-            return self.gen_template(Template::Head);
-        } else if self.look_ahead_matches("\\${") {
-            self.stream.skip(2);
-        } else if self.look_ahead_matches("`") {
-            self.stream.skip(1);
-            if start == '`' {
-                return self.gen_template(Template::NoSub);
-            } else {
-                return self.gen_template(Template::Tail);
-            }
-        }
-        let mut escaped = false;
+        // if self.look_ahead_matches("${") {
+        //     self.stream.skip(2);
+        //     self.curly_stack.push(OpenCurlyKind::Template);
+        //     return self.gen_template(Template::Head);
+        // } else if self.look_ahead_matches("\\${") {
+        //     self.stream.skip(2);
+        // } else if self.look_ahead_matches("\\`") {
+        //     self.stream.skip(1);
+        // } else if self.look_ahead_matches("`") {
+        //     self.stream.skip(1);
+        //     if start == '`' {
+        //         return self.gen_template(Template::NoSub);
+        //     } else {
+        //         return self.gen_template(Template::Tail);
+        //     }
+        // }
         while let Some(c) = self.stream.next_char() {
-            if self.look_ahead_matches("`") {
-                self.stream.skip(1);
+            println!("template char: {}", c);
+            if c == '\\' {
+                if self.look_ahead_matches("${") {
+                    self.stream.skip(2);
+                } else if self.look_ahead_matches("`") {
+                    self.stream.skip(1);
+                } else if self.look_ahead_matches("0") {
+                    if let Some(_zero) = self.stream.next_char() {
+                        if self.stream.at_decimal() {
+                            panic!("Template contains octal literal at {}", self.stream.idx.saturating_sub(1));
+                        } else {
+                            let _ = self.stream.prev_char();
+                        }
+                    }
+                } else if self.stream.at_octal() {
+                    panic!("Template contains octal literal starting at {}", self.stream.idx);
+                }
+            } else if c == '$' {
+                if self.look_ahead_matches("{") {
+                    self.stream.skip(1);
+                    self.curly_stack.push(OpenCurlyKind::Template);
+                    if start == '`' {
+                        return self.gen_template(Template::Head);
+                    } else {
+                        return self.gen_template(Template::Body);
+                    }
+                }
+            } else if c == '`' {
                 if start == '`' {
                     return self.gen_template(Template::NoSub);
                 } else {
                     return self.gen_template(Template::Tail);
                 }
-            } else if self.look_ahead_matches("${") {
-                self.stream.skip(2);
-                self.curly_stack.push(OpenCurlyKind::Template);
-                if start == '`' {
-                    return self.gen_template(Template::Head);
-                } else {
-                    return self.gen_template(Template::Body);
-                }
-            } else if self.look_ahead_matches("\\${") {
-                self.stream.skip(2);
-            } else if self.look_ahead_matches("\\`") {
-                self.stream.skip(1);
-            }
-            if c == '\\' {
-                if escaped {
-                    escaped = false;
-                } else {
-                    escaped = true;
-                }
-            }
-            if escaped && c == '0' {
-                if let Some(next) = self.stream.next_char() {
-                    if next.is_digit(10) {
-                        panic!("Template contains octal literal at {}", self.stream.idx.saturating_sub(1));
-                    } else {
-                        let _ = self.stream.prev_char();
-                    }
-                }
-            } else if escaped && c.is_digit(8) {
-                panic!("Template contains octal literal starting at {}", self.stream.idx);
             }
         }
         panic!("unterminated template");
@@ -678,18 +679,23 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(Number::Dec)
     }
+    #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
         self.stream.look_ahead_matches(s.as_bytes())
     }
+    #[inline]
     fn gen_punct(&self, p: Punct) -> RawToken {
         self.gen_token(Token::Punct(p))
     }
+    #[inline]
     fn gen_number(&self, n: Number) -> RawToken {
         self.gen_token(Token::Numeric(n))
     }
+    #[inline]
     fn gen_template(&self, t: Template) -> RawToken {
         self.gen_token(Token::Template(t))
     }
+    #[inline]
     fn gen_regex(&self) -> RawToken {
         RawToken {
             start: self.current_start.saturating_sub(1),
@@ -697,6 +703,7 @@ impl<'a> Tokenizer<'a> {
             ty: Token::RegEx,
         }
     }
+    #[inline]
     fn gen_token(&self, ty: Token) -> RawToken {
         RawToken {
             start: self.current_start,
@@ -704,13 +711,13 @@ impl<'a> Tokenizer<'a> {
             ty,
         }
     }
-
+    #[inline]
     pub fn skip_whitespace(&mut self) {
         while self.stream.at_whitespace() {
             self.stream.skip(1);
         }
     }
-
+    #[inline]
     fn at_new_line(&mut self) -> bool {
         self.stream.at_new_line()
     }
@@ -874,28 +881,33 @@ mod test {
     #[test]
     fn tokenizer_template() {
         let subbed = "`things and stuff times ${} and animals and minerals`";
+        println!("subbed: {}", subbed);
         let mut t = Tokenizer::new(subbed);
         let start = t.next_();
         assert!(start.ty.is_template_head());
         let end = t.next_();
         assert!(end.ty.is_template_tail());
         let no_sub = "`things and stuff`";
+        println!("no_sub {}", no_sub);
         t = Tokenizer::new(no_sub);
         let one = t.next_();
         assert!(one.ty.is_template_head());
         assert!(one.ty.is_template_tail());
         let escaped_sub = r#"`\0\n\x0A\u000A\u{A}${}`"#;
+        println!("escaped_sub: {}", escaped_sub);
         t = Tokenizer::new(escaped_sub);
         let start = t.next_();
         assert!(start.ty.is_template_head());
         let end = t.next_();
         assert!(end.ty.is_template_tail());
         let escaped_no_sub = r#"`a\${b`"#;
+        println!("escaped_no_sub: {}", escaped_no_sub);
         t = Tokenizer::new(escaped_no_sub);
         let one = t.next_();
         assert!(one.ty.is_template_head());
         assert!(one.ty.is_template_tail());
         let double_sub = "`things and stuff times ${} and animals and minerals ${} and places and people`";
+        println!("double_sub: {}", double_sub);
         t = Tokenizer::new(double_sub);
         let start = t.next_();
         assert!(start.ty.is_template_head());
