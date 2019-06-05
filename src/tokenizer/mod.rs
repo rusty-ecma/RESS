@@ -1,5 +1,5 @@
 use unic_ucd_ident::{is_id_continue, is_id_start};
-
+use is_line_term;
 mod buffer;
 pub mod scanner;
 
@@ -78,26 +78,6 @@ impl<'a> Tokenizer<'a> {
         }
         let mut in_class = false;
         while let Some(c) = self.stream.next_char() {
-            if !end_of_body 
-            && (c == '\r' 
-            || c == '\n' 
-            || c == '\u{00A0}'
-            || c == '\u{FEFF}') {
-                panic!("new line in regex literal at {}", self.stream.idx);
-            } else if !end_of_body 
-            && c == '[' {
-                in_class = true;
-            } else if in_class
-            && c == ']' {
-                in_class = false;
-            } else if c == '\\' {
-                if self.look_ahead_matches("/") {
-                    self.stream.skip(1);
-                }
-            } else if c == '/' && !in_class {
-                end_of_body = true;
-                continue;
-            } 
             if end_of_body {
                 if c == '\\'{
                     if self.look_ahead_matches("u{") {
@@ -112,6 +92,24 @@ impl<'a> Tokenizer<'a> {
                 } else if !is_id_continue(c) {
                     let _ = self.stream.prev_char();
                     return self.gen_regex();
+                }
+            } else {
+                if c == '\\' {
+                    if self.stream.at_new_line() {
+                        panic!("new line in regex literal at {}", self.stream.idx);
+                    }
+                } else if is_line_term(c) {
+                    panic!("new line in regex literal at {}", self.stream.idx);
+                } else if in_class {
+                    if c == ']' {
+                        in_class = false;
+                    }
+                } else {
+                    if c == '/' {
+                        end_of_body = true;
+                    } else if c == '[' {
+                        in_class = true;
+                    }
                 }
             }
         }
