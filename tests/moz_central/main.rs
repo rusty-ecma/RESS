@@ -40,7 +40,7 @@ fn walk(path: &Path) {
                     if ext == "js" {
                         let result = ::std::panic::catch_unwind(|| {
                             let js = read_to_string(&path).unwrap();
-                            for _ in refs::RefScanner::new(js.as_str()) {
+                            for _ in Scanner::new(js.as_str()) {
                                 
                             }
                         });
