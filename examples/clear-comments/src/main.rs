@@ -131,7 +131,7 @@ fn main() {
 }
 
 fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
-    if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Equal) {
+    if last_token.matches_punct(Punct::Equal) || token.matches_punct(Punct::DoubleEqual) {
         return true;
     }
     if last_token.matches_punct(Punct::Period)
@@ -210,13 +210,13 @@ fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
     if token.matches_punct(Punct::Colon) {
         return false;
     }
-    if last_token.matches_punct(Punct::Not) {
+    if last_token.matches_punct(Punct::Bang) {
         return false;
     }
     if last_token.matches_punct(Punct::Comma) {
         return true;
     }
-    if token.matches_punct(Punct::Not) {
+    if token.matches_punct(Punct::Bang) {
         return false;
     }
     if last_token.matches_keyword(Keyword::Function) && token.matches_punct(Punct::OpenBrace) {

@@ -295,13 +295,13 @@ impl<'a> Tokenizer<'a> {
             ']' => self.gen_punct(Punct::CloseBracket),
             ':' => self.gen_punct(Punct::Colon),
             '?' => self.gen_punct(Punct::QuestionMark),
-            '#' => self.gen_punct(Punct::Private),
-            '~' => self.gen_punct(Punct::BitwiseNot),
+            '#' => self.gen_punct(Punct::Hash),
+            '~' => self.gen_punct(Punct::Tilde),
             '.' => {
                 // ...
                 if self.look_ahead_matches("..") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::Spread)
+                    self.gen_punct(Punct::Ellipsis)
                 } else {
                     self.gen_punct(Punct::Period)
                 }
@@ -309,16 +309,16 @@ impl<'a> Tokenizer<'a> {
             '>' => {
                 if self.look_ahead_matches(">>=") {
                     self.stream.skip(3);
-                    self.gen_punct(Punct::UnsignedRightShiftAssign)
+                    self.gen_punct(Punct::TripleGreaterThanEqual)
                 } else if self.look_ahead_matches(">>") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::UnsignedRightShift)
+                    self.gen_punct(Punct::TripleGreaterThan)
                 } else if self.look_ahead_matches(">=") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::RightShiftAssign)
+                    self.gen_punct(Punct::DoubleGreaterThanEqual)
                 } else if self.look_ahead_matches(">") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::RightShift)
+                    self.gen_punct(Punct::DoubleGreaterThan)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::GreaterThanEqual)
@@ -329,13 +329,13 @@ impl<'a> Tokenizer<'a> {
             '<' => {
                 if self.look_ahead_matches("<=") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::LeftShiftAssign)
+                    self.gen_punct(Punct::DoubleLessThanEqual)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
                     self.gen_punct(Punct::LessThanEqual)
                 } else if self.look_ahead_matches("<") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::LeftShift)
+                    self.gen_punct(Punct::DoubleLessThan)
                 } else if self.look_ahead_matches("!--") {
                     self.stream.skip(3);
                     self.html_comment()
@@ -346,38 +346,38 @@ impl<'a> Tokenizer<'a> {
             '=' => {
                 if self.look_ahead_matches("==") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::StrictEquals)
+                    self.gen_punct(Punct::TripleEqual)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::Equal)
+                    self.gen_punct(Punct::DoubleEqual)
                 } else if self.look_ahead_matches(">") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::FatArrow)
+                    self.gen_punct(Punct::EqualGreaterThan)
                 } else {
-                    self.gen_punct(Punct::Assign)
+                    self.gen_punct(Punct::Equal)
                 }
             }
             '!' => {
                 if self.look_ahead_matches("==") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::StrictNotEquals)
+                    self.gen_punct(Punct::BangDoubleEqual)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::NotEqual)
+                    self.gen_punct(Punct::BangEqual)
                 } else {
-                    self.gen_punct(Punct::Not)
+                    self.gen_punct(Punct::Bang)
                 }
             }
             '*' => {
                 if self.look_ahead_matches("*=") {
                     self.stream.skip(2);
-                    self.gen_punct(Punct::ExponentAssign)
+                    self.gen_punct(Punct::DoubleAsteriskEqual)
                 } else if self.look_ahead_matches("*") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::Exponent)
+                    self.gen_punct(Punct::DoubleAsterisk)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::MultiplyAssign)
+                    self.gen_punct(Punct::AsteriskEqual)
                 } else {
                     self.gen_punct(Punct::Asterisk)
                 }
@@ -385,21 +385,21 @@ impl<'a> Tokenizer<'a> {
             '&' => {
                 if self.look_ahead_matches("&") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::LogicalAnd)
+                    self.gen_punct(Punct::DoubleAmpersand)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::BitwiseAndAssign)
+                    self.gen_punct(Punct::AmpersandEqual)
                 } else {
-                    self.gen_punct(Punct::And)
+                    self.gen_punct(Punct::Ampersand)
                 }
             }
             '|' => {
                 if self.look_ahead_matches("|") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::LogicalOr)
+                    self.gen_punct(Punct::DoublePipe)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::BitwiseOrAssign)
+                    self.gen_punct(Punct::PipeEqual)
                 } else {
                     self.gen_punct(Punct::Pipe)
                 }
@@ -407,10 +407,10 @@ impl<'a> Tokenizer<'a> {
             '+' => {
                 if self.look_ahead_matches("+") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::Increment)
+                    self.gen_punct(Punct::DoublePlus)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::AddAssign)
+                    self.gen_punct(Punct::PlusEqual)
                 } else {
                     self.gen_punct(Punct::Plus)
                 }
@@ -418,18 +418,18 @@ impl<'a> Tokenizer<'a> {
             '-' => {
                 if self.look_ahead_matches("-") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::Decrement)
+                    self.gen_punct(Punct::DoubleDash)
                 } else if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::SubtractAssign)
+                    self.gen_punct(Punct::DashEqual)
                 } else {
-                    self.gen_punct(Punct::Minus)
+                    self.gen_punct(Punct::Dash)
                 }
             }
             '/' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::DivideAssign)
+                    self.gen_punct(Punct::ForwardSlashEqual)
                 } else if self.look_ahead_matches("*") {
                     self.multi_comment()
                 } else if self.look_ahead_matches("/") {
@@ -441,15 +441,15 @@ impl<'a> Tokenizer<'a> {
             '%' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::ModuloAssign)
+                    self.gen_punct(Punct::PercentEqual)
                 } else {
-                    self.gen_punct(Punct::Modulo)
+                    self.gen_punct(Punct::Percent)
                 }
             }
             '^' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
-                    self.gen_punct(Punct::BitwiseXOrAssign)
+                    self.gen_punct(Punct::CaretEqual)
                 } else {
                     self.gen_punct(Punct::Caret)
                 }
