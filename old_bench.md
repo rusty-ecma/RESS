@@ -1,7 +1,6 @@
 | name               | per iter   | over under |
 | ------------------ | ---------- | ---------- |
 | angular            | 200.141 ms | 18.934 ms  |
-| number_non_decimal | 462.000 ns | 53.000 ns  |
 | bools              | 266.000 ns | 27.000 ns  |
 | bools_ref          | 124.000 ns | 26.000 ns  |
 | comments           | 5.204 μs   | 718.000 ns |
