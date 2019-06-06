@@ -8,6 +8,7 @@ categories = ["parsing", "text-processing", "web-programming"]
 license = "MIT"
 repository = "https://github.com/freemasen/ress"
 readme = "./README.md"
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "FreeMasen/RESS", branch = "master" }
