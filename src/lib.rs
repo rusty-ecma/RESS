@@ -17,14 +17,9 @@
 //! [span]: ./struct.Span
 //! [scanner]: ./struct.Scanner
 //! [tokenize]: ../fn.tokenize
-#[cfg(test)]
-#[macro_use]
-extern crate proptest;
 
 #[macro_use]
 extern crate log;
-extern crate unic_ucd_category;
-extern crate unic_ucd_ident;
 
 mod tokenizer;
 pub mod tokens;
