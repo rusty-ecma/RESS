@@ -59,7 +59,7 @@ impl<'a> PartialEq<str> for &Ident {
 
 impl Ident {
     pub fn matches(&self, other: &str) -> bool {
-        &self.0 == other
+        self.0 == other
     }
 }
 

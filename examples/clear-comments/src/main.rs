@@ -131,7 +131,7 @@ fn main() {
 }
 
 fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
-    if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Assign) {
+    if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Equal) {
         return true;
     }
     if last_token.matches_punct(Punct::Period)

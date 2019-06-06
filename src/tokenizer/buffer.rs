@@ -104,7 +104,7 @@ impl<'a> JSBuffer<'a> {
 impl<'a> JSBuffer<'a> {
     pub fn new(buffer: &'a [u8]) -> Self {
         Self {
-            buffer: buffer,
+            buffer,
             idx: 0,
         }
     }
@@ -171,8 +171,8 @@ impl<'a> JSBuffer<'a> {
                     || c == '\u{FEFF}'
                     || c == '\u{2028}'
                     || c == '\u{2029}'
-                    || match unic_ucd::category::GeneralCategory::of(c) {
-                        unic_ucd::category::GeneralCategory::SpaceSeparator => true,
+                    || match unic_ucd_category::GeneralCategory::of(c) {
+                        unic_ucd_category::GeneralCategory::SpaceSeparator => true,
                         _ => false,
                     }
             }

@@ -86,13 +86,11 @@ impl<'a> Tokenizer<'a> {
                     let _ = self.stream.prev_char();
                     return self.gen_regex(body_idx);
                 }
-            } else {
-                if c == '\\' {
+            } else if c == '\\' {
                     if self.stream.at_new_line() {
                         panic!("new line in regex literal at {}", self.stream.idx);
-                    } else if self.look_ahead_matches("[") {
-                        self.stream.skip(1);
-                    } else if self.look_ahead_matches("/") {
+                } else if self.look_ahead_matches("[") 
+                    || self.look_ahead_matches("/") {
                         self.stream.skip(1);
                     }
                 } else if is_line_term(c) {
@@ -102,16 +100,13 @@ impl<'a> Tokenizer<'a> {
                     if c == ']' {
                         in_class = false;
                     }
-                } else {
-                    if c == '/' {
+            } else if c == '/' {
                         end_of_body = true;
                         body_idx = self.stream.idx;
                     } else if c == '[' {
                         in_class = true;
                     }
                 }
-            }
-        }
         if end_of_body {
             return self.gen_regex(body_idx);
         }
@@ -459,7 +454,7 @@ impl<'a> Tokenizer<'a> {
                     self.gen_punct(Punct::Caret)
                 }
             }
-            _ => unimplemented!("unknown punct {:?} {}", c, self.current_start),
+            _ => unreachable!("unknown punct {:?} {}", c, self.current_start),
         }
     }
     fn number(&mut self, start: char) -> RawItem {
@@ -558,7 +553,7 @@ impl<'a> Tokenizer<'a> {
     }
     fn single_comment(&mut self) -> RawItem {
         while !self.at_new_line() {
-            if let None = self.stream.next_char() {
+            if self.stream.next_char().is_none() {
                 break;
             }
         }
@@ -581,11 +576,12 @@ impl<'a> Tokenizer<'a> {
         );
     }
     fn html_comment(&mut self) -> RawItem {
-        let mut found_end = false;
-        if self.look_ahead_matches("-->") {
+        let mut found_end = if self.look_ahead_matches("-->") {
             self.stream.skip(3);
-            found_end = true;
-        }
+            true
+        } else {
+            false
+        };
         while let Some(_) = self.stream.next_char() {
             if self.look_ahead_matches("-->") {
                 self.stream.skip(3);

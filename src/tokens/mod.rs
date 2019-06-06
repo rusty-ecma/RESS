@@ -236,7 +236,7 @@ pub enum Punct {
 }
 
 impl Punct {
-    fn matches_str(&self, s: &str) -> bool {
+    fn matches_str(self, s: &str) -> bool {
         match self {
             Punct::OpenBrace => "{" == s,
             Punct::CloseBrace => "}" == s,
@@ -531,7 +531,7 @@ impl Keyword {
     /// - export
     /// - implements
     /// - super
-    fn is_future_reserved(self) -> bool {
+    pub fn is_future_reserved(self) -> bool {
         match self {
             Keyword::Enum => true,
             Keyword::Export => true,
@@ -553,7 +553,7 @@ impl Keyword {
     /// - static
     /// - yield
     /// - let
-    fn is_strict_reserved(self) -> bool {
+    pub fn is_strict_reserved(self) -> bool {
         match self {
             Keyword::Implements => true,
             Keyword::Interface => true,
@@ -595,7 +595,7 @@ impl Keyword {
     /// - void
     /// - while
     /// - with
-    fn is_reserved(self) -> bool {
+    pub fn is_reserved(self) -> bool {
         match self {
             Keyword::Break => true,
             Keyword::Case => true,
@@ -627,7 +627,7 @@ impl Keyword {
         }
     }
 
-    fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         match self {
             Keyword::Await => "await",
             Keyword::Break => "break",

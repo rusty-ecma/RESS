@@ -14,13 +14,12 @@ travis-ci = { repository = "FreeMasen/RESS", branch = "master" }
 appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github" }
 
 [dependencies]
-combine = "3"
 log = "0.4"
-unic-ucd-ident = { version = "0.7", features = ["id"] }
+unic-ucd-ident = { version = "0.9", features = ["id"] }
+unic-ucd-category = "0.9"
 flate2 = { version = "1", optional = true }
 reqwest = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true}
-unic-ucd = "0.9"
 
 [dev-dependencies]
 docopt = "1.0"

@@ -58,7 +58,7 @@ impl<'a> Ident<'a> {
 
 impl<'a> From<&'a str> for Ident<'a> {
     fn from(s: &'a str) -> Self {
-        Ident(s.into())
+        Ident(s)
     }
 }
 
@@ -204,7 +204,7 @@ impl<'a> RegEx<'a> {
         } else {
             None
         };
-        RegEx { body: body, flags }
+        RegEx { body, flags }
     }
 }
 

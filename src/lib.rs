@@ -23,7 +23,7 @@ extern crate proptest;
 
 #[macro_use]
 extern crate log;
-extern crate unic_ucd;
+extern crate unic_ucd_category;
 extern crate unic_ucd_ident;
 
 mod tokenizer;
@@ -160,7 +160,7 @@ impl<'b> Scanner<'b> {
         self.stream.curly_stack = state.curly_stack;
     }
     #[inline]
-    fn get_next_token<'a>(&mut self, advance_cursor: bool) -> Option<Item<RefToken<'b>>> {
+    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item<RefToken<'b>>> {
         if self.eof {
             debug!(target: "ress", "end of iterator, returning None");
             return None;
@@ -219,7 +219,7 @@ impl<'b> Scanner<'b> {
                 RawToken::Null => RefToken::Null,
                 RawToken::Numeric(_) => RefToken::Numeric(Number::from(s)),
                 RawToken::Punct(p) => RefToken::Punct(p),
-                RawToken::RegEx(i) => unreachable!("Regex from next"),
+                RawToken::RegEx(_) => unreachable!("Regex from next"),
                 RawToken::String(k) => match k {
                     tokenizer::StringKind::Double => {
                         RefToken::String(StringLit::Double(&self.original[next.start..next.end]))
@@ -248,12 +248,10 @@ impl<'b> Scanner<'b> {
         if !advance_cursor {
             self.stream.stream.idx = prev_cursor;
         } else {
-            match &ret.token {
-                RefToken::Punct(ref p) => match p {
-                    Punct::OpenParen => self.last_open_paren_idx = self.spans.len(),
-                    _ => (),
-                },
-                _ => (),
+            if let RefToken::Punct(ref p) = &ret.token {
+                if let Punct::OpenParen = p {
+                    self.last_open_paren_idx = self.spans.len()
+            }
             }
             self.spans.push(ret.span);
         }
