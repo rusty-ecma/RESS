@@ -6,7 +6,7 @@ extern crate log;
 
 use std::{fs::read_to_string, path::Path, process::Command};
 
-use ress::{Scanner, Token};
+use ress::{Scanner};
 
 #[test]
 fn es5() {
