@@ -1,15 +1,14 @@
 use std::char;
 
-
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
 }
-/// Re-implementation of 
+/// Re-implementation of
 /// the std::str::Chars logic
 const CONT_MASK: u8 = 0b0011_1111;
 const TAG_CONT_U8: u8 = 0b1000_0000;
-impl <'a> JSBuffer<'a> {
+impl<'a> JSBuffer<'a> {
     #[inline]
     pub fn next_char(&mut self) -> Option<char> {
         if self.at_end() {
@@ -17,7 +16,7 @@ impl <'a> JSBuffer<'a> {
         }
         let x = self.next_or_zero();
         if x < 128 {
-            return Some(x as char)
+            return Some(x as char);
         }
 
         // Multibyte case follows
@@ -33,8 +32,8 @@ impl <'a> JSBuffer<'a> {
             let y_z = Self::utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
             ch = init << 12 | y_z;
             if x >= 0xF0 {
-                 // [x y z w] case
-                 // use only the lower 3 bits of `init`
+                // [x y z w] case
+                // use only the lower 3 bits of `init`
                 let w = self.next_or_zero();
                 ch = (init & 7) << 18 | Self::utf8_acc_cont_byte(y_z, w);
             }
@@ -89,20 +88,20 @@ impl <'a> JSBuffer<'a> {
         self.buffer[self.idx]
     }
     #[inline]
-    fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { 
-        (ch << 6) | (byte & CONT_MASK) as u32 
+    fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
+        (ch << 6) | (byte & CONT_MASK) as u32
     }
     #[inline]
-    fn utf8_first_byte(byte: u8, width: u32) -> u32 { 
-        (byte & (0x7F >> width)) as u32 
+    fn utf8_first_byte(byte: u8, width: u32) -> u32 {
+        (byte & (0x7F >> width)) as u32
     }
     #[inline]
-    fn utf8_is_cont_byte(byte: u8) -> bool { 
-        (byte & !CONT_MASK) == TAG_CONT_U8 
+    fn utf8_is_cont_byte(byte: u8) -> bool {
+        (byte & !CONT_MASK) == TAG_CONT_U8
     }
 }
 
-impl <'a> JSBuffer<'a> {
+impl<'a> JSBuffer<'a> {
     pub fn new(buffer: &'a [u8]) -> Self {
         Self {
             buffer: buffer,
@@ -121,8 +120,7 @@ impl <'a> JSBuffer<'a> {
     /// Check if the next few bytes match the provided bytes
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
         let end = self.idx.saturating_add(s.len());
-        end <= self.buffer.len()
-        && &self.buffer[self.idx..end] == s
+        end <= self.buffer.len() && &self.buffer[self.idx..end] == s
     }
     /// Skip the number of characters provided
     /// note: these are full unicode characters, not just bytes
@@ -150,34 +148,34 @@ impl <'a> JSBuffer<'a> {
     //     }
     //     !at_end
     // }
-    /// check if current char is a valid 
+    /// check if current char is a valid
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {
         if self.at_end() {
             return false;
         }
         self.buffer[self.idx] == 9
-        || self.buffer[self.idx] == 10
-        || self.buffer[self.idx] == 11
-        || self.buffer[self.idx] == 12
-        || self.buffer[self.idx] == 13
-        || self.buffer[self.idx] == 32
-        || {
-            let c = if let Some(c) = self.next_char() {
-                let _ = self.prev_char();
-                c
-            } else {
-                return false;
-            };
-            c == '\u{00A0}'
-            || c == '\u{FEFF}'
-            || c == '\u{2028}'
-            || c == '\u{2029}'
-            || match unic_ucd::category::GeneralCategory::of(c) {
-                unic_ucd::category::GeneralCategory::SpaceSeparator => true,
-                _ => false
+            || self.buffer[self.idx] == 10
+            || self.buffer[self.idx] == 11
+            || self.buffer[self.idx] == 12
+            || self.buffer[self.idx] == 13
+            || self.buffer[self.idx] == 32
+            || {
+                let c = if let Some(c) = self.next_char() {
+                    let _ = self.prev_char();
+                    c
+                } else {
+                    return false;
+                };
+                c == '\u{00A0}'
+                    || c == '\u{FEFF}'
+                    || c == '\u{2028}'
+                    || c == '\u{2029}'
+                    || match unic_ucd::category::GeneralCategory::of(c) {
+                        unic_ucd::category::GeneralCategory::SpaceSeparator => true,
+                        _ => false,
+                    }
             }
-        }
     }
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
@@ -188,20 +186,18 @@ impl <'a> JSBuffer<'a> {
             return false;
         };
         self.look_ahead_matches(b"\r\n")
-        || c == '\n'
-        || c == '\r'
-        || c == '\u{00A0}'
-        || c == '\u{FEFF}'
+            || c == '\n'
+            || c == '\r'
+            || c == '\u{00A0}'
+            || c == '\u{FEFF}'
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
-        self.buffer[self.idx] > 47 
-        && self.buffer[self.idx] < 58
+        self.buffer[self.idx] > 47 && self.buffer[self.idx] < 58
     }
     #[inline]
     pub fn at_octal(&self) -> bool {
-        self.buffer[self.idx] > 47 
-        && self.buffer[self.idx] < 56
+        self.buffer[self.idx] > 47 && self.buffer[self.idx] < 56
     }
 }
 
@@ -227,7 +223,7 @@ mod test {
         assert!(b.next_char().unwrap() == 'k');
         assert!(b.next_char().unwrap() == 'ł');
         assert!(b.next_char().unwrap() == '둘');
-        
+
         assert!(b.prev_char().unwrap() == '둘');
         assert!(b.prev_char().unwrap() == 'ł');
         assert!(b.prev_char().unwrap() == 'k');
@@ -266,7 +262,7 @@ mod test {
         let js = r#""things and stuff""#;
         let mut buf = JSBuffer::from(js);
         for i in 0..js.len() {
-            let c = &js[i..i+1];
+            let c = &js[i..i + 1];
             assert!(buf.look_ahead_matches(c.as_bytes()));
             let _ = buf.next_char();
         }

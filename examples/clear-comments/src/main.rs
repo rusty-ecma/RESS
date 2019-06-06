@@ -19,7 +19,7 @@ use std::{
 
 use docopt::Docopt;
 
-use ress::{Boolean, Keyword, Punct, Scanner, Token, RefToken};
+use ress::{Boolean, Keyword, Punct, RefToken, Scanner, Token};
 
 const USAGE: &'static str = "
 clear-comments

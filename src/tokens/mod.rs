@@ -3,79 +3,78 @@ pub mod refs;
 
 pub trait Token {
     fn is_boolean(&self) -> bool;
-        
+
     fn is_boolean_true(&self) -> bool;
-        
+
     fn is_boolean_false(&self) -> bool;
-        
+
     fn is_eof(&self) -> bool;
 
     fn is_ident(&self) -> bool;
-       
+
     fn is_keyword(&self) -> bool;
-        
+
     fn is_strict_reserved(&self) -> bool;
-        
+
     fn is_restricted(&self) -> bool;
-        
+
     fn is_null(&self) -> bool;
-        
+
     fn is_numeric(&self) -> bool;
-        
+
     fn is_hex_literal(&self) -> bool;
-        
+
     fn is_bin_literal(&self) -> bool;
-        
+
     fn is_oct_literal(&self) -> bool;
-        
+
     fn is_punct(&self) -> bool;
-        
+
     fn is_string(&self) -> bool;
-        
+
     fn is_double_quoted_string(&self) -> bool;
-        
+
     fn is_single_quoted_string(&self) -> bool;
-        
+
     fn is_regex(&self) -> bool;
-        
+
     fn is_template(&self) -> bool;
-        
+
     fn is_template_no_sub(&self) -> bool;
-       
+
     fn is_template_head(&self) -> bool;
-        
+
     fn is_template_body(&self) -> bool;
-        
+
     fn is_template_tail(&self) -> bool;
-        
+
     fn is_literal(&self) -> bool;
-        
+
     fn is_comment(&self) -> bool;
-        
+
     fn is_multi_line_comment(&self) -> bool;
-        
+
     fn is_single_line_comment(&self) -> bool;
 
     fn matches_boolean(&self, b: BooleanLiteral) -> bool;
-        
+
     fn matches_boolean_str(&self, b: &str) -> bool;
-        
+
     fn matches_ident_str(&self, name: &str) -> bool;
-        
+
     fn matches_keyword(&self, keyword: Keyword) -> bool;
-        
+
     fn matches_keyword_str(&self, name: &str) -> bool;
-                
+
     fn matches_numeric_str(&self, number: &str) -> bool;
-        
+
     fn matches_punct(&self, p: Punct) -> bool;
-        
+
     fn matches_punct_str(&self, s: &str) -> bool;
-                        
+
     fn matches_comment_str(&self, comment: &str) -> bool;
-        
+
     fn matches_string_content(&self, content: &str) -> bool;
-        
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -352,7 +351,8 @@ impl ToString for Punct {
             Punct::LessThanEqual => "<=",
             Punct::Exponent => "**",
             Punct::Private => "#",
-        }.into()
+        }
+        .into()
     }
 }
 
@@ -881,7 +881,7 @@ impl Token for owned::Token {
     fn matches_numeric_str(&self, number: &str) -> bool {
         match self {
             owned::Token::Numeric(n) => n == number,
-            _ => false
+            _ => false,
         }
     }
     fn matches_punct(&self, p: Punct) -> bool {

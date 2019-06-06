@@ -1,10 +1,4 @@
-use super::{
-    NumberKind,
-    CommentKind,
-    Keyword,
-    Punct,
-    BooleanLiteral,
-};
+use super::{BooleanLiteral, CommentKind, Keyword, NumberKind, Punct};
 #[derive(Debug, PartialEq, Clone)]
 /// The representation of a single JS token
 /// with a str
@@ -86,7 +80,6 @@ pub struct Comment<'a> {
     pub content: &'a str,
     pub tail_content: Option<&'a str>,
 }
-
 
 impl<'a> Comment<'a> {
     pub fn from_parts(content: &'a str, kind: CommentKind, tail_content: Option<&'a str>) -> Self {
@@ -211,10 +204,7 @@ impl<'a> RegEx<'a> {
         } else {
             None
         };
-        RegEx {
-            body: body,
-            flags,
-        }
+        RegEx { body: body, flags }
     }
 }
 
@@ -228,7 +218,6 @@ impl<'a> ToString for RegEx<'a> {
         format!("/{}/{}", self.body, f)
     }
 }
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum StringLit<'a> {

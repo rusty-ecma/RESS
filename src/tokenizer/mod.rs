@@ -1,18 +1,9 @@
+use tokens::{CommentKind, Keyword, NumberKind, Punct};
 use unic_ucd_ident::{is_id_continue, is_id_start};
 use {is_line_term, OpenCurlyKind};
-use tokens::{
-    Keyword,
-    Punct,
-    CommentKind,
-    NumberKind,
-};
 mod buffer;
 mod tokens;
-pub(super) use self::tokens::{
-    TemplateKind,
-    StringKind,
-    RawToken,
-};
+pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
 
 pub struct RawItem {
     pub ty: tokens::RawToken,
@@ -39,10 +30,12 @@ impl<'a> Tokenizer<'a> {
         self.current_start = self.stream.idx;
         let next_char = match self.stream.next_char() {
             Some(ch) => ch,
-            None => return RawItem {
-                start: self.stream.idx,
-                end: self.stream.idx,
-                ty: RawToken::EoF
+            None => {
+                return RawItem {
+                    start: self.stream.idx,
+                    end: self.stream.idx,
+                    ty: RawToken::EoF,
+                }
             }
         };
         if is_id_start(next_char) || next_char == '$' || next_char == '_' || next_char == '\\' {
@@ -77,13 +70,15 @@ impl<'a> Tokenizer<'a> {
         let mut in_class = false;
         while let Some(c) = self.stream.next_char() {
             if end_of_body {
-                if c == '\\'{
+                if c == '\\' {
                     if self.look_ahead_matches("u{") {
                         self.stream.skip(2);
                         self.escaped_with_code_point();
                     } else if self.look_ahead_matches("u") {
                         self.stream.skip(1);
-                        let start = self.stream.next_char()
+                        let start = self
+                            .stream
+                            .next_char()
                             .expect("unexpected end of file when parsing regex");
                         self.escaped_with_hex4(start);
                     }
@@ -102,7 +97,8 @@ impl<'a> Tokenizer<'a> {
                     }
                 } else if is_line_term(c) {
                     panic!("new line in regex literal at {}", self.stream.idx);
-                } else if in_class { // we ignore the /
+                } else if in_class {
+                    // we ignore the /
                     if c == ']' {
                         in_class = false;
                     }
@@ -117,8 +113,8 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if end_of_body {
-            return self.gen_regex(body_idx)
-        } 
+            return self.gen_regex(body_idx);
+        }
         panic!("unterminated regex at {}", self.current_start);
     }
 
@@ -131,10 +127,7 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 self.escaped_ident_part();
             }
-            if !is_id_continue(c)
-            && c != '$'
-            && c != '\u{200C}'
-            && c != '\u{200D}' {
+            if !is_id_continue(c) && c != '$' && c != '\u{200C}' && c != '\u{200D}' {
                 // if we have moved past the last valid identifier, go back 1
                 let _ = self.stream.prev_char();
                 break;
@@ -197,7 +190,7 @@ impl<'a> Tokenizer<'a> {
             b"let" => Some(Keyword::Let),
             _ => None,
         }
-    } 
+    }
 
     fn at_bool(&self) -> Option<bool> {
         match &self.stream.buffer[self.current_start..self.stream.idx] {
@@ -215,9 +208,12 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.escaped_with_hex4(c)
                 }
-            } 
+            }
         } else {
-            panic!("invalid unicode escape sequence starting at {}", self.current_start);
+            panic!(
+                "invalid unicode escape sequence starting at {}",
+                self.current_start
+            );
         }
     }
 
@@ -230,7 +226,7 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
             assert!(c.is_digit(16));
-            code += u32::from_str_radix(c.encode_utf8(&mut [0;4]), 16)
+            code += u32::from_str_radix(c.encode_utf8(&mut [0; 4]), 16)
                 .expect("invalid hex digit in escaped unicode codepoint");
         }
         assert!(code < 0x10FFF);
@@ -261,10 +257,12 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip(2);
                     escaped = false;
                 }
-            } else if (self.look_ahead_matches("\n") 
+            } else if (self.look_ahead_matches("\n")
                 || self.look_ahead_matches("\r")
                 || self.look_ahead_matches("\u{2028}")
-                || self.look_ahead_matches("\u{2029}")) && !escaped {
+                || self.look_ahead_matches("\u{2029}"))
+                && !escaped
+            {
                 panic!("unescaped new line in string literal");
             } else if self.stream.look_ahead_matches(&[quote as u8]) {
                 self.stream.skip(1);
@@ -312,12 +310,12 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Period)
                 }
-            },
+            }
             '>' => {
                 if self.look_ahead_matches(">>=") {
                     self.stream.skip(3);
                     self.gen_punct(Punct::UnsignedRightShiftAssign)
-                } else if self.look_ahead_matches(">>")  {
+                } else if self.look_ahead_matches(">>") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::UnsignedRightShift)
                 } else if self.look_ahead_matches(">=") {
@@ -332,7 +330,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::GreaterThan)
                 }
-            },
+            }
             '<' => {
                 if self.look_ahead_matches("<=") {
                     self.stream.skip(2);
@@ -349,7 +347,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::LessThan)
                 }
-            },
+            }
             '=' => {
                 if self.look_ahead_matches("==") {
                     self.stream.skip(2);
@@ -363,7 +361,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Assign)
                 }
-            },
+            }
             '!' => {
                 if self.look_ahead_matches("==") {
                     self.stream.skip(2);
@@ -374,7 +372,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Not)
                 }
-            },
+            }
             '*' => {
                 if self.look_ahead_matches("*=") {
                     self.stream.skip(2);
@@ -388,7 +386,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Asterisk)
                 }
-            },
+            }
             '&' => {
                 if self.look_ahead_matches("&") {
                     self.stream.skip(1);
@@ -399,7 +397,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::And)
                 }
-            },
+            }
             '|' => {
                 if self.look_ahead_matches("|") {
                     self.stream.skip(1);
@@ -410,7 +408,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Pipe)
                 }
-            },
+            }
             '+' => {
                 if self.look_ahead_matches("+") {
                     self.stream.skip(1);
@@ -421,7 +419,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Plus)
                 }
-            },
+            }
             '-' => {
                 if self.look_ahead_matches("-") {
                     self.stream.skip(1);
@@ -432,7 +430,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Minus)
                 }
-            },
+            }
             '/' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
@@ -444,7 +442,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::ForwardSlash)
                 }
-            },
+            }
             '%' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
@@ -452,7 +450,7 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Modulo)
                 }
-            },
+            }
             '^' => {
                 if self.look_ahead_matches("=") {
                     self.stream.skip(1);
@@ -524,13 +522,19 @@ impl<'a> Tokenizer<'a> {
                 } else if self.look_ahead_matches("0") {
                     if let Some(_zero) = self.stream.next_char() {
                         if self.stream.at_decimal() {
-                            panic!("Template contains octal literal at {}", self.stream.idx.saturating_sub(1));
+                            panic!(
+                                "Template contains octal literal at {}",
+                                self.stream.idx.saturating_sub(1)
+                            );
                         } else {
                             let _ = self.stream.prev_char();
                         }
                     }
                 } else if self.stream.at_octal() {
-                    panic!("Template contains octal literal starting at {}", self.stream.idx);
+                    panic!(
+                        "Template contains octal literal starting at {}",
+                        self.stream.idx
+                    );
                 }
             } else if c == '$' {
                 if self.look_ahead_matches("{") {
@@ -571,7 +575,10 @@ impl<'a> Tokenizer<'a> {
                 return self.gen_comment(CommentKind::Multi);
             }
         }
-        panic!("unterminated multi-line comment starting at {}", self.current_start);
+        panic!(
+            "unterminated multi-line comment starting at {}",
+            self.current_start
+        );
     }
     fn html_comment(&mut self) -> RawItem {
         let mut found_end = false;
@@ -589,9 +596,12 @@ impl<'a> Tokenizer<'a> {
             self.stream.skip(1)
         }
         if found_end {
-            return self.gen_token(RawToken::Comment(CommentKind::Html))
+            return self.gen_token(RawToken::Comment(CommentKind::Html));
         }
-        panic!("unterminated html comment starting at {}", self.current_start);
+        panic!(
+            "unterminated html comment starting at {}",
+            self.current_start
+        );
     }
     fn hex_number(&mut self) -> RawItem {
         if let Some(c) = self.stream.next_char() {
@@ -626,7 +636,7 @@ impl<'a> Tokenizer<'a> {
         self.gen_number(NumberKind::Oct)
     }
     fn bin_number(&mut self) -> RawItem {
-        if let Some(c)  = self.stream.next_char() {
+        if let Some(c) = self.stream.next_char() {
             if !c.is_digit(2) {
                 panic!("empty bin literal");
             }
@@ -643,7 +653,7 @@ impl<'a> Tokenizer<'a> {
     }
     fn dec_number(&mut self, seen_point: bool) -> RawItem {
         let mut maybe_e: Option<char> = None;
-        
+
         if seen_point {
             while let Some(c) = self.stream.next_char() {
                 if !c.is_digit(10) && c != '.' {
@@ -732,11 +742,11 @@ mod test {
     #[test]
     fn tokenizer_punct() {
         static PUNCTS: &[&str] = &[
-            "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+", "-", "/",
-            "*", "%", "&", "|", "^", ">>>=", //3 char
+            "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+",
+            "-", "/", "*", "%", "&", "|", "^", ">>>=", //3 char
             "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
-            "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=", "^=", "%=",
-            "<=", ">=", "=>", "**",
+            "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
+            "^=", "%=", "<=", ">=", "=>", "**",
         ];
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
@@ -748,16 +758,16 @@ mod test {
     #[test]
     fn tokenizer_strings() {
         static STRINGS: &[&str] = &[
-        r#""things and stuff""#,
-        r#"'people and places'"#,
-        r#""with and escaped \"""#,
-        r#"'another escaped \''"#,
-        r#""with a new \
+            r#""things and stuff""#,
+            r#"'people and places'"#,
+            r#""with and escaped \"""#,
+            r#"'another escaped \''"#,
+            r#""with a new \
         line""#,
-        r#"'another new line \
+            r#"'another new line \
         hahaha'"#,
-        "\"sequence double quoted\\\r\nis hard\"",
-        "'new line sequence\\\r\nmight be harder'",
+            "\"sequence double quoted\\\r\nis hard\"",
+            "'new line sequence\\\r\nmight be harder'",
         ];
         for s in STRINGS {
             let item = Tokenizer::new(s).next_();
@@ -766,15 +776,19 @@ mod test {
                     if &s[0..1] == "'" {
                         match lit {
                             StringKind::Single => (),
-                            StringKind::Double => panic!("Expected single quote string, found double"),
+                            StringKind::Double => {
+                                panic!("Expected single quote string, found double")
+                            }
                         }
                     } else {
                         match lit {
-                            StringKind::Single => panic!("expected double quote string, found single"),
+                            StringKind::Single => {
+                                panic!("expected double quote string, found single")
+                            }
                             StringKind::Double => (),
                         }
                     }
-                },
+                }
                 _ => panic!("Expected string, found {:?}", item.ty),
             }
             assert_eq!(s.len(), item.end - item.start);
@@ -813,7 +827,7 @@ mod test {
 
     #[test]
     fn tokenizer_number() {
-         static NUMBERS: &[&str] = &[
+        static NUMBERS: &[&str] = &[
             "0",
             "00",
             "1234567890",
@@ -913,7 +927,8 @@ mod test {
         t = Tokenizer::new(escaped_no_sub);
         let one = t.next_();
         assert_eq!(one.ty, RawToken::Template(TemplateKind::NoSub));
-        let double_sub = "`things and stuff times ${} and animals and minerals ${} and places and people`";
+        let double_sub =
+            "`things and stuff times ${} and animals and minerals ${} and places and people`";
         println!("double_sub: {}", double_sub);
         t = Tokenizer::new(double_sub);
         let start = t.next_();

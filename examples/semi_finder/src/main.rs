@@ -1,7 +1,7 @@
 extern crate ress;
 extern crate walkdir;
 
-use ress::{Punct, Scanner, RefToken};
+use ress::{Punct, RefToken, Scanner};
 use walkdir::WalkDir;
 
 use std::{collections::HashMap, env::args, fs::read_to_string, path::PathBuf};

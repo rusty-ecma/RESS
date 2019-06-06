@@ -1,4 +1,4 @@
-use tokens::{Keyword, Punct, NumberKind, CommentKind,};
+use tokens::{CommentKind, Keyword, NumberKind, Punct};
 #[derive(PartialEq, Debug)]
 pub enum RawToken {
     /// `true` of `false`

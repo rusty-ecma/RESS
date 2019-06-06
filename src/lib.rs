@@ -23,38 +23,21 @@ extern crate proptest;
 
 #[macro_use]
 extern crate log;
-extern crate unic_ucd_ident;
 extern crate unic_ucd;
+extern crate unic_ucd_ident;
 
 mod tokenizer;
 pub mod tokens;
-pub use tokens::{
-    BooleanLiteral as Boolean, 
-    Token,
-    owned::{
-        Comment as OwnedComment,
-        Ident as OwnedIdent,
-        Number as OwnedNumber,
-        RegEx as OwnedRegEx,
-        StringLit as OwnedStringLit,
-        Template as OwnedTemplate,
-        Token as OwnedToken,
-    },
-    refs::{
-        Comment,
-        Ident,
-        Number,
-        RegEx,
-        StringLit,
-        Template,
-        Token as RefToken,
-    },
-    Keyword,
-    Punct,
-};
-pub use tokenizer::Tokenizer;
 use tokenizer::RawToken;
-
+pub use tokenizer::Tokenizer;
+pub use tokens::{
+    owned::{
+        Comment as OwnedComment, Ident as OwnedIdent, Number as OwnedNumber, RegEx as OwnedRegEx,
+        StringLit as OwnedStringLit, Template as OwnedTemplate, Token as OwnedToken,
+    },
+    refs::{Comment, Ident, Number, RegEx, StringLit, Template, Token as RefToken},
+    BooleanLiteral as Boolean, Keyword, Punct, Token,
+};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -82,8 +65,10 @@ pub struct Item<T> {
     pub span: Span,
 }
 
-impl<T> Item<T> 
-where T: Token {
+impl<T> Item<T>
+where
+    T: Token,
+{
     pub fn new(token: T, span: Span) -> Self {
         Self { token, span }
     }
@@ -95,9 +80,8 @@ where T: Token {
     }
     pub fn is_template(&self) -> bool {
         self.token.is_template_head()
-        || self.token.is_template_body() 
-        || self.token.is_template_tail()
-
+            || self.token.is_template_body()
+            || self.token.is_template_tail()
     }
 }
 
@@ -121,7 +105,7 @@ impl<'a> Scanner<'a> {
             spans: Vec::new(),
             last_open_paren_idx: 0,
             pending_new_line: false,
-            original: text
+            original: text,
         }
     }
 }
@@ -183,9 +167,10 @@ impl<'b> Scanner<'b> {
         };
         let prev_cursor = self.stream.stream.idx;
         let mut next = self.stream.next_();
-        let ret = if next.ty.is_punct() &&
-            &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/" 
-            && self.is_regex_start() {
+        let ret = if next.ty.is_punct()
+            && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
+            && self.is_regex_start()
+        {
             next = self.stream.next_regex();
             match next.ty {
                 RawToken::RegEx(body_end) => {
@@ -194,12 +179,15 @@ impl<'b> Scanner<'b> {
                     } else {
                         None
                     };
-                    Item::new(RefToken::RegEx(RegEx {
-                        body: &self.original[next.start..body_end],
-                        flags,
-                    }), Span::new(next.start, next.end))
-                },
-                _ => unreachable!("non-regex from next_regex")
+                    Item::new(
+                        RefToken::RegEx(RegEx {
+                            body: &self.original[next.start..body_end],
+                            flags,
+                        }),
+                        Span::new(next.start, next.end),
+                    )
+                }
+                _ => unreachable!("non-regex from next_regex"),
             }
         } else {
             let s = &self.original[next.start..next.end];
@@ -220,7 +208,7 @@ impl<'b> Scanner<'b> {
                             (s, None)
                         };
                         RefToken::Comment(Comment::new_html(content, tail))
-                    },
+                    }
                 },
                 RawToken::EoF => {
                     self.eof = true;
@@ -233,15 +221,27 @@ impl<'b> Scanner<'b> {
                 RawToken::Punct(p) => RefToken::Punct(p),
                 RawToken::RegEx(i) => unreachable!("Regex from next"),
                 RawToken::String(k) => match k {
-                    tokenizer::StringKind::Double => RefToken::String(StringLit::Double(&self.original[next.start..next.end])),
-                    tokenizer::StringKind::Single => RefToken::String(StringLit::Single(&self.original[next.start..next.end])),
+                    tokenizer::StringKind::Double => {
+                        RefToken::String(StringLit::Double(&self.original[next.start..next.end]))
+                    }
+                    tokenizer::StringKind::Single => {
+                        RefToken::String(StringLit::Single(&self.original[next.start..next.end]))
+                    }
                 },
                 RawToken::Template(t) => match t {
-                    tokenizer::TemplateKind::Head => RefToken::Template(Template::Head(&self.original[next.start..next.end])),
-                    tokenizer::TemplateKind::Body => RefToken::Template(Template::Middle(&self.original[next.start..next.end])),
-                    tokenizer::TemplateKind::Tail => RefToken::Template(Template::Tail(&self.original[next.start..next.end])),
-                    tokenizer::TemplateKind::NoSub => RefToken::Template(Template::NoSub(&self.original[next.start..next.end])),
-                }
+                    tokenizer::TemplateKind::Head => {
+                        RefToken::Template(Template::Head(&self.original[next.start..next.end]))
+                    }
+                    tokenizer::TemplateKind::Body => {
+                        RefToken::Template(Template::Middle(&self.original[next.start..next.end]))
+                    }
+                    tokenizer::TemplateKind::Tail => {
+                        RefToken::Template(Template::Tail(&self.original[next.start..next.end]))
+                    }
+                    tokenizer::TemplateKind::NoSub => {
+                        RefToken::Template(Template::NoSub(&self.original[next.start..next.end]))
+                    }
+                },
             };
             Item::new(token, Span::new(next.start, next.end))
         };
@@ -302,10 +302,7 @@ impl<'b> Scanner<'b> {
         if let Some(before) = self.nth_before_last_open_paren(1) {
             match before {
                 RawToken::Keyword(k) => match k {
-                    Keyword::If 
-                    | Keyword::For
-                    | Keyword::While
-                    | Keyword::With => true,
+                    Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
                     _ => false,
                 },
                 _ => false,
@@ -407,7 +404,7 @@ impl<'b> Scanner<'b> {
 
     fn token_for(&self, span: &Span) -> Option<tokenizer::RawToken> {
         if self.original.len() < span.end {
-            return None
+            return None;
         }
         let s = &self.original[span.start..span.end];
         Some(Tokenizer::new(s).next_().ty)
@@ -639,7 +636,6 @@ this.y = 0;
     //     );
     // }
 }
-
 
 pub mod error {
     #[derive(Debug)]

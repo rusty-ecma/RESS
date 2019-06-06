@@ -1,13 +1,7 @@
-use super::{
-    NumberKind,
-    CommentKind,
-    Keyword,
-    Punct,
-    BooleanLiteral,
-};
+use super::{BooleanLiteral, CommentKind, Keyword, NumberKind, Punct};
 #[derive(Debug, PartialEq, Clone)]
 /// The representation of a single JS token
-/// with an owned string 
+/// with an owned string
 pub enum Token {
     /// `true` of `false`
     Boolean(BooleanLiteral),
@@ -93,14 +87,12 @@ impl Into<String> for Ident {
     }
 }
 
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Comment {
     pub kind: CommentKind,
     pub content: String,
     pub tail_content: Option<String>,
 }
-
 
 impl Comment {
     pub fn from_parts(content: String, kind: CommentKind, tail_content: Option<String>) -> Self {
@@ -153,8 +145,6 @@ impl ToString for Comment {
         }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Number(String);

@@ -3,9 +3,9 @@
 extern crate ress;
 extern crate test;
 use ress::Scanner;
-use test::{Bencher, black_box};
 use std::fs::read_to_string;
 use std::path::PathBuf;
+use test::{black_box, Bencher};
 #[bench]
 fn angular(b: &mut Bencher) {
     let js = get_js(Lib::Angular).unwrap();
@@ -138,13 +138,18 @@ impl Lib {
     }
 }
 
-
 fn npm_install() {
     eprintln!("Downloading required js dependencies");
     let mut c = ::std::process::Command::new("npm");
     c.arg("i");
     let out = c.output().expect("Failed to read output from npm");
     if !out.status.success() {
-        panic!("{}", format!("Failed to run npm i\n{:?}", String::from_utf8_lossy(&out.stderr)));
+        panic!(
+            "{}",
+            format!(
+                "Failed to run npm i\n{:?}",
+                String::from_utf8_lossy(&out.stderr)
+            )
+        );
     }
 }

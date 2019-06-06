@@ -6,11 +6,8 @@ extern crate test;
 #[macro_use]
 extern crate lazy_static;
 
+use ress::{Scanner, Tokenizer};
 use test::{black_box, Bencher};
-use ress::{
-    Scanner,
-    Tokenizer,
-};
 static KEYWORDS: &[&str] = &[
     "implements",
     "interface",
@@ -204,7 +201,6 @@ fn punct(b: &mut Bencher) {
     });
 }
 
-
 #[bench]
 fn strings(b: &mut Bencher) {
     b.iter(|| {
@@ -298,7 +294,7 @@ pub fn token(b: &mut Bencher) {
 #[bench]
 fn scanner(b: &mut Bencher) {
     let js = include_str!("../node_modules/jquery/dist/jquery.js");
-     b.iter(|| {
+    b.iter(|| {
         let s = Scanner::new(js);
         black_box(s.collect::<Vec<_>>())
     });
