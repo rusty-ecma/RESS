@@ -1,6 +1,5 @@
 #![cfg(test)]
 #![feature(test)]
-extern crate combine;
 extern crate ress;
 extern crate test;
 #[macro_use]
