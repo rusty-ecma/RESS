@@ -19,7 +19,7 @@ fn angular_min(b: &mut Bencher) {
     let js = get_min_js(Lib::Angular).unwrap();
     b.iter(|| {
         black_box(Scanner::new(&js).collect::<Vec<_>>());
-    })
+    });;
 }
 
 #[bench]
