@@ -1,6 +1,5 @@
-//! js_parse
+//! ress
 //! A crate for parsing raw JS into a token stream
-//!
 //!
 //! The primary interfaces are the function [`tokenize`][tokenize] and
 //! the struct [`Scanner`][scanner]. The [`Scanner`][scanner] struct impls [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
@@ -53,10 +52,8 @@ pub use tokens::{
     Keyword,
     Punct,
 };
-use tokenizer::{
-    Tokenizer,
-    RawToken,
-};
+pub use tokenizer::Tokenizer;
+use tokenizer::RawToken;
 
 
 /// a convince function for collecting a scanner into
@@ -143,17 +140,6 @@ impl<'b> Scanner<'b> {
     /// returned value will not be a borrowed `Item`. Since
     /// there isn't a borrow happening this essentially duplicates
     /// the cost of calling `next`.
-    ///
-    /// ```
-    /// # extern crate ress;
-    /// # use ress::{Scanner,Token};
-    /// # fn main() {
-    /// let js = "function thing() { return; }";
-    /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.look_ahead().unwrap().token, Token::keyword("function"));
-    /// assert_eq!(s.next().unwrap().token, Token::keyword("function"));
-    /// # }
-    /// ```
     pub fn look_ahead(&mut self) -> Option<Item<RefToken<'b>>> {
         self.get_next_token(false)
     }
@@ -226,12 +212,12 @@ impl<'b> Scanner<'b> {
                         let (content, tail) = if let Some(idx) = s.rfind("-->") {
                             let actual_end = idx.saturating_add(3);
                             if actual_end < next.end {
-                                (&self.original[next.start..idx], Some(&self.original[actual_end..next.end]))
+                                (&s[0..idx], Some(&s[idx..]))
                             } else {
-                                (&self.original[next.start..idx], None)
+                                (s, None)
                             }
                         } else {
-                            (&self.original[next.start..next.end], None)
+                            (s, None)
                         };
                         RefToken::Comment(Comment::new_html(content, tail))
                     },

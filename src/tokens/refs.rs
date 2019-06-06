@@ -35,24 +35,6 @@ pub enum Token<'a> {
     /// ```
     RegEx(RegEx<'a>),
     /// The string parts of a template string
-    /// ```
-    /// # extern crate ress;
-    /// # use ress::{Scanner, Item, Token, Number, Template};
-    /// # fn main() {
-    /// let js = "`Things and stuff times ${10} equals ${100000000}... i think`";
-    /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_head("Things and stuff times "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("10"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_middle(" equals "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("100000000"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_tail("... i think"));
-    /// # }
-    /// ```
     Template(Template<'a>),
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
@@ -66,19 +48,6 @@ pub enum Token<'a> {
 }
 #[derive(Debug, PartialEq, Clone)]
 /// An identifier
-/// ```
-/// # extern crate ress;
-/// # use ress::{Scanner, Item, Token, Ident};
-/// # fn main() {
-/// let js = "var x = 1;";
-/// let mut s = Scanner::new(js);
-/// let _var = s.next().unwrap();
-/// assert_eq!(s.next().unwrap().token,
-///             Token::Ident(Ident::from("x")));
-/// let _assign = s.next().unwrap();
-/// let _one = s.next().unwrap();
-/// # }
-/// ```
 pub struct Ident<'a>(&'a str);
 
 impl<'a> PartialEq<str> for Ident<'a> {

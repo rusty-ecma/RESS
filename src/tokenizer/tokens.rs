@@ -27,23 +27,9 @@ pub enum RawToken {
     /// ```
     RegEx(usize),
     /// The string parts of a template string
-    /// ```
-    /// # extern crate ress;
-    /// # use ress::{Scanner, Item, Token, Number, Template};
-    /// # fn main() {
-    /// let js = "`Things and stuff times ${10} equals ${100000000}... i think`";
-    /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_head("Things and stuff times "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("10"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_middle(" equals "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("100000000"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_tail("... i think"));
-    /// # }
+    /// ```js
+    ///    `things and stuff times ${10}`
+    /// //  ^^^^^^^^^^^^^^^^^^^^^^      ^
     /// ```
     Template(TemplateKind),
     /// A comment, the associated value will contain the raw comment
