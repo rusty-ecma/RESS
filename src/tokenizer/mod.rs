@@ -1,6 +1,6 @@
-use tokens::{CommentKind, Keyword, NumberKind, Punct};
+use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
 use unic_ucd_ident::{is_id_continue, is_id_start};
-use {is_line_term, OpenCurlyKind};
+use crate::{is_line_term, OpenCurlyKind};
 mod buffer;
 mod tokens;
 pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};

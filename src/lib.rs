@@ -28,9 +28,9 @@ extern crate unic_ucd_ident;
 
 mod tokenizer;
 pub mod tokens;
-use tokenizer::RawToken;
-pub use tokenizer::Tokenizer;
-pub use tokens::{
+use crate::tokenizer::RawToken;
+pub use crate::tokenizer::Tokenizer;
+pub use crate::tokens::{
     owned::{
         Comment as OwnedComment, Ident as OwnedIdent, Number as OwnedNumber, RegEx as OwnedRegEx,
         StringLit as OwnedStringLit, Template as OwnedTemplate, Token as OwnedToken,
