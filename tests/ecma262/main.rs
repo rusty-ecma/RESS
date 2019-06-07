@@ -46,15 +46,6 @@ fn es2015_module_test() {
     }
 }
 
-fn run_test(js: &str) {
-    let mut s = Scanner::new(js);
-    let mut i = 0;
-    while let Some(item) = s.next() {
-        debug!("{}, {:?}", i, item.token);
-        i += 1;
-    }
-}
-
 fn ensure_logging() {
     let _ = pretty_env_logger::try_init();
 }
