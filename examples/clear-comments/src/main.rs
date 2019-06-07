@@ -256,7 +256,7 @@ fn token_to_string(t: &RefToken) -> String {
         &RefToken::Ident(ref name) => name.to_string(),
         &RefToken::Keyword(ref key) => key.to_string(),
         &RefToken::Null => "null".to_string(),
-        &RefToken::Numeric(ref number) => number.to_string(),
+        &RefToken::Number(ref number) => number.to_string(),
         &RefToken::Punct(ref p) => p.to_string(),
         &RefToken::RegEx(ref regex) => match regex.flags {
             Some(ref f) => format!("/{}/{}", regex.body, f),
