@@ -492,13 +492,13 @@ this.y = 0;
             RefToken::Punct(Punct::Period), //"."
             RefToken::Ident("x".into()),
             RefToken::Punct(Punct::Equal), //"="
-            RefToken::Numeric("100".into()),
+            RefToken::Number("100".into()),
             RefToken::Punct(Punct::SemiColon), //";"
             RefToken::Keyword(Keyword::This),
             RefToken::Punct(Punct::Period), //"."
             RefToken::Ident("y".into()),
             RefToken::Punct(Punct::Equal), //"="
-            RefToken::Numeric("0".into()),
+            RefToken::Number("0".into()),
             RefToken::Punct(Punct::SemiColon),  //";"
             RefToken::Punct(Punct::CloseBrace), //"}"
             RefToken::Punct(Punct::CloseParen), //")"
