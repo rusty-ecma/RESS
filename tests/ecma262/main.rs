@@ -10,6 +10,8 @@ use std::{fs::read_to_string, path::Path, process::Command};
 
 use ress::Scanner;
 mod es5;
+mod es2015s;
+mod es2015m;
 
 #[test]
 fn es5_test() {
@@ -27,7 +29,10 @@ fn es2015_script_test() {
     println!("testing es2015 script");
     ensure_logging();
     let js = get_js(EsVersion::Es2015Script);
-    run_test(&js);
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015s::TOKENS.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
+        assert_eq!((i, &lhs.token), (i, rhs));
+    }
 }
 
 #[test]
@@ -35,7 +40,10 @@ fn es2015_module_test() {
     ensure_logging();
     debug!("testing es2015 module");
     let js = get_js(EsVersion::Es2015Module);
-    run_test(&js);
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015m::TOKENS.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
+        assert_eq!((i, &lhs.token), (i, rhs));
+    }
 }
 
 fn run_test(js: &str) {

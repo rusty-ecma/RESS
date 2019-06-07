@@ -1,4 +1,4 @@
-use ress::{Boolean, Comment, Keyword, Punct, RefToken, RegEx, StringLit, Template};
+use ress::{Boolean, Comment, Keyword, Punct, RefToken, RegEx, StringLit};
 lazy_static! {
     pub static ref ES5: Vec<RefToken<'static>> = vec![
         RefToken::Comment(Comment::new_multi_line(
