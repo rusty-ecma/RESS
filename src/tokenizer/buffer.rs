@@ -191,7 +191,9 @@ impl<'a> JSBuffer<'a> {
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
-        self.buffer[self.idx] > 47 && self.buffer[self.idx] < 58
+        !self.at_end() 
+        && self.buffer[self.idx] > 47 
+        && self.buffer[self.idx] < 58
     }
     #[inline]
     pub fn at_octal(&self) -> bool {

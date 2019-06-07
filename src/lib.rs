@@ -178,7 +178,7 @@ impl<'b> Scanner<'b> {
                     };
                     Item::new(
                         RefToken::RegEx(RegEx {
-                            body: &self.original[next.start..body_end],
+                            body: &self.original[next.start + 1..body_end - 1],
                             flags,
                         }),
                         Span::new(next.start, next.end),
@@ -191,18 +191,18 @@ impl<'b> Scanner<'b> {
             let token = match next.ty {
                 RawToken::Boolean(b) => RefToken::Boolean(Boolean::from(b)),
                 RawToken::Comment(kind) => match kind {
-                    tokens::CommentKind::Multi => RefToken::Comment(Comment::new_multi_line(s)),
-                    tokens::CommentKind::Single => RefToken::Comment(Comment::new_single_line(s)),
+                    tokens::CommentKind::Multi => RefToken::Comment(Comment::new_multi_line(&s[2..s.len()-2])),
+                    tokens::CommentKind::Single => RefToken::Comment(Comment::new_single_line(&s[2..])),
                     tokens::CommentKind::Html => {
                         let (content, tail) = if let Some(idx) = s.rfind("-->") {
                             let actual_end = idx.saturating_add(3);
                             if actual_end < next.end {
-                                (&s[0..idx], Some(&s[idx..]))
+                                (&s[4..idx], Some(&s[idx..]))
                             } else {
-                                (s, None)
+                                (&s[4..], None)
                             }
                         } else {
-                            (s, None)
+                            (&s[4..], None)
                         };
                         RefToken::Comment(Comment::new_html(content, tail))
                     }
@@ -217,26 +217,33 @@ impl<'b> Scanner<'b> {
                 RawToken::Numeric(_) => RefToken::Numeric(Number::from(s)),
                 RawToken::Punct(p) => RefToken::Punct(p),
                 RawToken::RegEx(_) => unreachable!("Regex from next"),
-                RawToken::String(k) => match k {
-                    tokenizer::StringKind::Double => {
-                        RefToken::String(StringLit::Double(&self.original[next.start..next.end]))
-                    }
-                    tokenizer::StringKind::Single => {
-                        RefToken::String(StringLit::Single(&self.original[next.start..next.end]))
+                RawToken::String(k) => {
+                    let s = &s[1..s.len() - 1];
+                    match k {
+                        tokenizer::StringKind::Double => {
+                            RefToken::String(StringLit::Double(s))
+                        }
+                        tokenizer::StringKind::Single => {
+                            RefToken::String(StringLit::Single(s))
+                        }
                     }
                 },
                 RawToken::Template(t) => match t {
                     tokenizer::TemplateKind::Head => {
-                        RefToken::Template(Template::Head(&self.original[next.start..next.end]))
+                        let s = &s[1..s.len() - 2];
+                        RefToken::Template(Template::Head(s))
                     }
                     tokenizer::TemplateKind::Body => {
-                        RefToken::Template(Template::Middle(&self.original[next.start..next.end]))
+                        let s = &s[1..s.len() - 2];
+                        RefToken::Template(Template::Middle(s))
                     }
                     tokenizer::TemplateKind::Tail => {
-                        RefToken::Template(Template::Tail(&self.original[next.start..next.end]))
+                        let s = &s[1..s.len() - 1];
+                        RefToken::Template(Template::Tail(s))
                     }
                     tokenizer::TemplateKind::NoSub => {
-                        RefToken::Template(Template::NoSub(&self.original[next.start..next.end]))
+                        let s = &s[1..s.len() - 1];
+                        RefToken::Template(Template::NoSub(s))
                     }
                 },
             };

@@ -96,7 +96,7 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(next_char);
         }
-        if next_char == '.' || next_char.is_digit(10) {
+        if next_char.is_digit(10) {
             return self.number(next_char);
         }
         if next_char == '`' {
@@ -139,7 +139,8 @@ impl<'a> Tokenizer<'a> {
                     if self.stream.at_new_line() {
                         panic!("new line in regex literal at {}", self.stream.idx);
                 } else if self.look_ahead_matches("[") 
-                    || self.look_ahead_matches("/") {
+                    || self.look_ahead_matches("/")
+                    || self.look_ahead_matches("\\") {
                         self.stream.skip(1);
                     }
                 } else if is_line_term(c) {
@@ -307,6 +308,8 @@ impl<'a> Tokenizer<'a> {
                 if self.look_ahead_matches("..") {
                     self.stream.skip(2);
                     self.gen_punct(Punct::Ellipsis)
+                } else if self.stream.at_decimal() {
+                    self.dec_number(true)
                 } else {
                     self.gen_punct(Punct::Period)
                 }
@@ -463,36 +466,31 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn number(&mut self, start: char) -> RawItem {
-        if let Some(next) = self.stream.next_char() {
-            if start.is_digit(10) && !next.is_digit(10) {
-                let _ = self.stream.prev_char();
-                self.dec_number(false)
-            } else if start == '.' {
-                if !next.is_digit(10) {
-                    let _ = self.stream.prev_char();
-                    return self.punct(start);
-                }
-                self.dec_number(true)
-            } else if start == '0' {
-                if next == 'o' || next == 'O' {
-                    self.oct_number()
-                } else if next == 'x' || next == 'X' {
-                    self.hex_number()
-                } else if next == 'b' || next == 'B' {
-                    self.bin_number()
+        if start != '.' {
+            if let Some(next) = self.stream.next_char() {
+                if start == '0' {
+                    if next == 'x' || next == 'X' {
+                        self.hex_number()
+                    } else if next == 'o' || next == 'O' {
+                        self.oct_number()
+                    } else if next == 'b' || next == 'B' {
+                        self.bin_number()
+                    } else if next.is_digit(10) 
+                        || next == '.' {
+                        self.dec_number(next == '.')
+                    } else {
+                        let _ = self.stream.prev_char();
+                        self.dec_number(false)
+                    }
                 } else {
+                    let _ = self.stream.prev_char();
                     self.dec_number(next == '.')
                 }
             } else {
-                self.dec_number(next == '.')
+                self.gen_number(NumberKind::Dec)
             }
         } else {
-            let _ = self.stream.prev_char();
-            if start == '.' {
-                self.gen_punct(Punct::Period)
-            } else {
-                self.dec_number(false)
-            }
+            self.punct(start)
         }
     }
     fn template(&mut self, start: char) -> RawItem {
@@ -641,14 +639,14 @@ impl<'a> Tokenizer<'a> {
 
         if seen_point {
             while let Some(c) = self.stream.next_char() {
-                if !c.is_digit(10) && c != '.' {
+                if !c.is_digit(10) {
                     maybe_e = Some(c);
                     break;
                 }
             }
         } else {
             while let Some(c) = self.stream.next_char() {
-                if !c.is_digit(10) {
+                if !c.is_digit(10) && c != '.' {
                     maybe_e = Some(c);
                     break;
                 }
@@ -745,7 +743,8 @@ mod test {
             let mut t = Tokenizer::new(p);
             let item = t.next_();
             println!("{:?}", item.ty);
-            assert!(item.ty.is_punct())
+            assert!(item.ty.is_punct());
+            assert!(t.stream.at_end());
         }
     }
     #[test]
@@ -763,7 +762,8 @@ mod test {
             "'new line sequence\\\r\nmight be harder'",
         ];
         for s in STRINGS {
-            let item = Tokenizer::new(s).next_();
+            let mut t = Tokenizer::new(s);
+            let item = t.next_();
             match &item.ty {
                 RawToken::String(ref lit) => {
                     if &s[0..1] == "'" {
@@ -785,6 +785,7 @@ mod test {
                 _ => panic!("Expected string, found {:?}", item.ty),
             }
             assert_eq!(s.len(), item.end - item.start);
+            assert!(t.stream.at_end());
         }
     }
 
@@ -813,8 +814,10 @@ mod test {
         ];
         for i in IDENTS {
             println!("attempting {}", i);
-            let item = Tokenizer::new(i).next_();
+            let mut t = Tokenizer::new(i);
+            let item = t.next_();
             assert_eq!(item.ty, RawToken::Ident);
+            assert!(t.stream.at_end());
         }
     }
 
@@ -852,6 +855,7 @@ mod test {
                 RawToken::Numeric(_) => true,
                 _ => false,
             });
+            assert!(t.stream.at_end());
         }
     }
 
@@ -891,6 +895,7 @@ mod test {
                 RawToken::RegEx(_) => true,
                 _ => false,
             });
+            assert!(t.stream.at_end());
         }
     }
 
@@ -903,11 +908,13 @@ mod test {
         assert_eq!(start.ty, RawToken::Template(TemplateKind::Head));
         let end = t.next_();
         assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        assert!(t.stream.at_end());
         let no_sub = "`things and stuff`";
         println!("no_sub {}", no_sub);
         t = Tokenizer::new(no_sub);
         let one = t.next_();
         assert_eq!(one.ty, RawToken::Template(TemplateKind::NoSub));
+        assert!(t.stream.at_end());
         let escaped_sub = r#"`\0\n\x0A\u000A\u{A}${}`"#;
         println!("escaped_sub: {}", escaped_sub);
         t = Tokenizer::new(escaped_sub);
@@ -915,11 +922,13 @@ mod test {
         assert_eq!(start.ty, RawToken::Template(TemplateKind::Head));
         let end = t.next_();
         assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        assert!(t.stream.at_end());
         let escaped_no_sub = r#"`a\${b`"#;
         println!("escaped_no_sub: {}", escaped_no_sub);
         t = Tokenizer::new(escaped_no_sub);
         let one = t.next_();
         assert_eq!(one.ty, RawToken::Template(TemplateKind::NoSub));
+        assert!(t.stream.at_end());
         let double_sub =
             "`things and stuff times ${} and animals and minerals ${} and places and people`";
         println!("double_sub: {}", double_sub);
@@ -930,6 +939,7 @@ mod test {
         assert_eq!(mid.ty, RawToken::Template(TemplateKind::Body));
         let end = t.next_();
         assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        assert!(t.stream.at_end());
     }
 
     #[test]
@@ -941,6 +951,7 @@ mod test {
                 RawToken::Boolean(_) => true,
                 _ => false,
             });
+            assert!(t.stream.at_end());
         }
     }
 
@@ -949,6 +960,7 @@ mod test {
         let mut t = Tokenizer::new("null");
         let item = t.next_();
         assert_eq!(item.ty, RawToken::Null);
+        assert!(t.stream.at_end());
     }
 
     #[test]
@@ -1000,7 +1012,8 @@ mod test {
             assert!(match item.ty {
                 RawToken::Keyword(_) => true,
                 _ => false,
-            })
+            });
+            assert!(t.stream.at_end());
         }
     }
 
@@ -1017,6 +1030,7 @@ mod test {
             let mut t = Tokenizer::new(c);
             let item = t.next_();
             assert!(item.ty.is_comment());
+            assert!(t.stream.at_end());
         }
     }
 }
