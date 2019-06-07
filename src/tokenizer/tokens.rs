@@ -14,7 +14,7 @@ pub enum RawToken {
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
     /// hex (`0x8f`), binary (`0b010011010`), and octal (`0o273`)
-    Numeric(NumberKind),
+    Number(NumberKind),
     /// A punctuation mark, this includes all mathematical operators
     /// logical operators and general syntax punctuation
     Punct(Punct),

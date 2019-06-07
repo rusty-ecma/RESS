@@ -729,7 +729,7 @@ impl Token for owned::Token {
     }
 
     fn is_numeric(&self) -> bool {
-        if let owned::Token::Numeric(ref _n) = self {
+        if let owned::Token::Number(ref _n) = self {
             true
         } else {
             false
@@ -737,19 +737,19 @@ impl Token for owned::Token {
     }
     fn is_hex_literal(&self) -> bool {
         match self {
-            owned::Token::Numeric(ref n) => n.is_hex(),
+            owned::Token::Number(ref n) => n.is_hex(),
             _ => false,
         }
     }
     fn is_bin_literal(&self) -> bool {
         match self {
-            owned::Token::Numeric(ref n) => n.is_bin(),
+            owned::Token::Number(ref n) => n.is_bin(),
             _ => false,
         }
     }
     fn is_oct_literal(&self) -> bool {
         match self {
-            owned::Token::Numeric(ref n) => n.is_oct(),
+            owned::Token::Number(ref n) => n.is_oct(),
             _ => false,
         }
     }
@@ -825,7 +825,7 @@ impl Token for owned::Token {
             owned::Token::Boolean(_) => true,
             owned::Token::String(_) => true,
             owned::Token::Null => true,
-            owned::Token::Numeric(_) => true,
+            owned::Token::Number(_) => true,
             owned::Token::RegEx(_) => true,
             owned::Token::Template(_) => true,
             _ => false,
@@ -880,7 +880,7 @@ impl Token for owned::Token {
 
     fn matches_numeric_str(&self, number: &str) -> bool {
         match self {
-            owned::Token::Numeric(n) => n == number,
+            owned::Token::Number(n) => n == number,
             _ => false,
         }
     }
@@ -969,7 +969,7 @@ impl<'a> Token for refs::Token<'a> {
     }
 
     fn is_numeric(&self) -> bool {
-        if let refs::Token::Numeric(ref _n) = self {
+        if let refs::Token::Number(ref _n) = self {
             true
         } else {
             false
@@ -977,19 +977,19 @@ impl<'a> Token for refs::Token<'a> {
     }
     fn is_hex_literal(&self) -> bool {
         match self {
-            refs::Token::Numeric(ref n) => n.is_hex(),
+            refs::Token::Number(ref n) => n.is_hex(),
             _ => false,
         }
     }
     fn is_bin_literal(&self) -> bool {
         match self {
-            refs::Token::Numeric(ref n) => n.is_bin(),
+            refs::Token::Number(ref n) => n.is_bin(),
             _ => false,
         }
     }
     fn is_oct_literal(&self) -> bool {
         match self {
-            refs::Token::Numeric(ref n) => n.is_oct(),
+            refs::Token::Number(ref n) => n.is_oct(),
             _ => false,
         }
     }
@@ -1065,7 +1065,7 @@ impl<'a> Token for refs::Token<'a> {
             refs::Token::Boolean(_) => true,
             refs::Token::String(_) => true,
             refs::Token::Null => true,
-            refs::Token::Numeric(_) => true,
+            refs::Token::Number(_) => true,
             refs::Token::RegEx(_) => true,
             refs::Token::Template(_) => true,
             _ => false,
@@ -1119,7 +1119,7 @@ impl<'a> Token for refs::Token<'a> {
     }
     fn matches_numeric_str(&self, number: &str) -> bool {
         match self {
-            refs::Token::Numeric(n) => n == number,
+            refs::Token::Number(n) => n == number,
             _ => false,
         }
     }

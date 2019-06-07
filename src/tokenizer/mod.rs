@@ -689,7 +689,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn gen_number(&self, n: NumberKind) -> RawItem {
-        self.gen_token(RawToken::Numeric(n))
+        self.gen_token(RawToken::Number(n))
     }
     #[inline]
     fn gen_template(&self, t: TemplateKind) -> RawItem {

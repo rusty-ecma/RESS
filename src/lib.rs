@@ -214,7 +214,7 @@ impl<'b> Scanner<'b> {
                 RawToken::Ident => RefToken::Ident(Ident::from(s)),
                 RawToken::Keyword(k) => RefToken::Keyword(k),
                 RawToken::Null => RefToken::Null,
-                RawToken::Numeric(_) => RefToken::Numeric(Number::from(s)),
+                RawToken::Number(_) => RefToken::Number(Number::from(s)),
                 RawToken::Punct(p) => RefToken::Punct(p),
                 RawToken::RegEx(_) => unreachable!("Regex from next"),
                 RawToken::String(k) => {
