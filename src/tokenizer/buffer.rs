@@ -3,6 +3,7 @@ use std::char;
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
+    pub len: usize,
 }
 /// Re-implementation of
 /// the std::str::Chars logic
@@ -106,21 +107,18 @@ impl<'a> JSBuffer<'a> {
         Self {
             buffer,
             idx: 0,
+            len: buffer.len(),
         }
     }
 
     pub fn at_end(&self) -> bool {
-        self.idx >= self.buffer.len()
+        self.idx >= self.len
     }
-    // /// Check if the buffer has [count] chars
-    // /// before it ends
-    // pub fn has(&self, count: usize) -> bool {
-    //     self.buffer.len() > self.idx.saturating_add(count)
-    // }
+
     /// Check if the next few bytes match the provided bytes
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
         let end = self.idx.saturating_add(s.len());
-        end <= self.buffer.len() && &self.buffer[self.idx..end] == s
+        end <= self.len && &self.buffer[self.idx..end] == s
     }
     /// Skip the number of characters provided
     /// note: these are full unicode characters, not just bytes
@@ -168,13 +166,13 @@ impl<'a> JSBuffer<'a> {
                     return false;
                 };
                 c == '\u{00A0}'
-                    || c == '\u{FEFF}'
-                    || c == '\u{2028}'
-                    || c == '\u{2029}'
-                    || match unic_ucd_category::GeneralCategory::of(c) {
-                        unic_ucd_category::GeneralCategory::SpaceSeparator => true,
-                        _ => false,
-                    }
+                || c == '\u{FEFF}'
+                || c == '\u{2028}'
+                || c == '\u{2029}'
+                || match unic_ucd_category::GeneralCategory::of(c) {
+                    unic_ucd_category::GeneralCategory::SpaceSeparator => true,
+                    _ => false,
+                }
             }
     }
     #[inline]
@@ -213,10 +211,7 @@ mod test {
     #[test]
     fn check() {
         let s = "🦜🦡🐁kł둘";
-        let mut b = JSBuffer {
-            buffer: s.as_bytes(),
-            idx: 0,
-        };
+        let mut b = JSBuffer::from(s);
         assert!(b.next_char().unwrap() == '🦜');
         assert!(b.next_char().unwrap() == '🦡');
         assert!(b.next_char().unwrap() == '🐁');
