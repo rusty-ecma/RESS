@@ -3,21 +3,26 @@ extern crate pretty_env_logger;
 extern crate ress;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 use std::{fs::read_to_string, path::Path, process::Command};
 
 use ress::{Scanner};
+mod es5;
 
 #[test]
-fn es5() {
+fn es5_test() {
     println!("testing es5");
     ensure_logging();
     let js = get_js(EsVersion::Es5);
-    run_test(&js);
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es5::ES5.iter()).enumerate() {
+        assert_eq!((i, &lhs.token), (i, rhs));
+    }
 }
 
 #[test]
-fn es2015_script() {
+fn es2015_script_test() {
     println!("testing es2015 script");
     ensure_logging();
     let js = get_js(EsVersion::Es2015Script);
@@ -25,7 +30,7 @@ fn es2015_script() {
 }
 
 #[test]
-fn es2015_module() {
+fn es2015_module_test() {
     ensure_logging();
     debug!("testing es2015 module");
     let js = get_js(EsVersion::Es2015Module);
