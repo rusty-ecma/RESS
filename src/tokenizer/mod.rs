@@ -502,7 +502,8 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 if self.look_ahead_matches("${") {
                     self.stream.skip(2);
-                } else if self.look_ahead_matches("`") {
+                } else if self.look_ahead_matches("`") 
+                || self.look_ahead_matches("\\") {
                     self.stream.skip(1);
                 } else if self.look_ahead_matches("0") {
                     if let Some(_zero) = self.stream.next_char() {
