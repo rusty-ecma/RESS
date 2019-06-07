@@ -1,6 +1,6 @@
 use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
-use unic_ucd_ident::{is_id_continue, is_id_start};
 use crate::{is_line_term, OpenCurlyKind};
+use unic_ucd_ident::{is_id_continue, is_id_start};
 mod buffer;
 mod tokens;
 pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
@@ -136,27 +136,28 @@ impl<'a> Tokenizer<'a> {
                     return self.gen_regex(body_idx);
                 }
             } else if c == '\\' {
-                    if self.stream.at_new_line() {
-                        panic!("new line in regex literal at {}", self.stream.idx);
-                } else if self.look_ahead_matches("[") 
-                    || self.look_ahead_matches("/")
-                    || self.look_ahead_matches("\\") {
-                        self.stream.skip(1);
-                    }
-                } else if is_line_term(c) {
+                if self.stream.at_new_line() {
                     panic!("new line in regex literal at {}", self.stream.idx);
-                } else if in_class {
-                    // we ignore the /
-                    if c == ']' {
-                        in_class = false;
-                    }
-            } else if c == '/' {
-                        end_of_body = true;
-                        body_idx = self.stream.idx;
-                    } else if c == '[' {
-                        in_class = true;
-                    }
+                } else if self.look_ahead_matches("[")
+                    || self.look_ahead_matches("/")
+                    || self.look_ahead_matches("\\")
+                {
+                    self.stream.skip(1);
                 }
+            } else if is_line_term(c) {
+                panic!("new line in regex literal at {}", self.stream.idx);
+            } else if in_class {
+                // we ignore the /
+                if c == ']' {
+                    in_class = false;
+                }
+            } else if c == '/' {
+                end_of_body = true;
+                body_idx = self.stream.idx;
+            } else if c == '[' {
+                in_class = true;
+            }
+        }
         if end_of_body {
             return self.gen_regex(body_idx);
         }
@@ -190,7 +191,9 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn at_keyword(&self) -> Option<Keyword> {
-        KEYWORDS.get(&self.stream.buffer[self.current_start..self.stream.idx]).map(|k| *k)
+        KEYWORDS
+            .get(&self.stream.buffer[self.current_start..self.stream.idx])
+            .map(|k| *k)
     }
 
     fn at_bool(&self) -> Option<bool> {
@@ -475,8 +478,7 @@ impl<'a> Tokenizer<'a> {
                         self.oct_number()
                     } else if next == 'b' || next == 'B' {
                         self.bin_number()
-                    } else if next.is_digit(10) 
-                        || next == '.' {
+                    } else if next.is_digit(10) || next == '.' {
                         self.dec_number(next == '.')
                     } else {
                         let _ = self.stream.prev_char();
@@ -673,11 +675,11 @@ impl<'a> Tokenizer<'a> {
     }
     fn is_id_continue(c: char) -> bool {
         c == '$'
-        || c == '_'
-        ||  (c >= 'A' && c <= 'Z') 
-        || (c >= 'a' && c <= 'z') 
-        || c == '\\'
-        || is_id_continue(c)
+            || c == '_'
+            || (c >= 'A' && c <= 'Z')
+            || (c >= 'a' && c <= 'z')
+            || c == '\\'
+            || is_id_continue(c)
     }
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {

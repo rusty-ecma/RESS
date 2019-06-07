@@ -191,8 +191,12 @@ impl<'b> Scanner<'b> {
             let token = match next.ty {
                 RawToken::Boolean(b) => RefToken::Boolean(Boolean::from(b)),
                 RawToken::Comment(kind) => match kind {
-                    tokens::CommentKind::Multi => RefToken::Comment(Comment::new_multi_line(&s[2..s.len()-2])),
-                    tokens::CommentKind::Single => RefToken::Comment(Comment::new_single_line(&s[2..])),
+                    tokens::CommentKind::Multi => {
+                        RefToken::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
+                    }
+                    tokens::CommentKind::Single => {
+                        RefToken::Comment(Comment::new_single_line(&s[2..]))
+                    }
                     tokens::CommentKind::Html => {
                         let (content, tail) = if let Some(idx) = s.rfind("-->") {
                             let actual_end = idx.saturating_add(3);
@@ -220,14 +224,10 @@ impl<'b> Scanner<'b> {
                 RawToken::String(k) => {
                     let s = &s[1..s.len() - 1];
                     match k {
-                        tokenizer::StringKind::Double => {
-                            RefToken::String(StringLit::Double(s))
-                        }
-                        tokenizer::StringKind::Single => {
-                            RefToken::String(StringLit::Single(s))
-                        }
+                        tokenizer::StringKind::Double => RefToken::String(StringLit::Double(s)),
+                        tokenizer::StringKind::Single => RefToken::String(StringLit::Single(s)),
                     }
-                },
+                }
                 RawToken::Template(t) => match t {
                     tokenizer::TemplateKind::Head => {
                         let s = &s[1..s.len() - 2];
@@ -255,7 +255,7 @@ impl<'b> Scanner<'b> {
             if let RefToken::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     self.last_open_paren_idx = self.spans.len()
-            }
+                }
             }
             self.spans.push(ret.span);
         }

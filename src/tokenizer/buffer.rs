@@ -166,13 +166,13 @@ impl<'a> JSBuffer<'a> {
                     return false;
                 };
                 c == '\u{00A0}'
-                || c == '\u{FEFF}'
-                || c == '\u{2028}'
-                || c == '\u{2029}'
-                || match unic_ucd_category::GeneralCategory::of(c) {
-                    unic_ucd_category::GeneralCategory::SpaceSeparator => true,
-                    _ => false,
-                }
+                    || c == '\u{FEFF}'
+                    || c == '\u{2028}'
+                    || c == '\u{2029}'
+                    || match unic_ucd_category::GeneralCategory::of(c) {
+                        unic_ucd_category::GeneralCategory::SpaceSeparator => true,
+                        _ => false,
+                    }
             }
     }
     #[inline]
@@ -191,9 +191,7 @@ impl<'a> JSBuffer<'a> {
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
-        !self.at_end() 
-        && self.buffer[self.idx] > 47 
-        && self.buffer[self.idx] < 58
+        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 58
     }
     #[inline]
     pub fn at_octal(&self) -> bool {

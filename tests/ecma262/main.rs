@@ -8,7 +8,7 @@ extern crate lazy_static;
 
 use std::{fs::read_to_string, path::Path, process::Command};
 
-use ress::{Scanner};
+use ress::Scanner;
 mod es5;
 
 #[test]

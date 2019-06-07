@@ -160,7 +160,8 @@ impl Lib {
             Lib::EveryEs5 => "node_modules/everything.js/es5.js",
             Lib::EveryEs2015Script => "node_modules/everything.js/es2015-script.js",
             Lib::EveryEs2015Mod => "node_modules/everything.js/es2015-module.js",
-        }.into()
+        }
+        .into()
     }
 
     pub fn min_path(&self) -> String {
@@ -170,7 +171,7 @@ impl Lib {
             &Lib::React => "node_modules/react/umd/react.production.min.js".into(),
             &Lib::ReactDom => "node_modules/react-dom/umd/react-dom.production.min.js".into(),
             &Lib::Vue => "node_modules/vue/dist/vue.min.js".into(),
-            _ => String::new()
+            _ => String::new(),
         }
     }
 }
