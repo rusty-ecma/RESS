@@ -3,78 +3,46 @@ extern crate pretty_env_logger;
 extern crate ress;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 use std::{fs::read_to_string, path::Path, process::Command};
 
-use ress::{CommentKind, Scanner, Token};
+use ress::Scanner;
+mod es2015m;
+mod es2015s;
+mod es5;
 
 #[test]
-fn es5() {
+fn es5_test() {
     println!("testing es5");
     ensure_logging();
     let js = get_js(EsVersion::Es5);
-    run_test(&js);
-}
-#[test]
-fn ref_es5() {
-    println!("testing es5");
-    ensure_logging();
-    let js = get_js(EsVersion::Es5);
-    run_ref_test(&js);
-}
-
-#[test]
-fn es2015_script() {
-    println!("testing es2015 script");
-    ensure_logging();
-    let js = get_js(EsVersion::Es2015Script);
-    run_test(&js);
-}
-#[test]
-fn ref_es2015_script() {
-    ensure_logging();
-    debug!("testing es2015 script");
-    let js = get_js(EsVersion::Es2015Script);
-    run_ref_test(&js);
-}
-
-#[test]
-fn es2015_module() {
-    ensure_logging();
-    debug!("testing es2015 module");
-    let js = get_js(EsVersion::Es2015Module);
-    run_test(&js);
-}
-#[test]
-fn ref_es2015_module() {
-    ensure_logging();
-    debug!("testing es2015 module");
-    let js = get_js(EsVersion::Es2015Module);
-    run_ref_test(&js);
-}
-
-fn run_test(js: &str) {
-    let mut s = Scanner::new(js);
-    let mut i = 0;
-    while let Some(item) = s.next() {
-        debug!("{}, {:?}", i, item.token);
-        match item.token {
-            Token::Comment(c) => match c.kind {
-                CommentKind::Single => debug!("----------\n{}\n----------", c.content),
-                _ => (),
-            },
-            _ => (),
-        }
-        i += 1;
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es5::ES5.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
+        assert_eq!((i, &lhs.token), (i, rhs));
     }
 }
 
-fn run_ref_test(js: &str) {
-    let mut s = ress::refs::RefScanner::new(js);
-    let mut i = 0;
-    while let Some(item) = s.next() {
-        debug!("{}, {:?} {:?}", i, item.token, s.string_for(&item.span));
-        i += 1;
+#[test]
+fn es2015_script_test() {
+    println!("testing es2015 script");
+    ensure_logging();
+    let js = get_js(EsVersion::Es2015Script);
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015s::TOKENS.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
+        assert_eq!((i, &lhs.token), (i, rhs));
+    }
+}
+
+#[test]
+fn es2015_module_test() {
+    ensure_logging();
+    debug!("testing es2015 module");
+    let js = get_js(EsVersion::Es2015Module);
+    for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015m::TOKENS.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
+        assert_eq!((i, &lhs.token), (i, rhs));
     }
 }
 

@@ -1,13 +1,5 @@
 use std::ops::Deref;
 
-use combine::{
-    attempt, choice, eof,
-    error::ParseError,
-    many, not_followed_by,
-    parser::char::{char as c_char, string},
-    Parser, Stream,
-};
-
 use comments;
 use keywords;
 use numeric;
@@ -20,22 +12,15 @@ use unicode;
 /// A wrapper around a token that will include
 /// the byte span of the text that it was found
 /// at
-pub struct Item {
+pub struct Item<T> {
     pub token: Token,
     pub span: Span,
 }
 
-impl Item {
+impl<T> Item<T> {
     /// Create a new Item from its parts
-    pub fn new(token: Token, span: Span) -> Item {
+    pub fn new(token: T, span: Span) -> Item {
         Item { token, span }
-    }
-}
-
-impl Deref for Item {
-    type Target = Token;
-    fn deref(&self) -> &Self::Target {
-        &self.token
     }
 }
 
@@ -53,64 +38,8 @@ impl Span {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-/// The representation of a single JS token
-pub enum Token {
-    /// `true` of `false`
-    Boolean(BooleanLiteral),
-    /// The end of the file
-    EoF,
-    /// An identifier this will be either a variable name
-    /// or a function/method name
-    Ident(Ident),
-    /// A word that has been reserved to not be used as an identifier
-    Keyword(keywords::Keyword),
-    /// A `null` literal value
-    Null,
-    /// A number, this includes integers (`1`), decimals (`0.1`),
-    /// hex (`0x8f`), binary (`0b010011010`), and octal (`0o273`)
-    Numeric(numeric::Number),
-    /// A punctuation mark, this includes all mathematical operators
-    /// logical operators and general syntax punctuation
-    Punct(punct::Punct),
-    /// A string literal, either double or single quoted, the associated
-    /// value will be the unquoted string
-    String(strings::StringLit),
-    /// A regular expression literal.
-    /// ```js
-    /// let regex = /[a-zA-Z]+/g;
-    /// ```
-    RegEx(regex::RegEx),
-    /// The string parts of a template string
-    /// ```
-    /// # extern crate ress;
-    /// # use ress::{Scanner, Item, Token, Number, Template};
-    /// # fn main() {
-    /// let js = "`Things and stuff times ${10} equals ${100000000}... i think`";
-    /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_head("Things and stuff times "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("10"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_middle(" equals "));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::numeric("100000000"));
-    /// assert_eq!(s.next().unwrap().token,
-    ///             Token::template_tail("... i think"));
-    /// # }
-    /// ```
-    Template(strings::Template),
-    /// A comment, the associated value will contain the raw comment
-    /// This will capture both inline comments `// I am an inline comment`
-    /// and multi-line comments
-    /// ```js
-    /// /*multi lines
-    /// * comments
-    /// */
-    /// ```
-    Comment(comments::Comment),
-}
+
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 /// The tokenized representation of `true` or `false`
 pub enum BooleanLiteral {
@@ -275,7 +204,8 @@ impl Token {
     ///
     /// panics if the augment isn't valid js punctuation
     pub fn punct(s: &str) -> Token {
-        Token::Punct(s.into())
+        use std::convert::TryFrom;
+        Token::Punct(crate::Punct::try_from(s).unwrap())
     }
     ///Create and instance of Token::String from a &str wrapped in double quotes
     pub fn double_quoted_string(s: &str) -> Token {
@@ -563,8 +493,9 @@ impl Token {
         self == &Token::Punct(p)
     }
     pub fn matches_punct_str(&self, s: &str) -> bool {
+        use std::convert::TryFrom;
         match self {
-            Token::Punct(ref p) => p == &s.into(),
+            Token::Punct(ref p) => p == &crate::Punct::try_from(s).unwrap(),
             _ => false,
         }
     }

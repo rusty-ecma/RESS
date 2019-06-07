@@ -13,7 +13,6 @@ use std::{
 };
 
 struct Args {
-    pub refs: bool,
     pub angular: bool,
     pub jquery: bool,
     pub react: bool,
@@ -26,7 +25,6 @@ struct Args {
 impl ::std::default::Default for Args {
     fn default() -> Args {
         Args {
-            refs: false,
             angular: false,
             jquery: false,
             react: false,
@@ -70,99 +68,93 @@ fn main() {
             a.moment = true;
         } else if arg == "dexie" || arg == "dx" {
             a.dexie = true;
-        } else if arg == "refs" {
-            a.refs = true;
         }
     }
     if a.jquery {
-        jquery(a.refs);
+        jquery();
     }
     if a.angular {
-        angular1(a.refs);
+        angular1();
     }
     if a.react {
-        react(a.refs);
+        react();
     }
     if a.react_dom {
-        react_dom(a.refs);
+        react_dom();
     }
     if a.vue {
-        vue(a.refs);
+        vue();
     }
     if a.moment {
-        moment(a.refs);
+        moment();
     }
     if a.dexie {
-        dexie(a.refs);
+        dexie();
     }
     if a.pristine() {
-        jquery(a.refs);
-        angular1(a.refs);
-        react(a.refs);
-        react_dom(a.refs);
-        vue(a.refs);
-        moment(a.refs);
-        dexie(a.refs);
+        jquery();
+        angular1();
+        react();
+        react_dom();
+        vue();
+        moment();
+        dexie();
     }
 }
 
-fn jquery(refs: bool) {
+fn jquery() {
     println!("trying jquery");
     if let Ok(ref js) = get_js(Lib::Jquery) {
-        test_js(js, "jquery", refs);
+        test_js(js, "jquery");
     }
 }
 
-fn angular1(refs: bool) {
+fn angular1() {
     println!("trying angular1");
     if let Ok(ref js) = get_js(Lib::Angular) {
-        test_js(js, "angular", refs);
+        test_js(js, "angular");
     }
 }
 
-fn react(refs: bool) {
+fn react() {
     println!("trying react");
     if let Ok(ref js) = get_js(Lib::React) {
-        test_js(js, "react", refs);
+        test_js(js, "react");
     }
 }
 
-fn react_dom(refs: bool) {
+fn react_dom() {
     println!("trying react_dom");
     if let Ok(ref js) = get_js(Lib::ReactDom) {
-        test_js(js, "react-dom", refs);
+        test_js(js, "react-dom");
     }
 }
 
-fn vue(refs: bool) {
+fn vue() {
     println!("trying vue");
     if let Ok(ref js) = get_js(Lib::Vue) {
-        test_js(js, "vue", refs);
+        test_js(js, "vue");
     }
 }
 
-fn moment(refs: bool) {
+fn moment() {
     println!("trying moment");
     if let Ok(ref js) = get_js(Lib::Moment) {
-        test_js(js, "moment", refs)
+        test_js(js, "moment")
     }
 }
 
-fn dexie(refs: bool) {
+fn dexie() {
     println!("trying dexie");
     if let Ok(ref js) = get_js(Lib::Dexie) {
-        test_js(js, "dexie", refs);
+        test_js(js, "dexie");
     }
 }
 
-fn test_js(text: &str, name: &str, refs: bool) {
+fn test_js(text: &str, name: &str) {
     let size = text.len();
     let now = SystemTime::now();
-    if refs {
-        test_ref(text);
-    } else {
-        test(text);
-    }
+    test(text);
     if let Ok(e) = now.elapsed() {
         report(size, e, "scanner", name)
     } else {
@@ -170,14 +162,9 @@ fn test_js(text: &str, name: &str, refs: bool) {
     }
 }
 
-fn test_ref(text: &str) {
-    let s = ress::refs::RefScanner::new(text);
-    let _: Vec<ress::refs::RefItem> = s.collect();
-}
-
 fn test(text: &str) {
     let s = ress::Scanner::new(text);
-    let _: Vec<ress::Item> = s.collect();
+    let _: Vec<_> = s.collect();
 }
 
 fn report(bytes: usize, elapsed: Duration, method: &str, name: &str) {
