@@ -17,6 +17,7 @@ fn es5_test() {
     ensure_logging();
     let js = get_js(EsVersion::Es5);
     for (i, (lhs, rhs)) in Scanner::new(&js).zip(es5::ES5.iter()).enumerate() {
+        println!("{:?}:{:?}", lhs.token, rhs);
         assert_eq!((i, &lhs.token), (i, rhs));
     }
 }
