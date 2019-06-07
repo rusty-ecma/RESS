@@ -242,11 +242,15 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::double(r"\1\00\400\000")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::double(r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef")),
+        RefToken::String(StringLit::double(
+            r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef"
+        )),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::double(r"\u0123\u4567\u89AB\uCDEF\u00ab\ucdef")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::double(r"\uD834\uDF06\u2603\u03C6 \u{0000001F4a9}\u{1D306}\u{2603}\u{3c6} 𝌆☃φ")),
+        RefToken::String(StringLit::double(
+            r"\uD834\uDF06\u2603\u03C6 \u{0000001F4a9}\u{1D306}\u{2603}\u{3c6} 𝌆☃φ"
+        )),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::double(
             r"\
@@ -261,11 +265,15 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::single(r"\1\00\400\000")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::single(r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef")),
+        RefToken::String(StringLit::single(
+            r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef"
+        )),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::single(r"\u0123\u4567\u89AB\uCDEF\u00ab\ucdef")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::single(r"\uD834\uDF06\u2603\u03C6 \u{0000001F4a9} \u{1D306}\u{2603}\u{3c6} 𝌆☃φ")),
+        RefToken::String(StringLit::single(
+            r"\uD834\uDF06\u2603\u03C6 \u{0000001F4a9} \u{1D306}\u{2603}\u{3c6} 𝌆☃φ"
+        )),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::single(
             r"\
@@ -282,7 +290,10 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::RegEx(RegEx::from_parts("(?=(?!(?:(.))))", None)),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::RegEx(RegEx::from_parts(r"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000\uD834\uDF06", None)),
+        RefToken::RegEx(RegEx::from_parts(
+            r"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000\uD834\uDF06",
+            None
+        )),
         RefToken::Punct(Punct::SemiColon),
         RefToken::RegEx(RegEx::from_parts(r"\u{00000001d306}", Some("u"))),
         RefToken::Punct(Punct::SemiColon),
@@ -330,41 +341,30 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::RegEx(RegEx::from_parts(".{0,0}", None)),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::NoSub("a")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::Head("")),
         RefToken::Number("0".into()),
         RefToken::Template(Template::Tail("")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::Head("0")),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
         RefToken::Number("1".into()),
         RefToken::Template(Template::Tail("2")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::Head("0")),
         RefToken::Template(Template::Head("1")),
         RefToken::Number("2".into()),
         RefToken::Template(Template::Tail("3")),
         RefToken::Template(Template::Tail("4")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::NoSub(r"\`")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::NoSub(r"a\${b")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Template(Template::NoSub(r"\0\n\x0A\u000A\u{A}")),
         RefToken::Punct(Punct::SemiColon),
-
-
-
-
         RefToken::Keyword(Keyword::This),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Ident("x".into()),
@@ -420,14 +420,12 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("x".into()),
@@ -436,7 +434,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("x".into()),
@@ -480,39 +477,32 @@ lazy_static! {
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("0.".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("0.0".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number(".0".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("0e0".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("0x0".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::CloseBracket),
         RefToken::Punct(Punct::Colon),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("get".into()),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -573,7 +563,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("get".into()),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("0".into()),
@@ -583,7 +572,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("set".into()),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("0".into()),
@@ -594,7 +582,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("1".into()),
         RefToken::Punct(Punct::CloseBracket),
@@ -603,56 +590,48 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("a".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::String(StringLit::single("b")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::String(StringLit::double("c")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number(".1".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("1.".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Number("1e1".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Keyword(Keyword::Var),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("a".into()),
@@ -697,7 +676,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("set".into()),
         RefToken::Keyword(Keyword::In),
         RefToken::Punct(Punct::OpenParen),
@@ -745,7 +723,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Ident("d".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -753,7 +730,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::String(StringLit::single("e")),
         RefToken::Punct(Punct::OpenParen),
@@ -761,7 +737,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::String(StringLit::double("f")),
         RefToken::Punct(Punct::OpenParen),
@@ -769,7 +744,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("2".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -777,7 +751,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number(".2".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -785,7 +758,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("3.".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -793,7 +765,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("2e2".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -801,7 +772,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Keyword(Keyword::In),
         RefToken::Punct(Punct::OpenParen),
@@ -809,18 +779,15 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("__proto__".into()),
         RefToken::Punct(Punct::Colon),
         RefToken::Null,
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("get".into()),
         RefToken::Ident("__proto__".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -828,7 +795,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Ident("set".into()),
         RefToken::Ident("__proto__".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -837,11 +803,9 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::String(StringLit::double("__proto__")),
@@ -854,11 +818,9 @@ lazy_static! {
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::Comma),
-
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Number("0.".into()),
         RefToken::Punct(Punct::Period),
         RefToken::Ident("a".into()),
@@ -1039,7 +1001,6 @@ lazy_static! {
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::Ellipsis),
@@ -1068,17 +1029,14 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Ident("x".into()),
         RefToken::Template(Template::NoSub("a")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Ident("x".into()),
         RefToken::Template(Template::Head("0")),
         RefToken::Number("1".into()),
         RefToken::Template(Template::Tail("2")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::DoublePlus),
         RefToken::Punct(Punct::SemiColon),
@@ -1491,7 +1449,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::For),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("x".into()),
@@ -1500,7 +1457,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBracket),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::For),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Keyword(Keyword::Var),
@@ -1510,7 +1466,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBracket),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::For),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::SemiColon),
@@ -1761,9 +1716,12 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::Comment(Comment::new_single_line("for (;0;) label: function f(){} 0")),
-        RefToken::Comment(Comment::new_single_line("do label: function f(){} while(0)")),
-
+        RefToken::Comment(Comment::new_single_line(
+            "for (;0;) label: function f(){} 0"
+        )),
+        RefToken::Comment(Comment::new_single_line(
+            "do label: function f(){} while(0)"
+        )),
         RefToken::Keyword(Keyword::Function),
         RefToken::Ident("f".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -1808,7 +1766,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Function),
         RefToken::Ident("f".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -1864,7 +1821,6 @@ lazy_static! {
         RefToken::Punct(Punct::Plus),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Function),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Ident("g".into()),
@@ -1923,7 +1879,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Keyword(Keyword::Function),
         RefToken::Punct(Punct::Asterisk),
@@ -1984,20 +1939,16 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
-
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::Plus),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Keyword(Keyword::Function),
         RefToken::Punct(Punct::OpenParen),
@@ -2086,43 +2037,35 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Ident("x".into()),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::Equal),
         RefToken::Number("0".into()),
-        
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Ident("y".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Ident("x".into()),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Punct(Punct::OpenParen),
@@ -2131,14 +2074,12 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::EqualGreaterThan),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseParen),
@@ -2148,7 +2089,6 @@ lazy_static! {
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("x".into()),
         RefToken::Punct(Punct::CloseParen),
@@ -2159,7 +2099,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-        
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("x".into()),
@@ -2172,7 +2111,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("a".into()),
         RefToken::Punct(Punct::Comma),
@@ -2218,7 +2156,6 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Ident("a".into()),
         RefToken::Punct(Punct::CloseBracket),
@@ -2230,7 +2167,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBracket),
         RefToken::Punct(Punct::CloseBracket),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Ident("a".into()),
@@ -2240,7 +2176,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::Try),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
@@ -2252,7 +2187,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Try),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
@@ -2264,12 +2198,10 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Class),
         RefToken::Ident("A".into()),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Class),
         RefToken::Ident("B".into()),
         RefToken::Ident("extends".into()),
@@ -2325,25 +2257,20 @@ lazy_static! {
         RefToken::Ident("target".into()),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::Super),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
-
         RefToken::Template(Template::NoSub("template")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::EqualGreaterThan),
-        
         RefToken::Keyword(Keyword::Super),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Keyword(Keyword::This),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("m".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Ident("a".into()),
@@ -2397,7 +2324,6 @@ lazy_static! {
         RefToken::Ident("m".into()),
         RefToken::Template(Template::NoSub("template")),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::EqualGreaterThan),
@@ -2410,28 +2336,24 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::SemiColon),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("a".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::String(StringLit::single("b")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("0".into()),
@@ -2440,7 +2362,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Ident("c".into()),
@@ -2450,7 +2371,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::Asterisk),
         RefToken::String(StringLit::double("d")),
@@ -2460,7 +2380,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("1".into()),
@@ -2470,7 +2389,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Punct(Punct::OpenBracket),
@@ -2482,14 +2400,12 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Keyword(Keyword::Var),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Punct(Punct::Asterisk),
         RefToken::Keyword(Keyword::In),
@@ -2497,7 +2413,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("get".into()),
         RefToken::Ident("e".into()),
@@ -2505,7 +2420,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("get".into()),
         RefToken::String(StringLit::single("f")),
@@ -2513,7 +2427,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("get".into()),
         RefToken::Number("2".into()),
@@ -2521,7 +2434,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("get".into()),
         RefToken::Punct(Punct::OpenBracket),
@@ -2531,7 +2443,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("set".into()),
         RefToken::Ident("g".into()),
@@ -2540,7 +2451,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("set".into()),
         RefToken::String(StringLit::double("h")),
@@ -2549,7 +2459,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("set".into()),
         RefToken::Number("3".into()),
@@ -2558,7 +2467,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("set".into()),
         RefToken::Punct(Punct::OpenBracket),
@@ -2569,7 +2477,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("get".into()),
         RefToken::Keyword(Keyword::If),
@@ -2577,7 +2484,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Static),
         RefToken::Ident("set".into()),
         RefToken::Keyword(Keyword::If),
@@ -2586,25 +2492,21 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("a".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::String(StringLit::single("b")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("0".into()),
         RefToken::Punct(Punct::CloseBracket),
@@ -2612,7 +2514,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Ident("c".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -2621,7 +2522,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::String(StringLit::double("d")),
         RefToken::Punct(Punct::OpenParen),
@@ -2630,7 +2530,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Number("1".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -2639,7 +2538,6 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("1".into()),
@@ -2650,13 +2548,11 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Var),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::Asterisk),
         RefToken::Keyword(Keyword::In),
         RefToken::Punct(Punct::OpenParen),
@@ -2665,28 +2561,24 @@ lazy_static! {
         RefToken::Keyword(Keyword::Yield),
         RefToken::Punct(Punct::SemiColon),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("get".into()),
         RefToken::Ident("e".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("get".into()),
         RefToken::String(StringLit::single("f")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("get".into()),
         RefToken::Number("2".into()),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("get".into()),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("2".into()),
@@ -2695,7 +2587,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("set".into()),
         RefToken::Ident("g".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -2703,7 +2594,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("set".into()),
         RefToken::String(StringLit::double("h")),
         RefToken::Punct(Punct::OpenParen),
@@ -2711,7 +2601,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("set".into()),
         RefToken::Number("3".into()),
         RefToken::Punct(Punct::OpenParen),
@@ -2719,7 +2608,6 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("set".into()),
         RefToken::Punct(Punct::OpenBracket),
         RefToken::Number("3".into()),
@@ -2729,14 +2617,12 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("get".into()),
         RefToken::Keyword(Keyword::If),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Ident("set".into()),
         RefToken::Keyword(Keyword::If),
         RefToken::Punct(Punct::OpenParen),
@@ -2744,15 +2630,12 @@ lazy_static! {
         RefToken::Punct(Punct::CloseParen),
         RefToken::Punct(Punct::OpenBrace),
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Punct(Punct::CloseBrace),
-
         RefToken::Keyword(Keyword::Class),
         RefToken::Ident("C".into()),
         RefToken::Ident("extends".into()),
         RefToken::Ident("B".into()),
         RefToken::Punct(Punct::OpenBrace),
-
         RefToken::String(StringLit::double("constructor")),
         RefToken::Punct(Punct::OpenParen),
         RefToken::Punct(Punct::CloseParen),

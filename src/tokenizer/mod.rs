@@ -502,8 +502,7 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 if self.look_ahead_matches("${") {
                     self.stream.skip(2);
-                } else if self.look_ahead_matches("`") 
-                || self.look_ahead_matches("\\") {
+                } else if self.look_ahead_matches("`") || self.look_ahead_matches("\\") {
                     self.stream.skip(1);
                 } else if self.look_ahead_matches("0") {
                     if let Some(_zero) = self.stream.next_char() {
@@ -567,7 +566,7 @@ impl<'a> Tokenizer<'a> {
         );
     }
     fn html_comment(&mut self) -> RawItem {
-        let mut  found_end = false;
+        let mut found_end = false;
         while !self.at_new_line() && !self.stream.at_end() {
             if self.look_ahead_matches("-->") {
                 found_end = true;

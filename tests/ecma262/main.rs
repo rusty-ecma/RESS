@@ -9,9 +9,9 @@ extern crate lazy_static;
 use std::{fs::read_to_string, path::Path, process::Command};
 
 use ress::Scanner;
-mod es5;
-mod es2015s;
 mod es2015m;
+mod es2015s;
+mod es5;
 
 #[test]
 fn es5_test() {

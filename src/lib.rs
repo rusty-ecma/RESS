@@ -202,11 +202,7 @@ impl<'b> Scanner<'b> {
                             let actual_end = idx.saturating_add(3);
                             if actual_end < next.end {
                                 let tail = &s[actual_end..];
-                                let tail = if tail == "" {
-                                    None 
-                                } else {
-                                    Some(tail)
-                                };
+                                let tail = if tail == "" { None } else { Some(tail) };
                                 (&s[4..idx], tail)
                             } else {
                                 (&s[4..], None)
