@@ -565,20 +565,14 @@ impl<'a> Tokenizer<'a> {
         );
     }
     fn html_comment(&mut self) -> RawItem {
-        let mut found_end = if self.look_ahead_matches("-->") {
-            self.stream.skip(3);
-            true
-        } else {
-            false
-        };
-        while let Some(_) = self.stream.next_char() {
-            if self.look_ahead_matches("-->") {
-                self.stream.skip(3);
-                found_end = true;
-            }
-        }
+        let mut  found_end = false;
         while !self.at_new_line() && !self.stream.at_end() {
-            self.stream.skip(1)
+            if self.look_ahead_matches("-->") {
+                found_end = true;
+                self.stream.skip(3);
+            } else {
+                self.stream.skip(1);
+            }
         }
         if found_end {
             return self.gen_token(RawToken::Comment(CommentKind::Html));
