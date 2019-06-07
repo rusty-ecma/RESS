@@ -484,6 +484,8 @@ impl<'a> Tokenizer<'a> {
                         let _ = self.stream.prev_char();
                         self.dec_number(false)
                     }
+                } else if next == '.' {
+                    self.dec_number(true)
                 } else {
                     let _ = self.stream.prev_char();
                     self.dec_number(next == '.')
@@ -497,7 +499,6 @@ impl<'a> Tokenizer<'a> {
     }
     fn template(&mut self, start: char) -> RawItem {
         while let Some(c) = self.stream.next_char() {
-            println!("template char: {}", c);
             if c == '\\' {
                 if self.look_ahead_matches("${") {
                     self.stream.skip(2);
@@ -828,7 +829,7 @@ mod test {
             "0.00",
             "10.00",
             ".0",
-            ".0",
+            "1.",
             "0e0",
             "0E0",
             "0.e0",
@@ -842,13 +843,14 @@ mod test {
             "0o0",
             "0o777",
             "2e308",
+            "1e1",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
             let mut t = Tokenizer::new(n);
             let item = t.next_();
             assert!(match item.ty {
-                RawToken::Numeric(_) => true,
+                RawToken::Number(_) => true,
                 _ => false,
             });
             assert!(t.stream.at_end());
