@@ -5,6 +5,55 @@ mod buffer;
 mod tokens;
 pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
 
+lazy_static! {
+    static ref KEYWORDS: ::std::collections::HashMap<&'static [u8], Keyword> = {
+        let mut k = ::std::collections::HashMap::new();
+        k.insert("await".as_bytes(), Keyword::Await);
+        k.insert("break".as_bytes(), Keyword::Break);
+        k.insert("case".as_bytes(), Keyword::Case);
+        k.insert("catch".as_bytes(), Keyword::Catch);
+        k.insert("class".as_bytes(), Keyword::Class);
+        k.insert("const".as_bytes(), Keyword::Const);
+        k.insert("continue".as_bytes(), Keyword::Continue);
+        k.insert("debugger".as_bytes(), Keyword::Debugger);
+        k.insert("default".as_bytes(), Keyword::Default);
+        k.insert("delete".as_bytes(), Keyword::Delete);
+        k.insert("do".as_bytes(), Keyword::Do);
+        k.insert("else".as_bytes(), Keyword::Else);
+        k.insert("finally".as_bytes(), Keyword::Finally);
+        k.insert("for".as_bytes(), Keyword::For);
+        k.insert("function".as_bytes(), Keyword::Function);
+        k.insert("if".as_bytes(), Keyword::If);
+        k.insert("instanceof".as_bytes(), Keyword::InstanceOf);
+        k.insert("in".as_bytes(), Keyword::In);
+        k.insert("new".as_bytes(), Keyword::New);
+        k.insert("return".as_bytes(), Keyword::Return);
+        k.insert("switch".as_bytes(), Keyword::Switch);
+        k.insert("this".as_bytes(), Keyword::This);
+        k.insert("throw".as_bytes(), Keyword::Throw);
+        k.insert("try".as_bytes(), Keyword::Try);
+        k.insert("typeof".as_bytes(), Keyword::TypeOf);
+        k.insert("var".as_bytes(), Keyword::Var);
+        k.insert("void".as_bytes(), Keyword::Void);
+        k.insert("while".as_bytes(), Keyword::While);
+        k.insert("with".as_bytes(), Keyword::With);
+        k.insert("export".as_bytes(), Keyword::Export);
+        k.insert("import".as_bytes(), Keyword::Import);
+        k.insert("super".as_bytes(), Keyword::Super);
+        k.insert("enum".as_bytes(), Keyword::Enum);
+        k.insert("implements".as_bytes(), Keyword::Implements);
+        k.insert("interface".as_bytes(), Keyword::Interface);
+        k.insert("package".as_bytes(), Keyword::Package);
+        k.insert("private".as_bytes(), Keyword::Private);
+        k.insert("protected".as_bytes(), Keyword::Protected);
+        k.insert("public".as_bytes(), Keyword::Public);
+        k.insert("static".as_bytes(), Keyword::Static);
+        k.insert("yield".as_bytes(), Keyword::Yield);
+        k.insert("let".as_bytes(), Keyword::Let);
+        k
+    };
+}
+
 pub struct RawItem {
     pub ty: tokens::RawToken,
     pub start: usize,
@@ -82,7 +131,7 @@ impl<'a> Tokenizer<'a> {
                             .expect("unexpected end of file when parsing regex");
                         self.escaped_with_hex4(start);
                     }
-                } else if !is_id_continue(c) {
+                } else if !Self::is_id_continue(c) {
                     let _ = self.stream.prev_char();
                     return self.gen_regex(body_idx);
                 }
@@ -122,7 +171,7 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 self.escaped_ident_part();
             }
-            if !is_id_continue(c) && c != '$' && c != '\u{200C}' && c != '\u{200D}' {
+            if !Self::is_id_continue(c) && c != '$' && c != '\u{200C}' && c != '\u{200D}' {
                 // if we have moved past the last valid identifier, go back 1
                 let _ = self.stream.prev_char();
                 break;
@@ -140,51 +189,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn at_keyword(&self) -> Option<Keyword> {
-        match &self.stream.buffer[self.current_start..self.stream.idx] {
-            b"await" => Some(Keyword::Await),
-            b"break" => Some(Keyword::Break),
-            b"case" => Some(Keyword::Case),
-            b"catch" => Some(Keyword::Catch),
-            b"class" => Some(Keyword::Class),
-            b"const" => Some(Keyword::Const),
-            b"continue" => Some(Keyword::Continue),
-            b"debugger" => Some(Keyword::Debugger),
-            b"default" => Some(Keyword::Default),
-            b"delete" => Some(Keyword::Delete),
-            b"do" => Some(Keyword::Do),
-            b"else" => Some(Keyword::Else),
-            b"finally" => Some(Keyword::Finally),
-            b"for" => Some(Keyword::For),
-            b"function" => Some(Keyword::Function),
-            b"if" => Some(Keyword::If),
-            b"instanceof" => Some(Keyword::InstanceOf),
-            b"in" => Some(Keyword::In),
-            b"new" => Some(Keyword::New),
-            b"return" => Some(Keyword::Return),
-            b"switch" => Some(Keyword::Switch),
-            b"this" => Some(Keyword::This),
-            b"throw" => Some(Keyword::Throw),
-            b"try" => Some(Keyword::Try),
-            b"typeof" => Some(Keyword::TypeOf),
-            b"var" => Some(Keyword::Var),
-            b"void" => Some(Keyword::Void),
-            b"while" => Some(Keyword::While),
-            b"with" => Some(Keyword::With),
-            b"export" => Some(Keyword::Export),
-            b"import" => Some(Keyword::Import),
-            b"super" => Some(Keyword::Super),
-            b"enum" => Some(Keyword::Enum),
-            b"implements" => Some(Keyword::Implements),
-            b"interface" => Some(Keyword::Interface),
-            b"package" => Some(Keyword::Package),
-            b"private" => Some(Keyword::Private),
-            b"protected" => Some(Keyword::Protected),
-            b"public" => Some(Keyword::Public),
-            b"static" => Some(Keyword::Static),
-            b"yield" => Some(Keyword::Yield),
-            b"let" => Some(Keyword::Let),
-            _ => None,
-        }
+        KEYWORDS.get(&self.stream.buffer[self.current_start..self.stream.idx]).map(|k| *k)
     }
 
     fn at_bool(&self) -> Option<bool> {
@@ -491,22 +496,6 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn template(&mut self, start: char) -> RawItem {
-        // if self.look_ahead_matches("${") {
-        //     self.stream.skip(2);
-        //     self.curly_stack.push(OpenCurlyKind::Template);
-        //     return self.gen_template(Template::Head);
-        // } else if self.look_ahead_matches("\\${") {
-        //     self.stream.skip(2);
-        // } else if self.look_ahead_matches("\\`") {
-        //     self.stream.skip(1);
-        // } else if self.look_ahead_matches("`") {
-        //     self.stream.skip(1);
-        //     if start == '`' {
-        //         return self.gen_template(Template::NoSub);
-        //     } else {
-        //         return self.gen_template(Template::Tail);
-        //     }
-        // }
         while let Some(c) = self.stream.next_char() {
             println!("template char: {}", c);
             if c == '\\' {
@@ -683,6 +672,14 @@ impl<'a> Tokenizer<'a> {
             }
         }
         self.gen_number(NumberKind::Dec)
+    }
+    fn is_id_continue(c: char) -> bool {
+        c == '$'
+        || c == '_'
+        ||  (c >= 'A' && c <= 'Z') 
+        || (c >= 'a' && c <= 'z') 
+        || c == '\\'
+        || is_id_continue(c)
     }
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
