@@ -116,12 +116,18 @@ impl<'a> JSBuffer<'a> {
     }
 
     /// Check if the next few bytes match the provided bytes
+    #[inline]
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
-        let end = self.idx.saturating_add(s.len());
+        let len = s.len();
+        if self.idx.saturating_add(len) > self.len {
+            return false;
+        }
+        let end = self.idx.saturating_add(len);
         end <= self.len && &self.buffer[self.idx..end] == s
     }
     /// Skip the number of characters provided
     /// note: these are full unicode characters, not just bytes
+    #[inline]
     pub fn skip(&mut self, count: usize) {
         for _ in 0..count {
             let _ = self.next_char();
@@ -177,17 +183,11 @@ impl<'a> JSBuffer<'a> {
     }
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
-        let c = if let Some(c) = self.next_char() {
-            let _ = self.prev_char();
-            c
-        } else {
-            return false;
-        };
         self.look_ahead_matches(b"\r\n")
-            || c == '\n'
-            || c == '\r'
-            || c == '\u{00A0}'
-            || c == '\u{FEFF}'
+            || self.look_ahead_matches(b"\n")
+            || self.look_ahead_matches(b"\r")
+            || self.look_ahead_matches("\u{00A0}".as_bytes())
+            || self.look_ahead_matches("\u{FEFF}".as_bytes())
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
