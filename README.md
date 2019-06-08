@@ -28,10 +28,9 @@ fn main() {
         println!("At least you are sane at one point");
     }
 }
-
 ```
 
-The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has two fields `token` for the `Token` found and `Span` for the position in the string.
+The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has two fields `token` for the `RefToken` found and `Span` for the position in the string.
 ```rust
 extern crate ress;
 
@@ -50,7 +49,7 @@ fn main() {
 }
 ```
 
-In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
+In either method the major construct that you would be dealing with is a `RefToken` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
 
 ### ES Tokens
 - Boolean Literal
@@ -64,9 +63,10 @@ In either method the major construct that you would be dealing with is a `Token`
 - Regular Expression Literal
 - Comment
 
-In its current state it should be able to tokenize any valid JavaScript (any pending specifications at [tc39](https://github.com/tc39/proposals) may not be included). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword.
+Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. Please also note that any pending specifications at [tc39](https://github.com/tc39/proposals) may not be included
 
 For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this
+
 ```rust
 fn is_punct(&self) -> bool;
 fn matches_punct(&self, p: Punct) -> bool;
@@ -83,7 +83,7 @@ if p.matches_keyword(Keyword::This) {
 }
 ```
 
-Like all `Iterators` the `Scanner` has a `next`, I have also implemented a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` implement `Peekable` that will convert them into a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
+Like all `Iterators` the `Scanner` has a `next` method, It also has a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` implement `Peekable` that will convert them into a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
 ```rust
 // look_ahead
 let js = "function() { return; }";
@@ -106,34 +106,14 @@ let js = "function() {
 };";
 let mut s = Scanner::new(js);
 let start = s.get_state();
-assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
-assert_eq!(s.next().unwrap().token, Token::Punct(Punct::OpenParen));
-assert_eq!(s.next().unwrap().token, Token::Punct(Punct::CloseParen));
+assert_eq!(s.next().unwrap().token, RefToken::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().token, RefToken::Punct(Punct::OpenParen));
+assert_eq!(s.next().unwrap().token, RefToken::Punct(Punct::CloseParen));
 s.set_state(start);
-assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().token, RefToken::Keyword(Keyword::Function));
 ```
 
-In addition to the standard `Scanner` api, there is also a `RefScanner`, `RefToken` and `RefItem` defined in the `refs` module which will provide better performance by removing the Strings from the enum variants. When using this api, to get the original text you would need to request that from the `RefScanner` via the `string_for` or `str_for` methods.
-
-
-```rust
-let js = "function thing() {
-    return 0;
-}";
-let scanner = RefScanner::new(js);
-let ident_spans = scanner
-    .filter_map(|item| {
-        match item.token {
-            RefToken::Ident => Some(item.span),
-            _ => None,
-        }
-    })
-    .collect();
-for span in ident_spans {
-    // Should print thing
-    println!("{}", scanner.string_for(span));
-}
-```
+In addition to the `RefToken` enum this crate also provides an `OwnedToken` enum, this will semantically work the same as a `RefToken` (as they both `impl Token`) however it will require a string be allocated to construct. This can be useful if you need to work outside of the lifetime bounds of a `RefToken`.
 
 ## Why?
 Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
@@ -143,16 +123,15 @@ $ cargo run --example clear-comments -- ./in.js ./out.js
 ```
 
 # Performance
-I am sure there are a lot of low hanging fruit in this area.
-The below stats are from running `cargo +nightly bench` on a Dell Precision 5530 (2.6ghz i7-8850H & 16bg RAM).
+The below stats are from running `cargo +nightly bench` on a MBP (2.9 GHz i9-8850H & 16bg RAM).
 
-|Lib         |Size     |Time     |+/-      |
-|---         |---      |---      |---      |
-|Angular 1.5 |1.16mb   |184.02ms | 9.970ms |
-|jquery      |271.75kb | 86.07ms | 7.788ms |
-|React       |59.09kb  | 23.69ms | 0.265ms |
-|React-dom   |641.51kb |188.65ms |15.796ms |
-|Vue         |289.30kb |106.69ms |21.595ms |
+| Lib         | Size     | Time      | +/-        |
+| ----------- | -------- | --------- | ---------- |
+| Angular 1.5 |   1.16mb | 18.991 ms |   4.393 ms |
+| jquery      | 271.75kb |  7.218 ms | 577.236 μs |
+| React       |  59.09kb |  1.976 ms | 116.139 μs |
+| React-dom   | 641.51kb | 16.880 ms |   3.614 ms |
+| Vue         | 289.30kb |  9.675 ms |   1.402 ms |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 

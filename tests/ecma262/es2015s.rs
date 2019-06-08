@@ -1,6 +1,7 @@
 use ress::{Boolean, Comment, Keyword, Punct, RefToken, RegEx, StringLit, Template};
 lazy_static! {
-    pub static ref TOKENS: Vec<RefToken<'static>> = vec![
+    pub static ref TOKENS: Vec<RefToken<'static>> =
+        vec![
         RefToken::Comment(Comment::new_multi_line(
             " this file contains all grammatical productions in ECMA-262 edition 5.1 ** * *"
         )),
@@ -242,9 +243,7 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::double(r"\1\00\400\000")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::double(
-            r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef"
-        )),
+        RefToken::String(StringLit::double(r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef")),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::double(r"\u0123\u4567\u89AB\uCDEF\u00ab\ucdef")),
         RefToken::Punct(Punct::SemiColon),
@@ -265,9 +264,7 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::single(r"\1\00\400\000")),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::String(StringLit::single(
-            r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef"
-        )),
+        RefToken::String(StringLit::single(r"\x01\x23\x45\x67\x89\xAB\xCD\xEF\xab\xcd\xef")),
         RefToken::Punct(Punct::SemiColon),
         RefToken::String(StringLit::single(r"\u0123\u4567\u89AB\uCDEF\u00ab\ucdef")),
         RefToken::Punct(Punct::SemiColon),
@@ -290,10 +287,7 @@ lazy_static! {
         RefToken::Punct(Punct::SemiColon),
         RefToken::RegEx(RegEx::from_parts("(?=(?!(?:(.))))", None)),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::RegEx(RegEx::from_parts(
-            r"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000\uD834\uDF06",
-            None
-        )),
+        RefToken::RegEx(RegEx::from_parts(r"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000\uD834\uDF06", None)),
         RefToken::Punct(Punct::SemiColon),
         RefToken::RegEx(RegEx::from_parts(r"\u{00000001d306}", Some("u"))),
         RefToken::Punct(Punct::SemiColon),
@@ -1716,12 +1710,8 @@ lazy_static! {
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::CloseBrace),
         RefToken::Punct(Punct::SemiColon),
-        RefToken::Comment(Comment::new_single_line(
-            "for (;0;) label: function f(){} 0"
-        )),
-        RefToken::Comment(Comment::new_single_line(
-            "do label: function f(){} while(0)"
-        )),
+        RefToken::Comment(Comment::new_single_line("for (;0;) label: function f(){} 0")),
+        RefToken::Comment(Comment::new_single_line("do label: function f(){} while(0)")),
         RefToken::Keyword(Keyword::Function),
         RefToken::Ident("f".into()),
         RefToken::Punct(Punct::OpenParen),
