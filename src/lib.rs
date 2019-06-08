@@ -512,44 +512,60 @@ fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum OpenCurlyKind {
+    Template,
+    Block,
+}
+
+#[derive(Clone)]
+pub struct ScannerState {
+    pub cursor: usize,
+    pub spans_len: usize,
+    pub last_paren: usize,
+    pub replacement: usize,
+    pub curly_stack: Vec<OpenCurlyKind>,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    //     #[test]
-    //     fn tokenizer() {
-    //         let js = "
-    // 'use strict';
-    // function thing() {
-    //     let x = 0;
-    //     console.log('stuff');
-    // }";
-    //         let expectation = vec![
-    //             RefToken::String(StringLit::Single),
-    //             RefToken::Punct(Punct::SemiColon),
-    //             RefToken::Keyword(Keyword::Function),
-    //             RefToken::Ident,
-    //             RefToken::Punct(Punct::OpenParen),
-    //             RefToken::Punct(Punct::CloseParen),
-    //             RefToken::Punct(Punct::OpenBrace),
-    //             RefToken::Keyword(Keyword::Let),
-    //             RefToken::Ident,
-    //             RefToken::Punct(Punct::Equal),
-    //             RefToken::Numeric(super::tokens::Number::Dec),
-    //             RefToken::punct(Punct::SemiColon),
-    //             RefToken::Ident,
-    //             RefToken::Punct(Punct::Period),
-    //             RefToken::Ident,
-    //             RefToken::Punct(Punct::OpenParen),
-    //             RefToken::String(StringLit::Single),
-    //             RefToken::punct(Punct::CloseParen),
-    //             RefToken::punct(Punct::SemiColon),
-    //             RefToken::punct(Punct::CloseBrace),
-    //             RefToken::EoF,
-    //         ];
-    //         for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
-    //             assert_eq!(tok.0, tok.1);
-    //         }
-    //     }
+        #[test]
+    fn tokenizer() {
+        let js = "
+'use strict';
+function thing() {
+    let x = 0;
+    console.log('stuff');
+}";
+        let expectation = vec![
+            RefToken::String(StringLit::Single("use strict")),
+            RefToken::Punct(Punct::SemiColon),
+            RefToken::Keyword(Keyword::Function),
+            RefToken::Ident("thing".into()),
+            RefToken::Punct(Punct::OpenParen),
+            RefToken::Punct(Punct::CloseParen),
+            RefToken::Punct(Punct::OpenBrace),
+            RefToken::Keyword(Keyword::Let),
+            RefToken::Ident("x".into()),
+            RefToken::Punct(Punct::Equal),
+            RefToken::Number("0".into()),
+            RefToken::Punct(Punct::SemiColon),
+            RefToken::Ident("console".into()),
+            RefToken::Punct(Punct::Period),
+            RefToken::Ident("log".into()),
+            RefToken::Punct(Punct::OpenParen),
+            RefToken::String(StringLit::Single("stuff")),
+            RefToken::Punct(Punct::CloseParen),
+            RefToken::Punct(Punct::SemiColon),
+            RefToken::Punct(Punct::CloseBrace),
+            RefToken::EoF,
+        ];
+        for (lhs, rhs) in Scanner::new(js).zip(expectation.into_iter()) {
+            let lhs = lhs.unwrap();
+            assert_eq!(lhs.token, rhs);
+        }
+    }
 
     #[test]
     fn tok_scanner() {
@@ -594,76 +610,18 @@ this.y = 0;
         let _: Vec<_> = t.collect();
     }
 
-    // #[test]
-    // fn template_one_sub() {
-    //     let one_sub = "`things and stuff times ${x}`";
-    //     let s = Scanner::new(one_sub);
-    //     let expected = vec![
-    //         Token::template_head("things and stuff times "),
-    //         Token::ident("x"),
-    //         Token::template_tail(""),
-    //     ];
-    //     validate(s, expected);
-    // }
-
-    // #[test]
-    // fn template_two_subs() {
-    //     let two_subs = "`things and stuff times ${x} divided by ${y}`";
-    //     let s = Scanner::new(two_subs);
-    //     let expected = vec![
-    //         Token::template_head("things and stuff times "),
-    //         Token::ident("x"),
-    //         Token::template_middle(" divided by "),
-    //         Token::ident("y"),
-    //         Token::template_tail(""),
-    //     ];
-    //     validate(s, expected);
-    // }
-    // #[test]
-    // fn multiline_template() {
-    //     let plain = "`things and
-    //     stuff`";
-    //     let p_r = tokens::token().parse(plain).unwrap();
-    //     assert_eq!(
-    //         p_r,
-    //         (Token::no_sub_template(&plain[1..plain.len() - 1]), "")
-    //     );
-    //     let subbed = "`things and
-    //     stuff times ${x}`";
-    //     let s = Scanner::new(subbed);
-    //     let expected = vec![
-    //         Token::template_head("things and\n        stuff times "),
-    //         Token::ident("x"),
-    //         Token::template_tail(""),
-    //     ];
-    //     validate(s, expected);
-    // }
-    // #[test]
-    // fn nested_template() {
-    //     let test = "`outer ${`inner ${0}`}`";
-    //     let expected = vec![
-    //         Token::template_head("outer "),
-    //         Token::template_head("inner "),
-    //         Token::numeric("0"),
-    //         Token::template_tail(""),
-    //         Token::template_tail(""),
-    //     ];
-    //     let s = Scanner::new(test);
-    //     validate(s, expected);
-    // }
-    // #[test]
-    // fn look_ahead() {
-    //     let js = "function() { return; }";
-    //     let mut s = Scanner::new(js);
-    //     loop {
-    //         let peek = s.look_ahead();
-    //         let next = s.next();
-    //         assert_eq!(peek, next);
-    //         if peek.is_none() {
-    //             break;
-    //         }
-    //     }
-    // }
+    #[test]
+    fn look_ahead() {
+        let js = "function() { return; }";
+        let mut s = Scanner::new(js);
+        while let Some(peek) = s.look_ahead() {
+            let peek = peek.unwrap();
+            if let Some(next) = s.next() {
+                let next = next.unwrap();
+                assert_eq!(peek, next);
+            }
+        }
+    }
 
     fn validate(s: Scanner, expected: Vec<RefToken>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
@@ -711,19 +669,4 @@ this.y = 0;
             RefToken::RegEx(regex)
         );
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum OpenCurlyKind {
-    Template,
-    Block,
-}
-
-#[derive(Clone)]
-pub struct ScannerState {
-    pub cursor: usize,
-    pub spans_len: usize,
-    pub last_paren: usize,
-    pub replacement: usize,
-    pub curly_stack: Vec<OpenCurlyKind>,
 }
