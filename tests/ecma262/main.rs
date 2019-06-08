@@ -19,6 +19,7 @@ fn es5_test() {
     ensure_logging();
     let js = get_js(EsVersion::Es5);
     for (i, (lhs, rhs)) in Scanner::new(&js).zip(es5::ES5.iter()).enumerate() {
+        let lhs = lhs.unwrap();
         println!("{:?}:{:?}", lhs.token, rhs);
         assert_eq!((i, &lhs.token), (i, rhs));
     }
@@ -30,6 +31,7 @@ fn es2015_script_test() {
     ensure_logging();
     let js = get_js(EsVersion::Es2015Script);
     for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015s::TOKENS.iter()).enumerate() {
+        let lhs = lhs.unwrap();
         println!("{:?}:{:?}", lhs.token, rhs);
         assert_eq!((i, &lhs.token), (i, rhs));
     }
@@ -41,6 +43,7 @@ fn es2015_module_test() {
     debug!("testing es2015 module");
     let js = get_js(EsVersion::Es2015Module);
     for (i, (lhs, rhs)) in Scanner::new(&js).zip(es2015m::TOKENS.iter()).enumerate() {
+        let lhs = lhs.unwrap();
         println!("{:?}:{:?}", lhs.token, rhs);
         assert_eq!((i, &lhs.token), (i, rhs));
     }

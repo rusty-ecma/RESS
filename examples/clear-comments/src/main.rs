@@ -53,6 +53,7 @@ fn main() {
     let mut if_parens = 0;
     let mut unbraced_if = false;
     for item in s {
+        let item = item.unwrap();
         println!("{:?}", item);
         let token = item.token;
         if token.matches_keyword(Keyword::If) {

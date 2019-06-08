@@ -73,6 +73,7 @@ fn check_js(js: &str) -> Vec<usize> {
     // then collect them all into a `Vec` of the start indexes
     Scanner::new(js)
         .filter_map(|item| {
+            let item = item.unwrap();
             // If this token matches the `Punct::SemiColon`
             if let RefToken::Punct(ref inner) = item.token {
                 match inner {

@@ -40,6 +40,25 @@ pub enum Token<'a> {
     /// ```
     Comment(Comment<'a>),
 }
+
+impl<'a> ToString for Token<'a> {
+    fn to_string(&self) -> String {
+        match self {
+            Token::Boolean(ref b) => b.to_string(),
+            Token::Comment(ref c) => c.to_string(),
+            Token::EoF => String::new(),
+            Token::Ident(ref i) => i.to_string(),
+            Token::Keyword(ref k) => k.to_string(),
+            Token::Null => "null".to_string(),
+            Token::Number(ref n) => n.to_string(),
+            Token::Punct(ref p) => p.to_string(),
+            Token::RegEx(ref r) => r.to_string(),
+            Token::String(ref s) => s.to_string(),
+            Token::Template(ref t) => t.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 /// An identifier
 pub struct Ident<'a>(&'a str);

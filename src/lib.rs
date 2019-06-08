@@ -35,11 +35,24 @@ pub use crate::tokens::{
     refs::{Comment, Ident, Number, RegEx, StringLit, Template, Token as RefToken},
     BooleanLiteral as Boolean, Keyword, Punct, Token,
 };
+pub mod error;
+
+use error::{
+    RawError,
+    Error,
+};
+
+type Res<T> = Result<T, Error>;
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
-pub fn tokenize(text: &str) -> Vec<RefToken> {
-    Scanner::new(text).map(|i| i.token).collect()
+pub fn tokenize(text: &str) -> Res<Vec<RefToken>> {
+    let mut ret = Vec::new();
+    for i in Scanner::new(text) {
+        let inner = i?.token;
+        ret.push(inner);
+    }
+    Ok(ret)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -90,6 +103,7 @@ pub struct Scanner<'a> {
     last_open_paren_idx: usize,
     pub pending_new_line: bool,
     original: &'a str,
+    errored: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -103,12 +117,13 @@ impl<'a> Scanner<'a> {
             last_open_paren_idx: 0,
             pending_new_line: false,
             original: text,
+            errored: false,
         }
     }
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = Item<RefToken<'a>>;
+    type Item = Res<Item<RefToken<'a>>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.get_next_token(true)
     }
@@ -121,16 +136,16 @@ impl<'b> Scanner<'b> {
     /// returned value will not be a borrowed `Item`. Since
     /// there isn't a borrow happening this essentially duplicates
     /// the cost of calling `next`.
-    pub fn look_ahead(&mut self) -> Option<Item<RefToken<'b>>> {
+    pub fn look_ahead(&mut self) -> Option<Res<Item<RefToken<'b>>>> {
         self.get_next_token(false)
     }
     /// Skip any upcoming comments to get the
     /// next valid js token
-    pub fn skip_comments(&mut self) {
+    pub fn skip_comments(&mut self) -> Res<()> {
         debug!(target: "ress", "skipping comments");
         let mut new_cursor = self.stream.stream.idx;
-        while let Some(ref item) = self.next() {
-            if let RefToken::Comment(_) = item.token {
+        while let Some(item) = self.next() {
+            if let RefToken::Comment(_) = item?.token {
                 new_cursor = self.stream.stream.idx;
             } else {
                 break;
@@ -138,6 +153,7 @@ impl<'b> Scanner<'b> {
         }
         debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.stream.stream.idx));
         self.stream.stream.idx = new_cursor;
+        Ok(())
     }
     /// Get a copy of the scanner's current state
     pub fn get_state(&self) -> ScannerState {
@@ -157,18 +173,33 @@ impl<'b> Scanner<'b> {
         self.stream.curly_stack = state.curly_stack;
     }
     #[inline]
-    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item<RefToken<'b>>> {
+    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<RefToken<'b>>>> {
+        if self.errored {
+            return None;
+        }
         if self.eof {
             debug!(target: "ress", "end of iterator, returning None");
             return None;
         };
         let prev_cursor = self.stream.stream.idx;
-        let mut next = self.stream.next_();
+        let mut next = match self.stream.next() {
+            Ok(n) => n,
+            Err(e) => {
+                self.errored = true;
+                return Some(self.error(e))
+            },
+        };
         let ret = if next.ty.is_punct()
             && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
             && self.is_regex_start()
         {
-            next = self.stream.next_regex();
+            next = match self.stream.next_regex() {
+                Ok(t) => t,
+                Err(e) => {
+                    self.errored = true;
+                    return Some(self.error(e))
+                }
+            };
             match next.ty {
                 RawToken::RegEx(body_end) => {
                     let flags = if next.end > body_end {
@@ -262,7 +293,7 @@ impl<'b> Scanner<'b> {
             self.spans.push(ret.span);
         }
         self.stream.skip_whitespace();
-        Some(ret)
+        Some(Ok(ret))
     }
 
     fn is_regex_start(&self) -> bool {
@@ -291,7 +322,7 @@ impl<'b> Scanner<'b> {
         }
         let mut current_idx = self.spans.len().saturating_sub(1);
         while current_idx > 0 {
-            if let Some(t) = self.token_for(&self.spans[current_idx]) {
+            if let Ok(t) = self.token_for(&self.spans[current_idx]) {
                 if t.is_comment() {
                     current_idx = current_idx.saturating_sub(1);
                 } else {
@@ -303,7 +334,7 @@ impl<'b> Scanner<'b> {
     }
 
     fn check_for_conditional(&self) -> bool {
-        if let Some(before) = self.nth_before_last_open_paren(1) {
+        if let Ok(before) = self.nth_before_last_open_paren(1) {
             match before {
                 RawToken::Keyword(k) => match k {
                     Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
@@ -317,13 +348,13 @@ impl<'b> Scanner<'b> {
     }
 
     fn check_for_func(&self) -> bool {
-        if let Some(before) = self.nth_before_last_open_paren(1) {
+        if let Ok(before) = self.nth_before_last_open_paren(1) {
             if before == RawToken::Ident {
-                if let Some(three_before) = self.nth_before_last_open_paren(3) {
+                if let Ok(three_before) = self.nth_before_last_open_paren(3) {
                     return Self::check_for_expression(&three_before);
                 }
             } else if before == RawToken::Keyword(Keyword::Function) {
-                if let Some(two_before) = self.nth_before_last_open_paren(2) {
+                if let Ok(two_before) = self.nth_before_last_open_paren(2) {
                     return Self::check_for_expression(&two_before);
                 } else {
                     return false;
@@ -399,19 +430,29 @@ impl<'b> Scanner<'b> {
         }
     }
 
-    fn nth_before_last_open_paren(&self, n: usize) -> Option<RawToken> {
+    fn nth_before_last_open_paren(&self, n: usize) -> Res<RawToken> {
         if self.spans.len() < n {
-            return None;
+            return self.error(RawError {
+                msg: format!("Not enough spans to get {}", n),
+                idx: self.stream.stream.idx,
+            });
         }
         self.token_for(&self.spans[self.last_open_paren_idx.saturating_sub(n)])
     }
 
-    fn token_for(&self, span: &Span) -> Option<tokenizer::RawToken> {
+    fn token_for(&self, span: &Span) -> Res<RawToken> {
         if self.original.len() < span.end {
-            return None;
+            return self.error(RawError {
+                msg: "span is too large for javascript text".to_string(),
+                idx: self.stream.stream.idx,
+            })
         }
         let s = &self.original[span.start..span.end];
-        Some(Tokenizer::new(s).next_().ty)
+        let raw_item = match Tokenizer::new(s).next() {
+            Ok(i) => i,
+            Err(e) => return self.error(e),
+        };
+        Ok(raw_item.ty)
     }
 
     pub fn string_for(&self, span: &Span) -> Option<String> {
@@ -424,6 +465,46 @@ impl<'b> Scanner<'b> {
         } else {
             Some(&self.original[span.start..span.end])
         }
+    }
+
+    pub fn position_for(&self, idx: usize) -> (usize, usize) {
+        // Obviously we will start at 0
+        let mut line_ct = 1;
+        // This is the byte position, not the character
+        // position to account for multi byte chars
+        let mut byte_position = 0;
+        // loop over the characters
+        for c in self.original[0..idx].chars() {
+            match c {
+                '\r' => {
+                    // look ahead 1 char to see if it is a newline pair
+                    // if so, don't include it, it will get included in the next
+                    // iteration
+                    if let Some(next) = self.original.get(byte_position..byte_position + 2) {
+                        if next != "\r\n" {
+                            line_ct += 1;
+                            byte_position = 0;
+                        }
+                    }
+                },
+                '\n' | '\u{2028}' | '\u{2029}' => {
+                    line_ct += 1;
+                    byte_position = 0;
+                }
+                _ => byte_position += c.len_utf8(),
+            };
+        }
+        (line_ct, byte_position)
+    }
+
+    fn error<T>(&self, raw_error: RawError) -> Res<T> {
+        let RawError {idx, msg} = raw_error;
+        let (line, column) = self.position_for(idx);
+        Err(Error {
+            line,
+            column,
+            msg,
+        })
     }
 }
 #[inline]
@@ -586,83 +667,52 @@ this.y = 0;
 
     fn validate(s: Scanner, expected: Vec<RefToken>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            let lhs = lhs.unwrap();
             println!("{:?}, {:?}", lhs.token, rhs);
             assert_eq!((i, lhs.token), (i, rhs));
         }
     }
 
-    // #[test]
-    // fn get_str() {
-    //     let js = "function ( ) { return ; }";
-    //     let mut s = Scanner::new(js);
-    //     let strs = js.split(' ');
-    //     for (i, p) in strs.enumerate() {
-    //         let item = s.next().unwrap();
-    //         let q = s.string_for(&item.span).unwrap();
-    //         assert_eq!((i, p.to_string()), (i, q))
-    //     }
-    // }
-
-    // #[test]
-    // fn item_deref_to_token() {
-    //     let js = "function ( ) { return ; }";
-    //     let mut s = Scanner::new(js);
-    //     let i: Item = s.next().unwrap();
-
-    //     // explicit reference to token
-    //     assert!(i.token.is_keyword());
-    //     // implicit deref to token
-    //     assert!(i.is_keyword());
-    // }
-
-    // #[test]
-    // fn spans() {
-    //     let js = include_str!("../node_modules/esprima/dist/esprima.js");
-    //     let mut s = Scanner::new(js);
-    //     while let Some(ref item) = s.next() {
-    //         let from_stream = &s.stream[item.span.start..item.span.end];
-    //         let token = item.token.to_string();
-
-    //         if from_stream != token {
-    //             panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
-    //         }
-    //     }
-    // }
-
-    // #[test]
-    // fn local_host_regex() {
-    //     let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
-    //     let mut s = Scanner::new(js);
-    //     let r = s.next().unwrap();
-    //     assert_eq!(
-    //         r.token,
-    //         Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None)
-    //     );
-    // }
-}
-
-pub mod error {
-    #[derive(Debug)]
-    pub enum Error {
-        DataMismatch(String),
+    #[test]
+    fn get_str() {
+        let js = "function ( ) { return ; }";
+        let mut s = Scanner::new(js);
+        let strs = js.split(' ');
+        for (i, p) in strs.enumerate() {
+            let item = s.next().unwrap().unwrap();
+            let q = s.string_for(&item.span).unwrap();
+            assert_eq!((i, p.to_string()), (i, q))
+        }
     }
 
-    impl ::std::fmt::Display for Error {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-            match self {
-                Error::DataMismatch(ref msg) => msg.fmt(f),
+    #[test]
+    fn spans() {
+        let js = include_str!("../node_modules/esprima/dist/esprima.js");
+        let mut s = Scanner::new(js);
+        while let Some(item) = s.next() {
+            let item = item.unwrap();
+            let from_stream = &js[item.span.start..item.span.end];
+            let token = item.token.to_string();
+
+            if from_stream != token {
+                panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
             }
         }
     }
 
-    impl ::std::error::Error for Error {}
-
-    impl From<::std::num::ParseIntError> for Error {
-        fn from(other: ::std::num::ParseIntError) -> Self {
-            Error::DataMismatch(format!("Error parsing int: {}", other))
-        }
+    #[test]
+    fn local_host_regex() {
+        let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
+        let regex = RegEx::from_parts(r"^(http|https):\/\/(localhost|127\.0\.0\.1)", None);
+        let mut s = Scanner::new(js);
+        let r = s.next().unwrap().unwrap();
+        assert_eq!(
+            r.token,
+            RefToken::RegEx(regex)
+        );
     }
 }
+
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum OpenCurlyKind {
     Template,

@@ -186,7 +186,7 @@ lazy_static! {
 fn keywords(b: &mut Bencher) {
     b.iter(|| {
         for key in KEYWORDS {
-            black_box(Tokenizer::new(key).next_());
+            black_box(Tokenizer::new(key).next().unwrap());
         }
     });
 }
@@ -195,7 +195,7 @@ fn keywords(b: &mut Bencher) {
 fn punct(b: &mut Bencher) {
     b.iter(|| {
         for punct in PUNCTS {
-            black_box(Tokenizer::new(punct).next_());
+            black_box(Tokenizer::new(punct).next().unwrap());
         }
     });
 }
@@ -204,7 +204,7 @@ fn punct(b: &mut Bencher) {
 fn strings(b: &mut Bencher) {
     b.iter(|| {
         for s in STRINGS {
-            black_box(Tokenizer::new(s).next_());
+            black_box(Tokenizer::new(s).next().unwrap());
         }
     });
 }
@@ -213,7 +213,7 @@ fn strings(b: &mut Bencher) {
 fn comments(b: &mut Bencher) {
     b.iter(|| {
         for c in COMMENTS {
-            black_box(Tokenizer::new(c).next_());
+            black_box(Tokenizer::new(c).next().unwrap());
         }
     });
 }
@@ -222,7 +222,7 @@ fn comments(b: &mut Bencher) {
 fn numbers(b: &mut Bencher) {
     b.iter(|| {
         for n in NUMBERS {
-            black_box(Tokenizer::new(n).next_());
+            black_box(Tokenizer::new(n).next().unwrap());
         }
     });
 }
@@ -231,7 +231,7 @@ fn numbers(b: &mut Bencher) {
 fn regex(b: &mut Bencher) {
     b.iter(|| {
         for r in REGEX {
-            black_box(Tokenizer::new(r).next_regex());
+            black_box(Tokenizer::new(r).next_regex().unwrap());
         }
     });
 }
@@ -243,13 +243,13 @@ fn templates(b: &mut Bencher) {
             let s = format!("`${{}}{}", s);
             println!("attempting {}", s);
             let mut t = Tokenizer::new(&s);
-            let _ = t.next_();
-            black_box(t.next_());
+            let _ = t.next();
+            black_box(t.next().unwrap());
         }
     });
     b.iter(|| {
         for s in TEMPLATE_STARTS {
-            black_box(Tokenizer::new(s).next_());
+            black_box(Tokenizer::new(s).next().unwrap());
         }
     });
 }
@@ -258,7 +258,7 @@ fn templates(b: &mut Bencher) {
 fn bools(b: &mut Bencher) {
     b.iter(|| {
         for b in BOOLS {
-            black_box(Tokenizer::new(b).next_());
+            black_box(Tokenizer::new(b).next().unwrap());
         }
     });
 }
@@ -267,7 +267,7 @@ fn bools(b: &mut Bencher) {
 fn null(b: &mut Bencher) {
     b.iter(|| {
         for b in NULL {
-            black_box(Tokenizer::new(b).next_());
+            black_box(Tokenizer::new(b).next().unwrap());
         }
     });
 }
@@ -276,7 +276,7 @@ fn null(b: &mut Bencher) {
 fn idents(b: &mut Bencher) {
     b.iter(|| {
         for i in IDENTS {
-            black_box(Tokenizer::new(i).next_());
+            black_box(Tokenizer::new(i).next().unwrap());
         }
     });
 }
@@ -285,7 +285,7 @@ fn idents(b: &mut Bencher) {
 pub fn token(b: &mut Bencher) {
     b.iter(|| {
         for s in TOKENS.iter() {
-            black_box(Tokenizer::new(s).next_());
+            black_box(Tokenizer::new(s).next().unwrap());
         }
     });
 }
