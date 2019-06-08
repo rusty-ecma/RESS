@@ -95,7 +95,7 @@ impl BooleanLiteral {
 
 impl BooleanLiteral {
     /// Create a BooleanLiteral from raw text
-    fn from(s: &str) -> Option<Self> {
+    pub fn from(s: &str) -> Option<Self> {
         if s == "true" {
             Some(BooleanLiteral::True)
         } else if s == "false" {
@@ -446,7 +446,7 @@ pub enum Keyword {
 
 impl  Keyword {
     /// convert a &str into a Keyword
-    fn from(s: &str) -> Option<Self> {
+    pub fn from(s: &str) -> Option<Self> {
         Some(match s {
             "await" => Keyword::Await,
             "break" => Keyword::Break,

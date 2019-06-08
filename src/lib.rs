@@ -220,7 +220,7 @@ impl<'b> Scanner<'b> {
         } else {
             let s = &self.original[next.start..next.end];
             let token = match next.ty {
-                RawToken::Boolean(b) => RefToken::Boolean(Boolean::from(b)),
+                RawToken::Boolean(b) => RefToken::Boolean(b.into()),
                 RawToken::Comment(kind) => match kind {
                     tokens::CommentKind::Multi => {
                         RefToken::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
