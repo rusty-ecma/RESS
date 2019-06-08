@@ -669,4 +669,22 @@ this.y = 0;
             RefToken::RegEx(regex)
         );
     }
+
+    #[test]
+    fn error() {
+        let js = "
+(function() {
+    let x = 'asdf
+    ';
+})()";
+        for item in Scanner::new(js) {
+            match item {
+                Ok(_) => (),
+                Err(e) => {
+                    assert_eq!(e.line, 3);
+                    assert_eq!(e.column, 17);
+                }
+            }
+        }
+    }
 }
