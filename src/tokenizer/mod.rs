@@ -139,7 +139,10 @@ impl<'a> Tokenizer<'a> {
                 }
             } else if c == '\\' {
                 if self.stream.at_new_line() {
-                    panic!("new line in regex literal at {}", self.stream.idx);
+                    return Err(RawError {
+                        idx: self.stream.idx,
+                        msg: "new line in regex literal".to_string(),
+                    });
                 } else if self.look_ahead_matches("[")
                     || self.look_ahead_matches("/")
                     || self.look_ahead_matches("\\")
@@ -147,7 +150,10 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip(1);
                 }
             } else if is_line_term(c) {
-                panic!("new line in regex literal at {}", self.stream.idx);
+                return Err(RawError {
+                    idx: self.stream.idx,
+                    msg: "new line in regex literal".to_string(),
+                });
             } else if in_class {
                 // we ignore the /
                 if c == ']' {
@@ -613,10 +619,10 @@ impl<'a> Tokenizer<'a> {
                 return self.gen_comment(CommentKind::Multi);
             }
         }
-        panic!(
-            "unterminated multi-line comment starting at {}",
-            self.current_start
-        );
+        return Err(RawError {
+            idx: self.current_start,
+            msg: "unterminated multi-line comment".to_string(),
+        });
     }
     fn html_comment(&mut self) -> Res<RawItem> {
         let mut found_end = false;
@@ -631,10 +637,10 @@ impl<'a> Tokenizer<'a> {
         if found_end {
             return self.gen_token(RawToken::Comment(CommentKind::Html));
         }
-        panic!(
-            "unterminated html comment starting at {}",
-            self.current_start
-        );
+        Err(RawError {
+            msg: "unterminated html comment".to_string(),
+            idx: self.current_start,
+        })
     }
     fn hex_number(&mut self) -> Res<RawItem> {
         if let Some(c) = self.stream.next_char() {

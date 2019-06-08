@@ -93,27 +93,16 @@ impl BooleanLiteral {
     }
 }
 
-impl<'a> From<&'a str> for BooleanLiteral {
+impl BooleanLiteral {
     /// Create a BooleanLiteral from raw text
-    ///
-    /// panics if argument is not `true` or `false`
-    fn from(s: &'a str) -> Self {
+    fn from(s: &str) -> Option<Self> {
         if s == "true" {
-            BooleanLiteral::True
+            Some(BooleanLiteral::True)
         } else if s == "false" {
-            BooleanLiteral::False
+            Some(BooleanLiteral::False)
         } else {
-            panic!(r#"BooleanLiteral can only be created for "true" or "false"."#)
+            None
         }
-    }
-}
-
-impl From<String> for BooleanLiteral {
-    /// Create a BooleanLiteral from raw text
-    ///
-    /// panics if argument is not `true` or `false`
-    fn from(s: String) -> Self {
-        BooleanLiteral::from(s.as_str())
     }
 }
 
@@ -455,12 +444,10 @@ pub enum Keyword {
     Yield,
 }
 
-impl<'a> From<&'a str> for Keyword {
+impl  Keyword {
     /// convert a &str into a Keyword
-    ///
-    /// panics if invalid keyword
-    fn from(s: &'a str) -> Self {
-        match s {
+    fn from(s: &str) -> Option<Self> {
+        Some(match s {
             "await" => Keyword::Await,
             "break" => Keyword::Break,
             "case" => Keyword::Case,
@@ -503,19 +490,11 @@ impl<'a> From<&'a str> for Keyword {
             "static" => Keyword::Static,
             "yield" => Keyword::Yield,
             "let" => Keyword::Let,
-            _ => panic!("Unknown Keyword, `{}`", s),
-        }
+            _ => return None,
+        })
     }
 }
 
-impl From<String> for Keyword {
-    /// converts from a String to a Keyword
-    ///
-    /// panics if an invalid keyword
-    fn from(s: String) -> Self {
-        Self::from(s.as_str())
-    }
-}
 
 impl ::std::string::ToString for Keyword {
     /// Convert a keyword into a string
