@@ -292,7 +292,7 @@ impl<'b> Scanner<'b> {
             }
             self.spans.push(ret.span);
         }
-        self.stream.skip_whitespace();
+        self.pending_new_line = self.stream.skip_whitespace() > 0;
         Some(Ok(ret))
     }
 

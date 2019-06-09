@@ -793,10 +793,15 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    pub fn skip_whitespace(&mut self) {
+    pub fn skip_whitespace(&mut self) -> usize {
+        let mut ct = 0;
         while self.stream.at_whitespace() {
+            if self.stream.at_new_line() {
+                ct += 1;
+            }
             self.stream.skip(1);
         }
+        ct
     }
     #[inline]
     fn at_new_line(&mut self) -> bool {
