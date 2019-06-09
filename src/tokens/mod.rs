@@ -20,7 +20,7 @@ pub trait Token {
 
     fn is_null(&self) -> bool;
 
-    fn is_numeric(&self) -> bool;
+    fn is_number(&self) -> bool;
 
     fn is_hex_literal(&self) -> bool;
 
@@ -66,7 +66,7 @@ pub trait Token {
 
     fn matches_keyword_str(&self, name: &str) -> bool;
 
-    fn matches_numeric_str(&self, number: &str) -> bool;
+    fn matches_number_str(&self, number: &str) -> bool;
 
     fn matches_punct(&self, p: Punct) -> bool;
 
@@ -707,7 +707,7 @@ impl Token for owned::Token {
         self == &owned::Token::Null
     }
 
-    fn is_numeric(&self) -> bool {
+    fn is_number(&self) -> bool {
         if let owned::Token::Number(ref _n) = self {
             true
         } else {
@@ -857,7 +857,7 @@ impl Token for owned::Token {
         }
     }
 
-    fn matches_numeric_str(&self, number: &str) -> bool {
+    fn matches_number_str(&self, number: &str) -> bool {
         match self {
             owned::Token::Number(n) => n == number,
             _ => false,
@@ -947,7 +947,7 @@ impl<'a> Token for refs::Token<'a> {
         self == &refs::Token::Null
     }
 
-    fn is_numeric(&self) -> bool {
+    fn is_number(&self) -> bool {
         if let refs::Token::Number(ref _n) = self {
             true
         } else {
@@ -1096,7 +1096,7 @@ impl<'a> Token for refs::Token<'a> {
             _ => false,
         }
     }
-    fn matches_numeric_str(&self, number: &str) -> bool {
+    fn matches_number_str(&self, number: &str) -> bool {
         match self {
             refs::Token::Number(n) => n == number,
             _ => false,
