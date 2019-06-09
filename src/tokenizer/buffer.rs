@@ -186,8 +186,8 @@ impl<'a> JSBuffer<'a> {
         self.look_ahead_matches(b"\r\n")
             || self.look_ahead_matches(b"\n")
             || self.look_ahead_matches(b"\r")
-            || self.look_ahead_matches("\u{00A0}".as_bytes())
-            || self.look_ahead_matches("\u{FEFF}".as_bytes())
+            || self.look_ahead_matches("\u{2028}".as_bytes())
+            || self.look_ahead_matches("\u{2029}".as_bytes())
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {

@@ -1116,4 +1116,31 @@ mod test {
             assert!(t.stream.at_end());
         }
     }
+
+    #[test]
+    fn tokenizer_white_space() {
+        let js = "0
+0 0
+0 0
+0 0 0 0 0";
+        let mut t = Tokenizer::new(js);
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 1); //\n
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 0);
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 1); //\r
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 0);
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 1); //\r\n
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 0);
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 1); // line seperator
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 0);
+        let _ = t.next();
+        assert_eq!(t.skip_whitespace(), 1); // paragraph separator
+    }
 }
