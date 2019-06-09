@@ -73,6 +73,10 @@ impl<'a> Ident<'a> {
     pub fn matches(&self, other: &str) -> bool {
         self.0 == other
     }
+
+    pub fn as_str(&self) -> &'a str {
+        self.0
+    }
 }
 
 impl<'a> From<&'a str> for Ident<'a> {
