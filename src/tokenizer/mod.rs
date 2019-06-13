@@ -824,7 +824,6 @@ mod test {
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
             let item = t.next().unwrap();
-            println!("{:?}", item.ty);
             assert!(item.ty.is_punct());
             assert!(t.stream.at_end());
         }
@@ -895,7 +894,6 @@ mod test {
             r#"x‌‍"#,
         ];
         for i in IDENTS {
-            println!("attempting {}", i);
             let mut t = Tokenizer::new(i);
             let item = t.next().unwrap();
             assert_eq!(item.ty, RawToken::Ident);
