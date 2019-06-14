@@ -4,9 +4,12 @@ extern crate ress;
 extern crate test;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate criterion;
 
+use criterion::{black_box, Criterion};
 use ress::{Scanner, Tokenizer};
-use test::{black_box, Bencher};
+
 static KEYWORDS: &[&str] = &[
     "implements",
     "interface",
@@ -182,119 +185,138 @@ lazy_static! {
         .collect();
 }
 
-#[bench]
-fn keywords(b: &mut Bencher) {
-    b.iter(|| {
-        for key in KEYWORDS {
-            black_box(Tokenizer::new(key).next().unwrap());
-        }
+fn keywords(c: &mut Criterion) {
+    c.bench_function("keywords", |b| {
+        b.iter(|| {
+            for key in KEYWORDS {
+                black_box(Tokenizer::new(key).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn punct(b: &mut Bencher) {
-    b.iter(|| {
-        for punct in PUNCTS {
-            black_box(Tokenizer::new(punct).next().unwrap());
-        }
+fn punct(c: &mut Criterion) {
+    c.bench_function("punct", |b| {
+        b.iter(|| {
+            for punct in PUNCTS {
+                black_box(Tokenizer::new(punct).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn strings(b: &mut Bencher) {
-    b.iter(|| {
-        for s in STRINGS {
-            black_box(Tokenizer::new(s).next().unwrap());
-        }
+fn strings(c: &mut Criterion) {
+    c.bench_function("strings", |b| {
+        b.iter(|| {
+            for s in STRINGS {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn comments(b: &mut Bencher) {
-    b.iter(|| {
-        for c in COMMENTS {
-            black_box(Tokenizer::new(c).next().unwrap());
-        }
+fn comments(c: &mut Criterion) {
+    c.bench_function("comments", |b| {
+        b.iter(|| {
+            for c in COMMENTS {
+                black_box(Tokenizer::new(c).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn numbers(b: &mut Bencher) {
-    b.iter(|| {
-        for n in NUMBERS {
-            black_box(Tokenizer::new(n).next().unwrap());
-        }
+fn numbers(c: &mut Criterion) {
+    c.bench_function("numbers", |b| {
+        b.iter(|| {
+            for n in NUMBERS {
+                black_box(Tokenizer::new(n).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn regex(b: &mut Bencher) {
-    b.iter(|| {
-        for r in REGEX {
-            black_box(Tokenizer::new(r).next_regex().unwrap());
-        }
+fn regex(c: &mut Criterion) {
+    c.bench_function("regex", |b| {
+        b.iter(|| {
+            for r in REGEX {
+                black_box(Tokenizer::new(r).next_regex().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn templates(b: &mut Bencher) {
-    b.iter(|| {
-        for s in TEMPLATE_CONTINUATIONS {
-            let s = format!("`${{}}{}", s);
-            println!("attempting {}", s);
-            let mut t = Tokenizer::new(&s);
-            let _ = t.next();
-            black_box(t.next().unwrap());
-        }
+fn templates(c: &mut Criterion) {
+    c.bench_function("TEMPLATE_CONTINUATIONS", |b| {
+        b.iter(|| {
+            for s in TEMPLATE_CONTINUATIONS {
+                let s = format!("`${{}}{}", s);
+                let mut t = Tokenizer::new(&s);
+                let _ = t.next().unwrap();
+                black_box(t.next().unwrap());
+            }
+        })
     });
-    b.iter(|| {
-        for s in TEMPLATE_STARTS {
-            black_box(Tokenizer::new(s).next().unwrap());
-        }
-    });
-}
-
-#[bench]
-fn bools(b: &mut Bencher) {
-    b.iter(|| {
-        for b in BOOLS {
-            black_box(Tokenizer::new(b).next().unwrap());
-        }
+    c.bench_function("TEMPLATE_STARTS", |b| {
+        b.iter(|| {
+            for s in TEMPLATE_STARTS {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn null(b: &mut Bencher) {
-    b.iter(|| {
-        for b in NULL {
-            black_box(Tokenizer::new(b).next().unwrap());
-        }
+fn bools(c: &mut Criterion) {
+    c.bench_function("bools", |b| {
+        b.iter(|| {
+            for b in BOOLS {
+                black_box(Tokenizer::new(b).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn idents(b: &mut Bencher) {
-    b.iter(|| {
-        for i in IDENTS {
-            black_box(Tokenizer::new(i).next().unwrap());
-        }
+fn null(c: &mut Criterion) {
+    c.bench_function("null", |b| {
+        b.iter(|| {
+            for b in NULL {
+                black_box(Tokenizer::new(b).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-pub fn token(b: &mut Bencher) {
-    b.iter(|| {
-        for s in TOKENS.iter() {
-            black_box(Tokenizer::new(s).next().unwrap());
-        }
+fn idents(c: &mut Criterion) {
+    c.bench_function("idents", |b| {
+        b.iter(|| {
+            for i in IDENTS {
+                black_box(Tokenizer::new(i).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn scanner(b: &mut Bencher) {
-    let js = include_str!("../node_modules/jquery/dist/jquery.js");
-    b.iter(|| {
-        let s = Scanner::new(js);
-        black_box(s.collect::<Vec<_>>())
+pub fn token(c: &mut Criterion) {
+    c.bench_function("token", |b| {
+        b.iter(|| {
+            for s in TOKENS.iter() {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
     });
 }
+
+static JS: &str = include_str!("../node_modules/jquery/dist/jquery.js");
+fn scanner(c: &mut Criterion) {
+    c.bench_function("scanner", |b| {
+        b.iter(|| {
+            let s = Scanner::new(JS);
+            black_box(s.collect::<Vec<_>>())
+        })
+    });
+}
+
+criterion_group!(
+    benches, punct, keywords, idents, strings, comments, numbers, regex, templates, bools, null,
+    token, scanner
+);
+criterion_main!(benches);
