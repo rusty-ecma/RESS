@@ -24,7 +24,7 @@ impl<'a> Tokenizer<'a> {
         Tokenizer {
             current_start: 0,
             stream: stream.into(),
-            curly_stack: Vec::new(),
+            curly_stack: Vec::with_capacity(10),
         }
     }
 
@@ -40,7 +40,7 @@ impl<'a> Tokenizer<'a> {
                 })
             }
         };
-        if is_id_start(next_char) || next_char == '$' || next_char == '_' || next_char == '\\' {
+        if Self::is_id_start(next_char) {
             return self.ident(next_char);
         }
         if next_char == '"' || next_char == '\'' {
@@ -261,7 +261,12 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn escaped_with_hex4(&mut self, start: char) -> Res<()> {
-        assert!(start.is_digit(16));
+        if !start.is_digit(16) {
+            return Err(RawError {
+                msg: "escaped unicode char code is not a hex digit".to_string(),
+                idx: self.stream.idx,
+            });
+        }
         for _ in 0..3 {
             if let Some(c) = self.stream.next_char() {
                 if !c.is_digit(16) {
@@ -748,13 +753,23 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(NumberKind::Dec)
     }
+    #[inline]
     fn is_id_continue(c: char) -> bool {
         c == '$'
-            || c == '_'
-            || (c >= 'A' && c <= 'Z')
-            || (c >= 'a' && c <= 'z')
-            || c == '\\'
-            || is_id_continue(c)
+        || c == '_'
+        || (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || c == '\\'
+        || is_id_continue(c)
+    }
+    #[inline]
+    fn is_id_start(c: char) -> bool {
+        c == '$'
+        || c == '_'
+        || (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || c == '\\'
+        || is_id_start(c)
     }
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {

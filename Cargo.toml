@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.7.0-beta.3"
+version = "0.7.0-beta.4"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -48,6 +48,38 @@ path = "examples/clear-comments/src/main.rs"
 [[example]]
 name = "semi_finder"
 path = "examples/semi_finder/src/main.rs"
+
+#instrument's examples
+[[example]]
+name = "keywords"
+path = "examples/instruments/keywords.rs"
+[[example]]
+name = "puncts"
+path = "examples/instruments/puncts.rs"
+[[example]]
+name = "idents"
+path = "examples/instruments/idents.rs"
+[[example]]
+name = "strings"
+path = "examples/instruments/strings.rs"
+[[example]]
+name = "templates"
+path = "examples/instruments/templates.rs"
+[[example]]
+name = "regexes"
+path = "examples/instruments/regexes.rs"
+[[example]]
+name = "numbers"
+path = "examples/instruments/numbers.rs"
+[[example]]
+name = "bools"
+path = "examples/instruments/bools.rs"
+[[example]]
+name = "null"
+path = "examples/instruments/null.rs"
+[[example]]
+name = "comments"
+path = "examples/instruments/comments.rs"
 
 [[bench]]
 name = "major_libs"

@@ -74,11 +74,12 @@ impl<'a> JSBuffer<'a> {
     #[inline]
     fn next_or_zero(&mut self) -> u8 {
         if self.at_end() {
-            return 0;
+            0
+        } else {
+            let old = self.idx;
+            self.idx += 1;
+            self.buffer[old]
         }
-        let old = self.idx;
-        self.idx += 1;
-        self.buffer[old]
     }
     #[inline]
     fn prev_or_zero(&mut self) -> u8 {
@@ -110,7 +111,7 @@ impl<'a> JSBuffer<'a> {
             len: buffer.len(),
         }
     }
-
+    #[inline]
     pub fn at_end(&self) -> bool {
         self.idx >= self.len
     }
@@ -119,12 +120,13 @@ impl<'a> JSBuffer<'a> {
     #[inline]
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
         let len = s.len();
-        if self.idx.saturating_add(len) > self.len {
+        let end = self.idx.saturating_add(len);
+        if end > self.len {
             return false;
         }
-        let end = self.idx.saturating_add(len);
         end <= self.len && &self.buffer[self.idx..end] == s
     }
+
     /// Skip the number of characters provided
     /// note: these are full unicode characters, not just bytes
     #[inline]
@@ -133,25 +135,6 @@ impl<'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
-    // /// Skip characters until the provided bytes are found
-    // /// or the end of the buffer. If no match is found
-    // /// this will return false and reset the index to
-    // /// the original value
-    // pub fn skip_until(&mut self, s: &[u8]) -> bool {
-    //     let current_idx = self.idx;
-    //     let mut end = self.idx.saturating_add(s.len());
-    //     let mut at_end = self.at_end();
-    //     while !at_end
-    //     && &self.buffer[self.idx..end] != s {
-    //         self.idx = self.idx.saturating_add(1);
-    //         end = end.saturating_add(1);
-    //         at_end = self.at_end()
-    //     }
-    //     if at_end {
-    //         self.idx = current_idx;
-    //     }
-    //     !at_end
-    // }
     /// check if current char is a valid
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {
@@ -184,10 +167,10 @@ impl<'a> JSBuffer<'a> {
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
         self.look_ahead_matches(b"\r\n")
-            || self.look_ahead_matches(b"\n")
-            || self.look_ahead_matches(b"\r")
-            || self.look_ahead_matches("\u{2028}".as_bytes())
-            || self.look_ahead_matches("\u{2029}".as_bytes())
+        || self.look_ahead_matches(b"\n")
+        || self.look_ahead_matches(b"\r")
+        || self.look_ahead_matches("\u{2028}".as_bytes())
+        || self.look_ahead_matches("\u{2029}".as_bytes())
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
@@ -241,16 +224,6 @@ mod test {
         }
         assert!(buf.at_end());
     }
-
-    // #[test]
-    // fn skip_until() {
-    //     let js = "'things and stuff'";
-    //     let mut buf = JSBuffer::from(js);
-    //     assert_eq!(buf.next_char().unwrap(), '\'');
-    //     buf.skip_until(&['\'' as u8]);
-    //     assert_eq!(buf.next_char().unwrap(), '\'');
-    //     assert!(buf.at_end());
-    // }
 
     #[test]
     fn look_ahead_matches() {

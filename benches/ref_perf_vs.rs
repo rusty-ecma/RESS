@@ -185,7 +185,6 @@ lazy_static! {
         .collect();
 }
 
-
 fn keywords(c: &mut Criterion) {
     c.bench_function("keywords", |b| {
         b.iter(|| {
