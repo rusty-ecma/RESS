@@ -20,8 +20,6 @@
 
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate lazy_static;
 
 mod tokenizer;
 pub mod tokens;
@@ -37,10 +35,7 @@ pub use crate::tokens::{
 };
 pub mod error;
 
-use error::{
-    RawError,
-    Error,
-};
+use error::{Error, RawError};
 
 type Res<T> = Result<T, Error>;
 
@@ -186,8 +181,8 @@ impl<'b> Scanner<'b> {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
-                return Some(self.error(e))
-            },
+                return Some(self.error(e));
+            }
         };
         let ret = if next.ty.is_punct()
             && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
@@ -197,7 +192,7 @@ impl<'b> Scanner<'b> {
                 Ok(t) => t,
                 Err(e) => {
                     self.errored = true;
-                    return Some(self.error(e))
+                    return Some(self.error(e));
                 }
             };
             match next.ty {
@@ -445,7 +440,7 @@ impl<'b> Scanner<'b> {
             return self.error(RawError {
                 msg: "span is too large for javascript text".to_string(),
                 idx: self.stream.stream.idx,
-            })
+            });
         }
         let s = &self.original[span.start..span.end];
         let raw_item = match Tokenizer::new(s).next() {
@@ -486,7 +481,7 @@ impl<'b> Scanner<'b> {
                             byte_position = 0;
                         }
                     }
-                },
+                }
                 '\n' | '\u{2028}' | '\u{2029}' => {
                     line_ct += 1;
                     byte_position = 0;
@@ -498,13 +493,9 @@ impl<'b> Scanner<'b> {
     }
 
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
-        let RawError {idx, msg} = raw_error;
+        let RawError { idx, msg } = raw_error;
         let (line, column) = self.position_for(idx);
-        Err(Error {
-            line,
-            column,
-            msg,
-        })
+        Err(Error { line, column, msg })
     }
 }
 #[inline]
@@ -530,7 +521,7 @@ pub struct ScannerState {
 #[cfg(test)]
 mod test {
     use super::*;
-        #[test]
+    #[test]
     fn tokenizer() {
         let js = "
 'use strict';
@@ -664,10 +655,7 @@ this.y = 0;
         let regex = RegEx::from_parts(r"^(http|https):\/\/(localhost|127\.0\.0\.1)", None);
         let mut s = Scanner::new(js);
         let r = s.next().unwrap().unwrap();
-        assert_eq!(
-            r.token,
-            RefToken::RegEx(regex)
-        );
+        assert_eq!(r.token, RefToken::RegEx(regex));
     }
 
     #[test]

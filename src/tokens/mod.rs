@@ -444,7 +444,7 @@ pub enum Keyword {
     Yield,
 }
 
-impl  Keyword {
+impl Keyword {
     /// convert a &str into a Keyword
     pub fn from(s: &str) -> Option<Self> {
         Some(match s {
@@ -494,7 +494,6 @@ impl  Keyword {
         })
     }
 }
-
 
 impl ::std::string::ToString for Keyword {
     /// Convert a keyword into a string

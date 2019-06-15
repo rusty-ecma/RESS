@@ -1,4 +1,3 @@
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct Error {
     pub line: usize,
@@ -6,9 +5,7 @@ pub struct Error {
     pub msg: String,
 }
 
-impl ::std::error::Error for Error {
-
-}
+impl ::std::error::Error for Error {}
 
 impl ::std::fmt::Display for Error {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
@@ -22,9 +19,7 @@ pub struct RawError {
     pub msg: String,
 }
 
-impl ::std::error::Error for RawError {
-
-}
+impl ::std::error::Error for RawError {}
 
 impl ::std::fmt::Display for RawError {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {

@@ -21,7 +21,6 @@ unic-ucd-category = "0.9"
 flate2 = { version = "1", optional = true }
 reqwest = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true}
-lazy_static = "1"
 
 [dev-dependencies]
 docopt = "1.0"
@@ -32,6 +31,7 @@ walkdir = "2.2"
 pretty_env_logger = "0.2"
 regex_generate = "0.2.0"
 criterion = "0.2"
+lazy_static = "1"
 
 [features]
 default = []

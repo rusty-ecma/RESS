@@ -5,56 +5,7 @@ mod buffer;
 mod tokens;
 pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
-pub(crate)type Res<T> = Result<T, RawError>;
-
-lazy_static! {
-    static ref KEYWORDS: ::std::collections::HashMap<&'static [u8], Keyword> = {
-        let mut k = ::std::collections::HashMap::new();
-        k.insert("await".as_bytes(), Keyword::Await);
-        k.insert("break".as_bytes(), Keyword::Break);
-        k.insert("case".as_bytes(), Keyword::Case);
-        k.insert("catch".as_bytes(), Keyword::Catch);
-        k.insert("class".as_bytes(), Keyword::Class);
-        k.insert("const".as_bytes(), Keyword::Const);
-        k.insert("continue".as_bytes(), Keyword::Continue);
-        k.insert("debugger".as_bytes(), Keyword::Debugger);
-        k.insert("default".as_bytes(), Keyword::Default);
-        k.insert("delete".as_bytes(), Keyword::Delete);
-        k.insert("do".as_bytes(), Keyword::Do);
-        k.insert("else".as_bytes(), Keyword::Else);
-        k.insert("finally".as_bytes(), Keyword::Finally);
-        k.insert("for".as_bytes(), Keyword::For);
-        k.insert("function".as_bytes(), Keyword::Function);
-        k.insert("if".as_bytes(), Keyword::If);
-        k.insert("instanceof".as_bytes(), Keyword::InstanceOf);
-        k.insert("in".as_bytes(), Keyword::In);
-        k.insert("new".as_bytes(), Keyword::New);
-        k.insert("return".as_bytes(), Keyword::Return);
-        k.insert("switch".as_bytes(), Keyword::Switch);
-        k.insert("this".as_bytes(), Keyword::This);
-        k.insert("throw".as_bytes(), Keyword::Throw);
-        k.insert("try".as_bytes(), Keyword::Try);
-        k.insert("typeof".as_bytes(), Keyword::TypeOf);
-        k.insert("var".as_bytes(), Keyword::Var);
-        k.insert("void".as_bytes(), Keyword::Void);
-        k.insert("while".as_bytes(), Keyword::While);
-        k.insert("with".as_bytes(), Keyword::With);
-        k.insert("export".as_bytes(), Keyword::Export);
-        k.insert("import".as_bytes(), Keyword::Import);
-        k.insert("super".as_bytes(), Keyword::Super);
-        k.insert("enum".as_bytes(), Keyword::Enum);
-        k.insert("implements".as_bytes(), Keyword::Implements);
-        k.insert("interface".as_bytes(), Keyword::Interface);
-        k.insert("package".as_bytes(), Keyword::Package);
-        k.insert("private".as_bytes(), Keyword::Private);
-        k.insert("protected".as_bytes(), Keyword::Protected);
-        k.insert("public".as_bytes(), Keyword::Public);
-        k.insert("static".as_bytes(), Keyword::Static);
-        k.insert("yield".as_bytes(), Keyword::Yield);
-        k.insert("let".as_bytes(), Keyword::Let);
-        k
-    };
-}
+pub(crate) type Res<T> = Result<T, RawError>;
 
 pub struct RawItem {
     pub ty: tokens::RawToken,
@@ -170,7 +121,10 @@ impl<'a> Tokenizer<'a> {
             return self.gen_regex(body_idx);
         }
         Err(RawError {
-            msg: format!("unterminated regex at {}", String::from_utf8_lossy(&self.stream.buffer[self.current_start..self.stream.idx])),
+            msg: format!(
+                "unterminated regex at {}",
+                String::from_utf8_lossy(&self.stream.buffer[self.current_start..self.stream.idx])
+            ),
             idx: self.current_start,
         })
     }
@@ -191,29 +145,64 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if let Some(k) = self.at_keyword() {
-            self.gen_token(RawToken::Keyword(k))
-        } else if let Some(b) = self.at_bool() {
-            self.gen_token(RawToken::Boolean(b))
-        } else if &self.stream.buffer[self.current_start..self.stream.idx] == b"null" {
-            self.gen_token(RawToken::Null)
+            self.gen_token(k)
         } else {
             self.gen_token(RawToken::Ident)
         }
     }
-
-    fn at_keyword(&self) -> Option<Keyword> {
-        KEYWORDS
-            .get(&self.stream.buffer[self.current_start..self.stream.idx])
-            .map(|k| *k)
-    }
-
-    fn at_bool(&self) -> Option<bool> {
-        match &self.stream.buffer[self.current_start..self.stream.idx] {
-            b"true" => Some(true),
-            b"false" => Some(false),
+    /// Includes keywords, booleans & null
+    fn at_keyword(&self) -> Option<RawToken> {
+        let ident = &self.stream.buffer[self.current_start..self.stream.idx];
+        match self.stream.idx - self.current_start {
+            2 if ident == b"do" => Some(RawToken::Keyword(Keyword::Do)),
+            2 if ident == b"if" => Some(RawToken::Keyword(Keyword::If)),
+            2 if ident == b"in" => Some(RawToken::Keyword(Keyword::In)),
+            3 if ident == b"for" => Some(RawToken::Keyword(Keyword::For)),
+            3 if ident == b"new" => Some(RawToken::Keyword(Keyword::New)),
+            3 if ident == b"try" => Some(RawToken::Keyword(Keyword::Try)),
+            3 if ident == b"var" => Some(RawToken::Keyword(Keyword::Var)),
+            3 if ident == b"let" => Some(RawToken::Keyword(Keyword::Let)),
+            4 if ident == b"case" => Some(RawToken::Keyword(Keyword::Case)),
+            4 if ident == b"this" => Some(RawToken::Keyword(Keyword::This)),
+            4 if ident == b"void" => Some(RawToken::Keyword(Keyword::Void)),
+            4 if ident == b"with" => Some(RawToken::Keyword(Keyword::With)),
+            4 if ident == b"enum" => Some(RawToken::Keyword(Keyword::Enum)),
+            4 if ident == b"else" => Some(RawToken::Keyword(Keyword::Else)),
+            4 if ident == b"true" => Some(RawToken::Boolean(true)),
+            4 if ident == b"null" => Some(RawToken::Null),
+            5 if ident == b"await" => Some(RawToken::Keyword(Keyword::Await)),
+            5 if ident == b"break" => Some(RawToken::Keyword(Keyword::Break)),
+            5 if ident == b"catch" => Some(RawToken::Keyword(Keyword::Catch)),
+            5 if ident == b"class" => Some(RawToken::Keyword(Keyword::Class)),
+            5 if ident == b"const" => Some(RawToken::Keyword(Keyword::Const)),
+            5 if ident == b"throw" => Some(RawToken::Keyword(Keyword::Throw)),
+            5 if ident == b"while" => Some(RawToken::Keyword(Keyword::While)),
+            5 if ident == b"super" => Some(RawToken::Keyword(Keyword::Super)),
+            5 if ident == b"yield" => Some(RawToken::Keyword(Keyword::Yield)),
+            5 if ident == b"false" => Some(RawToken::Boolean(false)),
+            6 if ident == b"delete" => Some(RawToken::Keyword(Keyword::Delete)),
+            6 if ident == b"return" => Some(RawToken::Keyword(Keyword::Return)),
+            6 if ident == b"switch" => Some(RawToken::Keyword(Keyword::Switch)),
+            6 if ident == b"typeof" => Some(RawToken::Keyword(Keyword::TypeOf)),
+            6 if ident == b"export" => Some(RawToken::Keyword(Keyword::Export)),
+            6 if ident == b"import" => Some(RawToken::Keyword(Keyword::Import)),
+            6 if ident == b"static" => Some(RawToken::Keyword(Keyword::Static)),
+            6 if ident == b"public" => Some(RawToken::Keyword(Keyword::Public)),
+            7 if ident == b"default" => Some(RawToken::Keyword(Keyword::Default)),
+            7 if ident == b"finally" => Some(RawToken::Keyword(Keyword::Finally)),
+            7 if ident == b"package" => Some(RawToken::Keyword(Keyword::Package)),
+            7 if ident == b"private" => Some(RawToken::Keyword(Keyword::Private)),
+            8 if ident == b"continue" => Some(RawToken::Keyword(Keyword::Continue)),
+            8 if ident == b"debugger" => Some(RawToken::Keyword(Keyword::Debugger)),
+            8 if ident == b"function" => Some(RawToken::Keyword(Keyword::Function)),
+            9 if ident == b"interface" => Some(RawToken::Keyword(Keyword::Interface)),
+            9 if ident == b"protected" => Some(RawToken::Keyword(Keyword::Protected)),
+            10 if ident == b"instanceof" => Some(RawToken::Keyword(Keyword::InstanceOf)),
+            10 if ident == b"implements" => Some(RawToken::Keyword(Keyword::Implements)),
             _ => None,
         }
     }
+
     /// picking up after the \
     fn escaped_ident_part(&mut self) -> Res<()> {
         if let Some('u') = self.stream.next_char() {
@@ -227,7 +216,7 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         } else {
             Err(RawError {
-                msg: "invalid unicode escape sequence in indentifier".to_string(),
+                msg: "invalid unicode escape sequence in identifier".to_string(),
                 idx: self.current_start,
             })
         }
@@ -294,7 +283,7 @@ impl<'a> Tokenizer<'a> {
     fn string(&mut self, quote: char) -> Res<RawItem> {
         let mut escaped = false;
         loop {
-            if self.look_ahead_matches(r#"\"#) {
+            if self.look_ahead_matches(r"\") {
                 if escaped {
                     escaped = false;
                 } else {
@@ -305,8 +294,8 @@ impl<'a> Tokenizer<'a> {
                 if !escaped {
                     return Err(RawError {
                         msg: "unescaped new line in string literal".to_string(),
-                        idx: self.stream.idx
-                    })
+                        idx: self.stream.idx,
+                    });
                 } else {
                     self.stream.skip(2);
                     escaped = false;
@@ -319,7 +308,7 @@ impl<'a> Tokenizer<'a> {
             {
                 return Err(RawError {
                     msg: "unescaped new line in string literal".to_string(),
-                    idx: self.stream.idx
+                    idx: self.stream.idx,
                 });
             } else if self.stream.look_ahead_matches(&[quote as u8]) {
                 self.stream.skip(1);
@@ -528,14 +517,16 @@ impl<'a> Tokenizer<'a> {
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
                 if start == '0' {
-                    if next == 'x' || next == 'X' {
+                    if next.eq_ignore_ascii_case(&'x') {
                         self.hex_number()
-                    } else if next == 'o' || next == 'O' {
+                    } else if next.eq_ignore_ascii_case(&'o') {
                         self.oct_number()
-                    } else if next == 'b' || next == 'B' {
+                    } else if next.eq_ignore_ascii_case(&'b') {
                         self.bin_number()
-                    } else if next.is_digit(10) || next == '.' {
-                        self.dec_number(next == '.')
+                    } else if next.is_digit(10) {
+                        self.dec_number(false)
+                    } else if next == '.' {
+                        self.dec_number(true)
                     } else {
                         let _ = self.stream.prev_char();
                         self.dec_number(false)
@@ -564,7 +555,10 @@ impl<'a> Tokenizer<'a> {
                     if let Some(_zero) = self.stream.next_char() {
                         if self.stream.at_decimal() {
                             return Err(RawError {
-                                msg: format!("Template contains invalid octal literal \\0{}", self.stream.next_char().unwrap_or('?')),
+                                msg: format!(
+                                    "Template contains invalid octal literal \\0{}",
+                                    self.stream.next_char().unwrap_or('?')
+                                ),
                                 idx: self.stream.idx.saturating_sub(1),
                             });
                         } else {
@@ -573,7 +567,10 @@ impl<'a> Tokenizer<'a> {
                     }
                 } else if self.stream.at_octal() {
                     return Err(RawError {
-                        msg: format!("Template contains invalid octal literal \\0{}", self.stream.next_char().unwrap_or('?')),
+                        msg: format!(
+                            "Template contains invalid octal literal \\0{}",
+                            self.stream.next_char().unwrap_or('?')
+                        ),
                         idx: self.stream.idx.saturating_sub(1),
                     });
                 }
@@ -596,7 +593,10 @@ impl<'a> Tokenizer<'a> {
             }
         }
         Err(RawError {
-            msg: format!("unterminated template: {:?}", String::from_utf8_lossy(&self.stream.buffer[self.current_start..self.stream.idx])),
+            msg: format!(
+                "unterminated template: {:?}",
+                String::from_utf8_lossy(&self.stream.buffer[self.current_start..self.stream.idx])
+            ),
             idx: self.current_start,
         })
     }
@@ -668,9 +668,9 @@ impl<'a> Tokenizer<'a> {
         if let Some(c) = self.stream.next_char() {
             if !c.is_digit(8) {
                 return Err(RawError {
-                msg: "empty octal literal".to_string(),
-                idx: self.current_start,
-            });
+                    msg: "empty octal literal".to_string(),
+                    idx: self.current_start,
+                });
             }
         } else {
             return Err(RawError {
@@ -690,9 +690,9 @@ impl<'a> Tokenizer<'a> {
         if let Some(c) = self.stream.next_char() {
             if !c.is_digit(2) {
                 return Err(RawError {
-                msg: "empty binary literal".to_string(),
-                idx: self.current_start,
-            });
+                    msg: "empty binary literal".to_string(),
+                    idx: self.current_start,
+                });
             }
         } else {
             return Err(RawError {
@@ -727,7 +727,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if let Some(maybe_e) = maybe_e {
-            if maybe_e != 'e' && maybe_e != 'E' {
+            if !maybe_e.eq_ignore_ascii_case(&'e') {
                 let _ = self.stream.prev_char();
             } else {
                 if let Some(c) = self.stream.next_char() {
@@ -1090,10 +1090,10 @@ mod test {
         for k in KEYWORDS {
             let mut t = Tokenizer::new(k);
             let item = t.next().unwrap();
-            assert!(match item.ty {
-                RawToken::Keyword(_) => true,
-                _ => false,
-            });
+            match item.ty {
+                RawToken::Keyword(_) => (),
+                _ => panic!("{} was not parsed as a keyword", k),
+            }
             assert!(t.stream.at_end());
         }
     }
