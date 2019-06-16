@@ -167,10 +167,10 @@ impl<'a> JSBuffer<'a> {
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
         self.look_ahead_matches(b"\r\n")
-        || self.look_ahead_matches(b"\n")
-        || self.look_ahead_matches(b"\r")
-        || self.look_ahead_matches("\u{2028}".as_bytes())
-        || self.look_ahead_matches("\u{2029}".as_bytes())
+            || self.look_ahead_matches(b"\n")
+            || self.look_ahead_matches(b"\r")
+            || self.look_ahead_matches("\u{2028}".as_bytes())
+            || self.look_ahead_matches("\u{2029}".as_bytes())
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {

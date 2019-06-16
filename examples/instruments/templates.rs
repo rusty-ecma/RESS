@@ -20,7 +20,7 @@ static TEMPLATE_CONTINUATIONS: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for s in TEMPLATE_CONTINUATIONS {
-           parse_two(s);
+            parse_two(s);
         }
         for s in TEMPLATE_STARTS {
             parse(s);
@@ -33,7 +33,7 @@ fn parse_two(s: &str) {
     let _ = t.next().unwrap();;
     let d = t.next().unwrap();
     core::mem::forget(d);
-} 
+}
 #[inline]
 fn parse(s: &str) {
     let e = Tokenizer::new(s).next().unwrap();

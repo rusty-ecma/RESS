@@ -756,20 +756,21 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn is_id_continue(c: char) -> bool {
         c == '$'
-        || c == '_'
-        || (c >= 'A' && c <= 'Z')
-        || (c >= 'a' && c <= 'z')
-        || c == '\\'
-        || is_id_continue(c)
+            || c == '_'
+            || (c >= 'A' && c <= 'Z')
+            || (c >= 'a' && c <= 'z')
+            || c == '\\'
+            || (c >= '0' && c <= '9')
+            || is_id_continue(c)
     }
     #[inline]
     fn is_id_start(c: char) -> bool {
         c == '$'
-        || c == '_'
-        || (c >= 'A' && c <= 'Z')
-        || (c >= 'a' && c <= 'z')
-        || c == '\\'
-        || is_id_start(c)
+            || c == '_'
+            || (c >= 'A' && c <= 'Z')
+            || (c >= 'a' && c <= 'z')
+            || c == '\\'
+            || is_id_start(c)
     }
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
@@ -912,6 +913,12 @@ mod test {
             let mut t = Tokenizer::new(i);
             let item = t.next().unwrap();
             assert_eq!(item.ty, RawToken::Ident);
+            if !t.stream.at_end() {
+                panic!(
+                    "stream not at end - unparsed: {:?}",
+                    String::from_utf8_lossy(&t.stream.buffer[t.stream.idx..])
+                );
+            }
             assert!(t.stream.at_end());
         }
     }
