@@ -139,10 +139,10 @@ static TEMPLATE_STARTS: &[&str] = &[
 ];
 
 static TEMPLATE_CONTINUATIONS: &[&str] = &[
-    "} and animals and minerals`",
-    "}`",
-    "} and animals and minerals`",
-    "} and places and people ${",
+    "`${} and animals and minerals`",
+    "`${}`",
+    "`${} and animals and minerals`",
+    "`${} and places and people ${",
 ];
 
 static IDENTS: &[&str] = &[

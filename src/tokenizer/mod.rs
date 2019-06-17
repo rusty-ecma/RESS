@@ -24,7 +24,7 @@ impl<'a> Tokenizer<'a> {
         Tokenizer {
             current_start: 0,
             stream: stream.into(),
-            curly_stack: Vec::with_capacity(10),
+            curly_stack: Vec::with_capacity(2),
         }
     }
 
