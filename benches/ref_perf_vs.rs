@@ -53,7 +53,7 @@ static KEYWORDS: &[&str] = &[
 ];
 static PUNCTS: &[&str] = &[
     "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+", "-", "/",
-    "*", "%", "&", "|", "^", ">>>=", //3 char
+    "*", "%", "&", "|", "^", "#", "@", ">>>=", //3 char
     "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
     "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=", "^=", "%=",
     "<=", ">=", "=>", "**",
@@ -139,10 +139,10 @@ static TEMPLATE_STARTS: &[&str] = &[
 ];
 
 static TEMPLATE_CONTINUATIONS: &[&str] = &[
-    " and animals and minerals`",
-    "`",
-    " and animals and minerals`",
-    " and places and people ${",
+    "} and animals and minerals`",
+    "}`",
+    "} and animals and minerals`",
+    "} and places and people ${",
 ];
 
 static IDENTS: &[&str] = &[
@@ -183,6 +183,7 @@ lazy_static! {
         .chain(TEMPLATE_STARTS.into_iter())
         .map(|s| *s)
         .collect();
+    static ref JS: String = TOKENS.join("\n");
 }
 
 fn keywords(c: &mut Criterion) {
@@ -249,7 +250,6 @@ fn templates(c: &mut Criterion) {
     c.bench_function("TEMPLATE_CONTINUATIONS", |b| {
         b.iter(|| {
             for s in TEMPLATE_CONTINUATIONS {
-                let s = format!("`${{}}{}", s);
                 let mut t = Tokenizer::new(&s);
                 let _ = t.next().unwrap();
                 black_box(t.next().unwrap());
@@ -305,11 +305,10 @@ pub fn token(c: &mut Criterion) {
     });
 }
 
-static JS: &str = include_str!("../node_modules/jquery/dist/jquery.js");
 fn scanner(c: &mut Criterion) {
     c.bench_function("scanner", |b| {
         b.iter(|| {
-            let s = Scanner::new(JS);
+            let s = Scanner::new(&JS);
             black_box(s.collect::<Vec<_>>())
         })
     });

@@ -173,6 +173,7 @@ pub enum Punct {
     AmpersandEqual,
     Asterisk,
     AsteriskEqual,
+    AtMark,
     Bang,
     BangDoubleEqual,
     BangEqual,
@@ -280,6 +281,7 @@ impl Punct {
             Punct::LessThanEqual => "<=" == s,
             Punct::DoubleAsterisk => "**" == s,
             Punct::Hash => "#" == s,
+            Punct::AtMark => "@" == s,
         }
     }
 }
@@ -340,6 +342,7 @@ impl ToString for Punct {
             Punct::LessThanEqual => "<=",
             Punct::DoubleAsterisk => "**",
             Punct::Hash => "#",
+            Punct::AtMark => "@",
         }
         .into()
     }

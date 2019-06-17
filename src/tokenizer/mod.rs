@@ -511,7 +511,10 @@ impl<'a> Tokenizer<'a> {
                 } else {
                     self.gen_punct(Punct::Caret)
                 }
-            }
+            },
+            '@' => {
+                self.gen_punct(Punct::AtMark)
+            },
             _ => Err(RawError {
                 msg: format!("unknown punct {:?}", c),
                 idx: self.current_start,
