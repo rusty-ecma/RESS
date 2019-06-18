@@ -73,16 +73,15 @@ impl<'a> Tokenizer<'a> {
         while let Some(c) = self.stream.next_char() {
             if end_of_body {
                 if c == '\\' {
-                    if self.look_ahead_matches("u{") {
-                        self.stream.skip(2);
-                        self.escaped_with_code_point()?;
-                    } else if self.look_ahead_matches("u") {
+                    if self.look_ahead_matches("u") { // unicode escape
                         self.stream.skip(1);
-                        let start = self
-                            .stream
-                            .next_char()
-                            .expect("unexpected end of file when parsing regex");
-                        self.escaped_with_hex4(start)?;
+                        if let Some(next) = self.stream.next_char() {
+                            if next == '{' {
+                        self.escaped_with_code_point()?;
+                            } else {
+                                self.escaped_with_hex4(next)?;
+                            }
+                        }
                     }
                 } else if !Self::is_id_continue(c) {
                     let _ = self.stream.prev_char();
@@ -138,7 +137,7 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 self.escaped_ident_part()?;
             }
-            if !Self::is_id_continue(c) && c != '$' && c != '\u{200C}' && c != '\u{200D}' {
+            if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
                 // if we have moved past the last valid identifier, go back 1
                 let _ = self.stream.prev_char();
                 break;
