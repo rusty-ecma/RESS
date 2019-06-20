@@ -73,11 +73,12 @@ impl<'a> Tokenizer<'a> {
         while let Some(c) = self.stream.next_char() {
             if end_of_body {
                 if c == '\\' {
-                    if self.look_ahead_matches("u") { // unicode escape
+                    if self.look_ahead_matches("u") {
+                        // unicode escape
                         self.stream.skip(1);
                         if let Some(next) = self.stream.next_char() {
                             if next == '{' {
-                        self.escaped_with_code_point()?;
+                                self.escaped_with_code_point()?;
                             } else {
                                 self.escaped_with_hex4(next)?;
                             }
@@ -201,8 +202,8 @@ impl<'a> Tokenizer<'a> {
             _ => None,
         }
     }
-
     /// picking up after the \
+    #[inline]
     fn escaped_ident_part(&mut self) -> Res<()> {
         if let Some('u') = self.stream.next_char() {
             if let Some(c) = self.stream.next_char() {
@@ -220,7 +221,7 @@ impl<'a> Tokenizer<'a> {
             })
         }
     }
-
+    #[inline]
     fn escaped_with_code_point(&mut self) -> Res<()> {
         let mut code: u32 = 0;
         let mut last_char: char = '{';
@@ -258,7 +259,7 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         }
     }
-
+    #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<()> {
         if !start.is_digit(16) {
             return Err(RawError {
@@ -335,15 +336,7 @@ impl<'a> Tokenizer<'a> {
     fn punct(&mut self, c: char) -> Res<RawItem> {
         match c {
             '(' => self.gen_punct(Punct::OpenParen),
-            '{' => {
-                self.curly_stack.push(OpenCurlyKind::Block);
-                self.gen_punct(Punct::OpenBrace)
-            }
             ')' => self.gen_punct(Punct::CloseParen),
-            '}' => {
-                let _ = self.curly_stack.pop();
-                self.gen_punct(Punct::CloseBrace)
-            }
             ';' => self.gen_punct(Punct::SemiColon),
             ',' => self.gen_punct(Punct::Comma),
             '[' => self.gen_punct(Punct::OpenBracket),
@@ -352,172 +345,207 @@ impl<'a> Tokenizer<'a> {
             '?' => self.gen_punct(Punct::QuestionMark),
             '#' => self.gen_punct(Punct::Hash),
             '~' => self.gen_punct(Punct::Tilde),
-            '.' => {
-                // ...
-                if self.look_ahead_matches("..") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::Ellipsis)
-                } else if self.stream.at_decimal() {
-                    self.dec_number(true)
-                } else {
-                    self.gen_punct(Punct::Period)
-                }
-            }
-            '>' => {
-                if self.look_ahead_matches(">>=") {
-                    self.stream.skip(3);
-                    self.gen_punct(Punct::TripleGreaterThanEqual)
-                } else if self.look_ahead_matches(">>") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::TripleGreaterThan)
-                } else if self.look_ahead_matches(">=") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::DoubleGreaterThanEqual)
-                } else if self.look_ahead_matches(">") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleGreaterThan)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::GreaterThanEqual)
-                } else {
-                    self.gen_punct(Punct::GreaterThan)
-                }
-            }
-            '<' => {
-                if self.look_ahead_matches("<=") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::DoubleLessThanEqual)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::LessThanEqual)
-                } else if self.look_ahead_matches("<") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleLessThan)
-                } else if self.look_ahead_matches("!--") {
-                    self.stream.skip(3);
-                    self.html_comment()
-                } else {
-                    self.gen_punct(Punct::LessThan)
-                }
-            }
-            '=' => {
-                if self.look_ahead_matches("==") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::TripleEqual)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleEqual)
-                } else if self.look_ahead_matches(">") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::EqualGreaterThan)
-                } else {
-                    self.gen_punct(Punct::Equal)
-                }
-            }
-            '!' => {
-                if self.look_ahead_matches("==") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::BangDoubleEqual)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::BangEqual)
-                } else {
-                    self.gen_punct(Punct::Bang)
-                }
-            }
-            '*' => {
-                if self.look_ahead_matches("*=") {
-                    self.stream.skip(2);
-                    self.gen_punct(Punct::DoubleAsteriskEqual)
-                } else if self.look_ahead_matches("*") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleAsterisk)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::AsteriskEqual)
-                } else {
-                    self.gen_punct(Punct::Asterisk)
-                }
-            }
-            '&' => {
-                if self.look_ahead_matches("&") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleAmpersand)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::AmpersandEqual)
-                } else {
-                    self.gen_punct(Punct::Ampersand)
-                }
-            }
-            '|' => {
-                if self.look_ahead_matches("|") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoublePipe)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::PipeEqual)
-                } else {
-                    self.gen_punct(Punct::Pipe)
-                }
-            }
-            '+' => {
-                if self.look_ahead_matches("+") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoublePlus)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::PlusEqual)
-                } else {
-                    self.gen_punct(Punct::Plus)
-                }
-            }
-            '-' => {
-                if self.look_ahead_matches("-") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DoubleDash)
-                } else if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::DashEqual)
-                } else {
-                    self.gen_punct(Punct::Dash)
-                }
-            }
-            '/' => {
-                if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::ForwardSlashEqual)
-                } else if self.look_ahead_matches("*") {
-                    self.multi_comment()
-                } else if self.look_ahead_matches("/") {
-                    self.single_comment()
-                } else {
-                    self.gen_punct(Punct::ForwardSlash)
-                }
-            }
-            '%' => {
-                if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::PercentEqual)
-                } else {
-                    self.gen_punct(Punct::Percent)
-                }
-            }
-            '^' => {
-                if self.look_ahead_matches("=") {
-                    self.stream.skip(1);
-                    self.gen_punct(Punct::CaretEqual)
-                } else {
-                    self.gen_punct(Punct::Caret)
-                }
-            },
-            '@' => {
-                self.gen_punct(Punct::AtMark)
-            },
+            '{' => self.open_curly(OpenCurlyKind::Block, Punct::OpenBrace),
+            '}' => self.close_curly(Punct::CloseBrace),
+            '@' => self.gen_punct(Punct::AtMark),
+            '.' => self.period(),
+            '>' => self.greater_than(),
+            '<' => self.less_than(),
+            '=' => self.equals(),
+            '!' => self.bang(),
+            '*' => self.asterisk(),
+            '&' => self.ampersand(),
+            '|' => self.pipe(),
+            '+' => self.plus(),
+            '-' => self.minus(),
+            '/' => self.forward_slash(),
+            '%' => self.percent(),
+            '^' => self.caret(),
             _ => Err(RawError {
                 msg: format!("unknown punct {:?}", c),
                 idx: self.current_start,
             }),
+        }
+    }
+    #[inline]
+    fn open_curly(&mut self, curly: OpenCurlyKind, punct: Punct) -> Res<RawItem> {
+        self.curly_stack.push(curly);
+        self.gen_punct(punct)
+    }
+    #[inline]
+    fn close_curly(&mut self, punct: Punct) -> Res<RawItem> {
+        let _ = self.curly_stack.pop();
+        self.gen_punct(punct)
+    }
+    #[inline]
+    fn period(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("..") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::Ellipsis)
+        } else if self.stream.at_decimal() {
+            self.dec_number(true)
+        } else {
+            self.gen_punct(Punct::Period)
+        }
+    }
+    #[inline]
+    fn greater_than(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches(">>=") {
+            self.stream.skip(3);
+            self.gen_punct(Punct::TripleGreaterThanEqual)
+        } else if self.look_ahead_matches(">>") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::TripleGreaterThan)
+        } else if self.look_ahead_matches(">=") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::DoubleGreaterThanEqual)
+        } else if self.look_ahead_matches(">") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleGreaterThan)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::GreaterThanEqual)
+        } else {
+            self.gen_punct(Punct::GreaterThan)
+        }
+    }
+    #[inline]
+    fn less_than(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("<=") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::DoubleLessThanEqual)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::LessThanEqual)
+        } else if self.look_ahead_matches("<") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleLessThan)
+        } else if self.look_ahead_matches("!--") {
+            self.stream.skip(3);
+            self.html_comment()
+        } else {
+            self.gen_punct(Punct::LessThan)
+        }
+    }
+    #[inline]
+    fn equals(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("==") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::TripleEqual)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleEqual)
+        } else if self.look_ahead_matches(">") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::EqualGreaterThan)
+        } else {
+            self.gen_punct(Punct::Equal)
+        }
+    }
+    #[inline]
+    fn bang(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("==") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::BangDoubleEqual)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::BangEqual)
+        } else {
+            self.gen_punct(Punct::Bang)
+        }
+    }
+    #[inline]
+    fn asterisk(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("*=") {
+            self.stream.skip(2);
+            self.gen_punct(Punct::DoubleAsteriskEqual)
+        } else if self.look_ahead_matches("*") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleAsterisk)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::AsteriskEqual)
+        } else {
+            self.gen_punct(Punct::Asterisk)
+        }
+    }
+    #[inline]
+    fn ampersand(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("&") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleAmpersand)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::AmpersandEqual)
+        } else {
+            self.gen_punct(Punct::Ampersand)
+        }
+    }
+    #[inline]
+    fn pipe(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("|") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoublePipe)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::PipeEqual)
+        } else {
+            self.gen_punct(Punct::Pipe)
+        }
+    }
+    #[inline]
+    fn plus(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("+") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoublePlus)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::PlusEqual)
+        } else {
+            self.gen_punct(Punct::Plus)
+        }
+    }
+    #[inline]
+    fn minus(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("-") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DoubleDash)
+        } else if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::DashEqual)
+        } else {
+            self.gen_punct(Punct::Dash)
+        }
+    }
+    #[inline]
+    fn forward_slash(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::ForwardSlashEqual)
+        } else if self.look_ahead_matches("*") {
+            self.multi_comment()
+        } else if self.look_ahead_matches("/") {
+            self.single_comment()
+        } else {
+            self.gen_punct(Punct::ForwardSlash)
+        }
+    }
+    #[inline]
+    fn percent(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::PercentEqual)
+        } else {
+            self.gen_punct(Punct::Percent)
+        }
+    }
+    #[inline]
+    fn caret(&mut self) -> Res<RawItem> {
+        if self.look_ahead_matches("=") {
+            self.stream.skip(1);
+            self.gen_punct(Punct::CaretEqual)
+        } else {
+            self.gen_punct(Punct::Caret)
         }
     }
     fn number(&mut self, start: char) -> Res<RawItem> {
@@ -607,6 +635,7 @@ impl<'a> Tokenizer<'a> {
             idx: self.current_start,
         })
     }
+    #[inline]
     fn single_comment(&mut self) -> Res<RawItem> {
         while !self.at_new_line() {
             if self.stream.next_char().is_none() {
@@ -615,6 +644,7 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_comment(CommentKind::Single)
     }
+    #[inline]
     fn multi_comment(&mut self) -> Res<RawItem> {
         if self.look_ahead_matches("*/") {
             self.stream.skip(2);
@@ -626,11 +656,12 @@ impl<'a> Tokenizer<'a> {
                 return self.gen_comment(CommentKind::Multi);
             }
         }
-        return Err(RawError {
+        Err(RawError {
             idx: self.current_start,
             msg: "unterminated multi-line comment".to_string(),
-        });
+        })
     }
+    #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
         let mut found_end = false;
         while !self.at_new_line() && !self.stream.at_end() {
@@ -649,6 +680,7 @@ impl<'a> Tokenizer<'a> {
             idx: self.current_start,
         })
     }
+    #[inline]
     fn hex_number(&mut self) -> Res<RawItem> {
         if let Some(c) = self.stream.next_char() {
             if !c.is_digit(16) {
@@ -671,6 +703,7 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(NumberKind::Hex)
     }
+    #[inline]
     fn oct_number(&mut self) -> Res<RawItem> {
         if let Some(c) = self.stream.next_char() {
             if !c.is_digit(8) {
@@ -693,6 +726,7 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(NumberKind::Oct)
     }
+    #[inline]
     fn bin_number(&mut self) -> Res<RawItem> {
         if let Some(c) = self.stream.next_char() {
             if !c.is_digit(2) {
@@ -715,6 +749,7 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(NumberKind::Bin)
     }
+    #[inline]
     fn dec_number(&mut self, seen_point: bool) -> Res<RawItem> {
         let mut maybe_e: Option<char> = None;
 
