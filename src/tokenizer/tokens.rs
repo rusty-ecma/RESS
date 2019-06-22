@@ -1,4 +1,5 @@
 use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
+
 #[derive(PartialEq, Debug)]
 pub enum RawToken {
     /// `true` of `false`
@@ -20,7 +21,7 @@ pub enum RawToken {
     Punct(Punct),
     /// A string literal, either double or single quoted, the associated
     /// value will be the unquoted string
-    String(StringKind),
+    String { kind: StringKind, new_line_count: usize, last_len: usize },
     /// A regular expression literal.
     /// ```js
     /// let regex = /[a-zA-Z]+/g;
@@ -31,7 +32,7 @@ pub enum RawToken {
     ///    `things and stuff times ${10}`
     /// //  ^^^^^^^^^^^^^^^^^^^^^^      ^
     /// ```
-    Template(TemplateKind),
+    Template { kind: TemplateKind, new_line_count: usize, last_len: usize },
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`
     /// and multi-line comments
@@ -40,7 +41,7 @@ pub enum RawToken {
     /// * comments
     /// */
     /// ```
-    Comment(CommentKind),
+    Comment { kind: CommentKind, new_line_count: usize, last_len: usize },
 }
 
 impl RawToken {
@@ -53,7 +54,7 @@ impl RawToken {
 
     pub fn is_comment(&self) -> bool {
         match self {
-            RawToken::Comment(_) => true,
+            RawToken::Comment { kind:_, new_line_count:_, last_len:_ } => true,
             _ => false,
         }
     }

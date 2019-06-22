@@ -50,6 +50,30 @@ pub fn tokenize(text: &str) -> Res<Vec<RefToken>> {
     Ok(ret)
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SourceLocation {
+    pub start: Position,
+    pub end: Position,
+}
+
+impl SourceLocation {
+    pub fn new(start: Position, end: Position) -> Self {
+        Self { start, end }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Position {
+    pub line: usize,
+    pub column: usize,
+}
+
+impl Position {
+    pub fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 /// A location in the original source text
 pub struct Span {
@@ -60,22 +84,33 @@ pub struct Span {
 impl Span {
     /// Create a new Span from its parts
     pub fn new(start: usize, end: usize) -> Self {
-        Span { start, end }
+        Self { start, end }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Item<T> {
     pub token: T,
     pub span: Span,
+    pub location: SourceLocation,
 }
 
 impl<T> Item<T>
 where
     T: Token,
 {
-    pub fn new(token: T, span: Span) -> Self {
-        Self { token, span }
+    pub fn new(token: T, span: Span, location: SourceLocation) -> Self {
+        Self { token, span, location }
+    }
+    fn new_(token: T, span_start: usize, span_end: usize, loc_start_line: usize, loc_start_col: usize, loc_end_line: usize, loc_end_col: usize) -> Self {
+        Self {
+            token,
+            span: Span::new(span_start, span_end),
+            location: SourceLocation::new(
+                Position::new(loc_start_line, loc_start_col),
+                Position::new(loc_end_line, loc_end_col),
+            ),
+        }
     }
     pub fn is_string(&self) -> bool {
         self.token.is_string()
@@ -99,12 +134,14 @@ pub struct Scanner<'a> {
     pub pending_new_line: bool,
     original: &'a str,
     errored: bool,
+    new_line_count: usize,
+    line_cursor: usize,
 }
 
 impl<'a> Scanner<'a> {
     pub fn new(text: &'a str) -> Self {
         let mut stream = Tokenizer::new(text);
-        stream.skip_whitespace();
+        let (new_line_count, line_cursor) = stream.skip_whitespace();
         Self {
             stream,
             eof: false,
@@ -113,6 +150,8 @@ impl<'a> Scanner<'a> {
             pending_new_line: false,
             original: text,
             errored: false,
+            new_line_count,
+            line_cursor: usize::max(line_cursor, 1),
         }
     }
 }
@@ -177,6 +216,8 @@ impl<'b> Scanner<'b> {
             return None;
         };
         let prev_cursor = self.stream.stream.idx;
+        let prev_lines = self.new_line_count;
+        let prev_line_cursor = self.line_cursor;
         let mut next = match self.stream.next() {
             Ok(n) => n,
             Err(e) => {
@@ -184,6 +225,7 @@ impl<'b> Scanner<'b> {
                 return Some(self.error(e));
             }
         };
+        let mut len = next.end - next.start;
         let ret = if next.ty.is_punct()
             && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
             && self.is_regex_start()
@@ -197,46 +239,57 @@ impl<'b> Scanner<'b> {
             };
             match next.ty {
                 RawToken::RegEx(body_end) => {
+                    self.line_cursor = self.line_cursor.saturating_add(len);
                     let flags = if next.end > body_end {
                         Some(&self.original[body_end..next.end])
                     } else {
                         None
                     };
-                    Item::new(
+                    Item::new_(
                         RefToken::RegEx(RegEx {
                             body: &self.original[next.start + 1..body_end - 1],
                             flags,
                         }),
-                        Span::new(next.start, next.end),
+                        next.start,
+                        next.end,
+                        prev_lines + 1,
+                        prev_line_cursor,
+                        prev_lines + 1,
+                        self.line_cursor,
                     )
                 }
                 _ => unreachable!("non-regex from next_regex"),
             }
         } else {
+            let mut new_lines = 0;
             let s = &self.original[next.start..next.end];
             let token = match next.ty {
                 RawToken::Boolean(b) => RefToken::Boolean(b.into()),
-                RawToken::Comment(kind) => match kind {
-                    tokens::CommentKind::Multi => {
-                        RefToken::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
-                    }
-                    tokens::CommentKind::Single => {
-                        RefToken::Comment(Comment::new_single_line(&s[2..]))
-                    }
-                    tokens::CommentKind::Html => {
-                        let (content, tail) = if let Some(idx) = s.rfind("-->") {
-                            let actual_end = idx.saturating_add(3);
-                            if actual_end < next.end {
-                                let tail = &s[actual_end..];
-                                let tail = if tail == "" { None } else { Some(tail) };
-                                (&s[4..idx], tail)
+                RawToken::Comment { kind, new_line_count, last_len } => {
+                    len = last_len;
+                    new_lines = new_line_count;
+                    match kind {
+                        tokens::CommentKind::Multi => {
+                            RefToken::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
+                        }
+                        tokens::CommentKind::Single => {
+                            RefToken::Comment(Comment::new_single_line(&s[2..]))
+                        }
+                        tokens::CommentKind::Html => {
+                            let (content, tail) = if let Some(idx) = s.rfind("-->") {
+                                let actual_end = idx.saturating_add(3);
+                                if actual_end < next.end {
+                                    let tail = &s[actual_end..];
+                                    let tail = if tail == "" { None } else { Some(tail) };
+                                    (&s[4..idx], tail)
+                                } else {
+                                    (&s[4..], None)
+                                }
                             } else {
                                 (&s[4..], None)
-                            }
-                        } else {
-                            (&s[4..], None)
-                        };
-                        RefToken::Comment(Comment::new_html(content, tail))
+                            };
+                            RefToken::Comment(Comment::new_html(content, tail))
+                        }
                     }
                 },
                 RawToken::EoF => {
@@ -249,37 +302,55 @@ impl<'b> Scanner<'b> {
                 RawToken::Number(_) => RefToken::Number(Number::from(s)),
                 RawToken::Punct(p) => RefToken::Punct(p),
                 RawToken::RegEx(_) => unreachable!("Regex from next"),
-                RawToken::String(k) => {
+                RawToken::String { kind, new_line_count, last_len } => {
+                    len = last_len;
+                    new_lines = new_line_count;
                     let s = &s[1..s.len() - 1];
-                    match k {
+                    match kind {
                         tokenizer::StringKind::Double => RefToken::String(StringLit::Double(s)),
                         tokenizer::StringKind::Single => RefToken::String(StringLit::Single(s)),
                     }
                 }
-                RawToken::Template(t) => match t {
-                    tokenizer::TemplateKind::Head => {
-                        let s = &s[1..s.len() - 2];
-                        RefToken::Template(Template::Head(s))
-                    }
-                    tokenizer::TemplateKind::Body => {
-                        let s = &s[1..s.len() - 2];
-                        RefToken::Template(Template::Middle(s))
-                    }
-                    tokenizer::TemplateKind::Tail => {
-                        let s = &s[1..s.len() - 1];
-                        RefToken::Template(Template::Tail(s))
-                    }
-                    tokenizer::TemplateKind::NoSub => {
-                        let s = &s[1..s.len() - 1];
-                        RefToken::Template(Template::NoSub(s))
+                RawToken::Template { kind, new_line_count, last_len } => {
+                    len = last_len;
+                    new_lines = new_line_count;
+                    match kind {
+                        tokenizer::TemplateKind::Head => {
+                            let s = &s[1..s.len() - 2];
+                            RefToken::Template(Template::Head(s))
+                        }
+                        tokenizer::TemplateKind::Body => {
+                            let s = &s[1..s.len() - 2];
+                            RefToken::Template(Template::Middle(s))
+                        }
+                        tokenizer::TemplateKind::Tail => {
+                            let s = &s[1..s.len() - 1];
+                            RefToken::Template(Template::Tail(s))
+                        }
+                        tokenizer::TemplateKind::NoSub => {
+                            let s = &s[1..s.len() - 1];
+                            RefToken::Template(Template::NoSub(s))
+                        }
                     }
                 },
             };
-            Item::new(token, Span::new(next.start, next.end))
+            self.bump_line_cursors(new_lines, len);
+            Item::new_(
+                token,
+                next.start,
+                next.end,
+                prev_lines.saturating_add(1),
+                prev_line_cursor,
+                self.new_line_count.saturating_add(1),
+                self.line_cursor,
+            )
         };
         if !advance_cursor {
             self.stream.stream.idx = prev_cursor;
+            self.new_line_count = prev_lines;
+            self.line_cursor = prev_line_cursor;
         } else {
+            
             if let RefToken::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     self.last_open_paren_idx = self.spans.len()
@@ -287,7 +358,8 @@ impl<'b> Scanner<'b> {
             }
             self.spans.push(ret.span);
         }
-        self.pending_new_line = self.stream.skip_whitespace() > 0;
+        let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
+        self.bump_line_cursors(new_line_count, leading_whitespace);
         Some(Ok(ret))
     }
 
@@ -491,6 +563,15 @@ impl<'b> Scanner<'b> {
         }
         (line_ct, byte_position)
     }
+    #[inline]
+    fn bump_line_cursors(&mut self, ct: usize, len: usize) {
+        if ct != 0 {
+            self.line_cursor = len;
+            self.new_line_count = self.new_line_count.saturating_add(ct);
+        } else {
+            self.line_cursor = self.line_cursor.saturating_add(len)
+        }
+    }
 
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
         let RawError { idx, msg } = raw_error;
@@ -673,6 +754,46 @@ this.y = 0;
                     assert_eq!(e.column, 17);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn locations() {
+        let js = r"(function() {
+    let x = 'asdf\
+';
+    let y = `asd
+f`;
+    /*
+    * things
+    */
+})();";
+        let expectation = vec![
+            SourceLocation::new(Position::new(1, 1), Position::new(1,2)), // 0 (
+            SourceLocation::new(Position::new(1 ,2), Position::new(1,10)), // 1 function
+            SourceLocation::new(Position::new(1 ,10), Position::new(1,11)), // 2 (
+            SourceLocation::new(Position::new(1 ,11), Position::new(1,12)), // 3 )
+            SourceLocation::new(Position::new(1, 13), Position::new(1, 14)), // 4 {
+            SourceLocation::new(Position::new(2, 5), Position::new(2, 8)), // 5 let
+            SourceLocation::new(Position::new(2, 9), Position::new(2, 10)), // 6 x
+            SourceLocation::new(Position::new(2, 11), Position::new(2, 12)), // 7 =
+            SourceLocation::new(Position::new(2, 13), Position::new(3, 1)), // 8 'asdf'
+            SourceLocation::new(Position::new(3, 1), Position::new(3, 2)), // 9 ;
+            SourceLocation::new(Position::new(4, 5), Position::new(4, 8)), // 10 let
+            SourceLocation::new(Position::new(4, 9), Position::new(4, 10)), // 11 y
+            SourceLocation::new(Position::new(4, 11), Position::new(4, 12)), // 12 =
+            SourceLocation::new(Position::new(4, 13), Position::new(5, 2)), // 13 `asdf`
+            SourceLocation::new(Position::new(5, 2), Position::new(5, 3)), // 14 ;
+            SourceLocation::new(Position::new(6, 5), Position::new(8, 6)), // 15 comment
+            SourceLocation::new(Position::new(9, 1), Position::new(9, 2)), // 16 }
+            SourceLocation::new(Position::new(9, 2), Position::new(9, 3)), // 17 )
+            SourceLocation::new(Position::new(9, 3), Position::new(9, 4)), // 18 (
+            SourceLocation::new(Position::new(9, 4), Position::new(9, 5)), // 19 )
+            SourceLocation::new(Position::new(9, 5), Position::new(9, 6)), // 20 ;
+        ];
+        for (i, (lhs, rhs)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
+            let item = lhs.expect("error parsing item");
+            assert_eq!((i, item.location), (i, *rhs))
         }
     }
 }

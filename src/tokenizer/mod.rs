@@ -287,51 +287,59 @@ impl<'a> Tokenizer<'a> {
 
     fn string(&mut self, quote: char) -> Res<RawItem> {
         let mut escaped = false;
-        loop {
-            if self.look_ahead_matches(r"\") {
+        let mut last_len = 1usize; // we already skipped the quote char
+        let mut new_line_count = 0usize;
+        while let Some(c) = self.stream.next_char() {
+            if c == '\\' {
                 if escaped {
                     escaped = false;
                 } else {
                     escaped = true;
                 }
-                self.stream.skip(1)
-            } else if self.look_ahead_matches("\r\n") {
+                last_len = last_len.saturating_add(1);
+            } else if c == '\r' {
                 if !escaped {
                     return Err(RawError {
                         msg: "unescaped new line in string literal".to_string(),
-                        idx: self.stream.idx,
+                        idx: self.stream.idx - 1,
                     });
-                } else {
-                    self.stream.skip(2);
-                    escaped = false;
                 }
-            } else if (self.look_ahead_matches("\n")
-                || self.look_ahead_matches("\r")
-                || self.look_ahead_matches("\u{2028}")
-                || self.look_ahead_matches("\u{2029}"))
-                && !escaped
-            {
-                return Err(RawError {
-                    msg: "unescaped new line in string literal".to_string(),
-                    idx: self.stream.idx,
-                });
-            } else if self.stream.look_ahead_matches(&[quote as u8]) {
-                self.stream.skip(1);
+                if self.look_ahead_matches("\n") {
+                    self.stream.skip(1);
+                }
+                escaped = false;
+                new_line_count = new_line_count.saturating_add(1);
+                last_len = 0;
+            } else if Self::is_new_line_not_cr(c) {
                 if !escaped {
-                    break;
+                    return Err(RawError {
+                        msg: "unescaped new line in string literal".to_string(),
+                        idx: self.stream.idx - 1,
+                    });
+                }
+                new_line_count = new_line_count.saturating_add(1);
+                last_len = 0;
+                escaped = false;
+            } else if c == quote {
+                last_len = last_len.saturating_add(1);
+                if !escaped {
+                    let kind = if quote == '"' {
+                        StringKind::Double
+                    } else {
+                        StringKind::Single
+                    };
+                    return self.gen_token(RawToken::String { kind, new_line_count, last_len });
                 }
                 escaped = false;
             } else {
-                self.stream.skip(1);
+                last_len = last_len.saturating_add(1);
                 escaped = false;
             }
         }
-        let inner = if quote == '"' {
-            StringKind::Double
-        } else {
-            StringKind::Single
-        };
-        self.gen_token(RawToken::String(inner))
+        Err(RawError {
+            msg: "unterminated string literal".to_string(),
+            idx: self.stream.idx - 1,
+        })
     }
     fn punct(&mut self, c: char) -> Res<RawItem> {
         match c {
@@ -580,7 +588,10 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn template(&mut self, start: char) -> Res<RawItem> {
+        let mut line_count = 0usize;
+        let mut last_len = 1usize; // we already skipped the start char
         while let Some(c) = self.stream.next_char() {
+            last_len = last_len.saturating_add(1);
             if c == '\\' {
                 if self.look_ahead_matches("${") {
                     self.stream.skip(2);
@@ -609,21 +620,30 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx.saturating_sub(1),
                     });
                 }
+            } else if c == '\r' {
+                if self.look_ahead_matches("\n") {
+                    self.stream.skip(1);
+                }
+                line_count = line_count.saturating_add(1);
+                last_len = 0;
+            } else if Self::is_new_line_not_cr(c) {
+                line_count = line_count.saturating_add(1);
+                last_len = 0;
             } else if c == '$' {
                 if self.look_ahead_matches("{") {
                     self.stream.skip(1);
                     self.curly_stack.push(OpenCurlyKind::Template);
                     if start == '`' {
-                        return self.gen_template(TemplateKind::Head);
+                        return self.gen_template(TemplateKind::Head, line_count, last_len);
                     } else {
-                        return self.gen_template(TemplateKind::Body);
+                        return self.gen_template(TemplateKind::Body, line_count, last_len);
                     }
                 }
             } else if c == '`' {
                 if start == '`' {
-                    return self.gen_template(TemplateKind::NoSub);
+                    return self.gen_template(TemplateKind::NoSub, line_count, last_len);
                 } else {
-                    return self.gen_template(TemplateKind::Tail);
+                    return self.gen_template(TemplateKind::Tail, line_count, last_len);
                 }
             }
         }
@@ -642,18 +662,27 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        self.gen_comment(CommentKind::Single)
+        self.gen_comment(CommentKind::Single, 0, 0)
     }
     #[inline]
     fn multi_comment(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("*/") {
-            self.stream.skip(2);
-            return self.gen_comment(CommentKind::Multi);
-        }
-        while let Some(_) = self.stream.next_char() {
-            if self.look_ahead_matches("*/") {
-                self.stream.skip(2);
-                return self.gen_comment(CommentKind::Multi);
+        let mut new_line_count = 0usize;
+        let mut last_len = 1usize; // we already skipped the /
+        while let Some(c) = self.stream.next_char() {
+            if c == '*' && self.look_ahead_matches("/") {
+                self.stream.skip(1);
+                return self.gen_comment(CommentKind::Multi, new_line_count, last_len.saturating_add(2))
+            } else if c == '\r' {
+                if self.look_ahead_matches("\n") {
+                    self.stream.skip(1);
+                }
+                new_line_count = new_line_count.saturating_add(1);
+                last_len = 0;
+            } else if Self::is_new_line_not_cr(c) {
+                new_line_count = new_line_count.saturating_add(1);
+                last_len = 0;
+            } else {
+                last_len = last_len.saturating_add(1);
             }
         }
         Err(RawError {
@@ -673,7 +702,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if found_end {
-            return self.gen_token(RawToken::Comment(CommentKind::Html));
+            return self.gen_comment(CommentKind::Html, 0, 0);
         }
         Err(RawError {
             msg: "unterminated html comment".to_string(),
@@ -822,8 +851,8 @@ impl<'a> Tokenizer<'a> {
         self.gen_token(RawToken::Number(n))
     }
     #[inline]
-    fn gen_template(&self, t: TemplateKind) -> Res<RawItem> {
-        self.gen_token(RawToken::Template(t))
+    fn gen_template(&self, kind: TemplateKind, new_line_count: usize, last_len: usize) -> Res<RawItem> {
+        self.gen_token(RawToken::Template {kind, new_line_count, last_len })
     }
     #[inline]
     fn gen_regex(&self, body_idx: usize) -> Res<RawItem> {
@@ -834,8 +863,8 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    fn gen_comment(&self, comment: CommentKind) -> Res<RawItem> {
-        self.gen_token(RawToken::Comment(comment))
+    fn gen_comment(&self, kind: CommentKind, new_line_count: usize, last_len: usize) -> Res<RawItem> {
+        self.gen_token(RawToken::Comment { kind, new_line_count, last_len })
     }
     #[inline]
     fn gen_token(&self, ty: RawToken) -> Res<RawItem> {
@@ -846,19 +875,30 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    pub fn skip_whitespace(&mut self) -> usize {
-        let mut ct = 0;
+    pub fn skip_whitespace(&mut self) -> (usize, usize) {
+        let mut ct = 0usize;
+        let mut leading_whitespace = 0usize;
         while self.stream.at_whitespace() {
-            if self.stream.at_new_line() {
+            if self.at_new_line() {
                 ct += 1;
+                leading_whitespace = 0;
             }
+            leading_whitespace = leading_whitespace.saturating_add(1);
             self.stream.skip(1);
         }
-        ct
+        (ct, leading_whitespace)
     }
     #[inline]
     fn at_new_line(&mut self) -> bool {
         self.stream.at_new_line()
+    }
+    /// Carrage Return is always a special case so that
+    /// must be handled inline
+    #[inline]
+    fn is_new_line_not_cr(c: char) -> bool {
+        c == '\n'
+        || c == '\u{2028}'
+        || c == '\u{2029}'
     }
 }
 
@@ -894,21 +934,23 @@ mod test {
         hahaha'"#,
             "\"sequence double quoted\\\r\nis hard\"",
             "'new line sequence\\\r\nmight be harder'",
+            r#""\
+""#
         ];
         for s in STRINGS {
             let mut t = Tokenizer::new(s);
             let item = t.next().unwrap();
             match &item.ty {
-                RawToken::String(ref lit) => {
+                RawToken::String { kind, new_line_count:_, last_len:_ } => {
                     if &s[0..1] == "'" {
-                        match lit {
+                        match kind {
                             StringKind::Single => (),
                             StringKind::Double => {
                                 panic!("Expected single quote string, found double")
                             }
                         }
                     } else {
-                        match lit {
+                        match kind {
                             StringKind::Single => {
                                 panic!("expected double quote string, found single")
                             }
@@ -1045,41 +1087,50 @@ mod test {
         println!("subbed: {}", subbed);
         let mut t = Tokenizer::new(subbed);
         let start = t.next().unwrap();
-        assert_eq!(start.ty, RawToken::Template(TemplateKind::Head));
+        check_temp(&start.ty, TemplateKind::Head);
         let end = t.next().unwrap();
-        assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
         let no_sub = "`things and stuff`";
         println!("no_sub {}", no_sub);
         t = Tokenizer::new(no_sub);
         let one = t.next().unwrap();
-        assert_eq!(one.ty, RawToken::Template(TemplateKind::NoSub));
+        check_temp(&one.ty, TemplateKind::NoSub);
         assert!(t.stream.at_end());
         let escaped_sub = r#"`\0\n\x0A\u000A\u{A}${}`"#;
         println!("escaped_sub: {}", escaped_sub);
         t = Tokenizer::new(escaped_sub);
         let start = t.next().unwrap();
-        assert_eq!(start.ty, RawToken::Template(TemplateKind::Head));
+        check_temp(&start.ty, TemplateKind::Head);
         let end = t.next().unwrap();
-        assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
         let escaped_no_sub = r#"`a\${b`"#;
         println!("escaped_no_sub: {}", escaped_no_sub);
         t = Tokenizer::new(escaped_no_sub);
         let one = t.next().unwrap();
-        assert_eq!(one.ty, RawToken::Template(TemplateKind::NoSub));
+        check_temp(&one.ty, TemplateKind::NoSub);
         assert!(t.stream.at_end());
         let double_sub =
             "`things and stuff times ${} and animals and minerals ${} and places and people`";
         println!("double_sub: {}", double_sub);
         t = Tokenizer::new(double_sub);
         let start = t.next().unwrap();
-        assert_eq!(start.ty, RawToken::Template(TemplateKind::Head));
+        check_temp(&start.ty, TemplateKind::Head);
         let mid = t.next().unwrap();
-        assert_eq!(mid.ty, RawToken::Template(TemplateKind::Body));
+        check_temp(&mid.ty, TemplateKind::Body);
         let end = t.next().unwrap();
-        assert_eq!(end.ty, RawToken::Template(TemplateKind::Tail));
+        check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
+    }
+
+    fn check_temp(temp: &RawToken, expected_kind: TemplateKind) {
+        match temp {
+            RawToken::Template { kind, new_line_count:_, last_len:_ } => {
+                assert_eq!(kind, &expected_kind);
+            },
+            _ => unreachable!()
+        }
     }
 
     #[test]
@@ -1182,22 +1233,22 @@ mod test {
 0 0 0 0 0";
         let mut t = Tokenizer::new(js);
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 1); //\n
+        assert_eq!(t.skip_whitespace().0, 1); //\n
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 0);
+        assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 1); //\r
+        assert_eq!(t.skip_whitespace().0, 1); //\r
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 0);
+        assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 1); //\r\n
+        assert_eq!(t.skip_whitespace().0, 1); //\r\n
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 0);
+        assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 1); // line seperator
+        assert_eq!(t.skip_whitespace().0, 1); // line seperator
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 0);
+        assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next();
-        assert_eq!(t.skip_whitespace(), 1); // paragraph separator
+        assert_eq!(t.skip_whitespace().0, 1); // paragraph separator
     }
 }
