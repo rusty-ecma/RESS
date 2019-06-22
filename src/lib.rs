@@ -68,6 +68,12 @@ pub struct Position {
     pub column: usize,
 }
 
+impl ::std::fmt::Display for Position {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.column)
+    }
+}
+
 impl Position {
     pub fn new(line: usize, column: usize) -> Self {
         Self { line, column }
@@ -197,6 +203,8 @@ impl<'b> Scanner<'b> {
             last_paren: self.last_open_paren_idx,
             replacement: 0,
             curly_stack: self.stream.curly_stack.clone(),
+            new_line_count: self.new_line_count,
+            line_cursor: self.line_cursor,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -205,6 +213,8 @@ impl<'b> Scanner<'b> {
         self.spans.truncate(state.spans_len);
         self.last_open_paren_idx = state.last_paren;
         self.stream.curly_stack = state.curly_stack;
+        self.new_line_count = state.new_line_count;
+        self.line_cursor = state.line_cursor;
     }
     #[inline]
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<RefToken<'b>>>> {
@@ -597,6 +607,8 @@ pub struct ScannerState {
     pub last_paren: usize,
     pub replacement: usize,
     pub curly_stack: Vec<OpenCurlyKind>,
+    pub new_line_count: usize,
+    pub line_cursor: usize,
 }
 
 #[cfg(test)]
