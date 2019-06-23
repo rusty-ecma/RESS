@@ -370,6 +370,7 @@ impl<'b> Scanner<'b> {
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
+        self.pending_new_line = new_line_count > 0;
         Some(Ok(ret))
     }
 
