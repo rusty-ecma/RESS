@@ -1,5 +1,5 @@
 use docopt::Docopt;
-use ress::{RefToken as Token, Scanner};
+use ress::prelude::*;
 #[macro_use]
 extern crate serde_derive;
 
@@ -37,7 +37,7 @@ fn main() {
     }
 }
 
-fn token_type_str(tok: &Token) -> &'static str {
+fn token_type_str(tok: &Token<&str>) -> &'static str {
     match tok {
         Token::Null => "null",
         Token::Boolean(_) => "bool",

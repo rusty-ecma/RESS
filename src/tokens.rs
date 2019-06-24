@@ -1,7 +1,67 @@
-pub mod owned;
-pub mod refs;
 
-pub trait Token {
+pub mod prelude {
+    pub use super::{
+        Token,
+        TokenExt,
+        Ident,
+        IdentExt,
+        Comment,
+        CommentExt,
+        Number,
+        NumberExt,
+        StringLit,
+        StringLitExt,
+        Template,
+        TemplateExt,
+        RegEx,
+        RegExExt,
+        Boolean,
+        Keyword,
+        Punct
+    };
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum Token<T> {
+    /// `true` of `false`
+    Boolean(Boolean),
+    /// The end of the file
+    EoF,
+    /// An identifier this will be either a variable name
+    /// or a function/method name
+    Ident(Ident<T>),
+    /// A word that has been reserved to not be used as an identifier
+    Keyword(Keyword),
+    /// A `null` literal value
+    Null,
+    /// A number, this includes integers (`1`), decimals (`0.1`),
+    /// hex (`0x8f`), binary (`0b010011010`), and octal (`0o273`)
+    Number(Number<T>),
+    /// A punctuation mark, this includes all mathematical operators
+    /// logical operators and general syntax punctuation
+    Punct(Punct),
+    /// A string literal, either double or single quoted, the associated
+    /// value will be the unquoted string
+    String(StringLit<T>),
+    /// A regular expression literal.
+    /// ```js
+    /// let regex = /[a-zA-Z]+/g;
+    /// ```
+    RegEx(RegEx<T>),
+    /// The string parts of a template string
+    Template(Template<T>),
+    /// A comment, the associated value will contain the raw comment
+    /// This will capture both inline comments `// I am an inline comment`
+    /// and multi-line comments
+    /// ```js
+    /// /*multi lines
+    /// * comments
+    /// */
+    /// ```
+    Comment(Comment<T>),
+}
+
+pub trait TokenExt {
     fn is_boolean(&self) -> bool;
 
     fn is_boolean_true(&self) -> bool;
@@ -56,7 +116,7 @@ pub trait Token {
 
     fn is_single_line_comment(&self) -> bool;
 
-    fn matches_boolean(&self, b: BooleanLiteral) -> bool;
+    fn matches_boolean(&self, b: Boolean) -> bool;
 
     fn matches_boolean_str(&self, b: &str) -> bool;
 
@@ -77,84 +137,609 @@ pub trait Token {
     fn matches_string_content(&self, content: &str) -> bool;
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-/// The tokenized representation of `true` or `false`
-pub enum BooleanLiteral {
-    True,
-    False,
-}
-impl BooleanLiteral {
-    /// Test if this instance represents `true`
-    pub fn is_true(self) -> bool {
+impl<'a> ToString for Token<&'a str> {
+    fn to_string(&self) -> String {
         match self {
-            BooleanLiteral::True => true,
+            Token::Boolean(ref b) => b.to_string(),
+            Token::Comment(ref c) => c.to_string(),
+            Token::EoF => String::new(),
+            Token::Ident(ref i) => i.to_string(),
+            Token::Keyword(ref k) => k.to_string(),
+            Token::Null => "null".to_string(),
+            Token::Number(ref n) => n.to_string(),
+            Token::Punct(ref p) => p.to_string(),
+            Token::RegEx(ref r) => r.to_string(),
+            Token::String(ref s) => s.to_string(),
+            Token::Template(ref t) => t.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+/// An identifier
+pub struct Ident<T>(T);
+
+pub trait IdentExt<T> 
+    where T: ?Sized {
+    fn matches(&self, other: &T) -> bool;
+    fn as_str(&self) -> &str;
+}
+
+impl<'a> PartialEq<str> for Ident<&'a str> {
+    fn eq(&self, other: &str) -> bool {
+        self.0.eq(other)
+    }
+}
+
+impl<'a> IdentExt<str> for Ident<&'a str> {
+    fn matches(&self, other: &str) -> bool {
+        self.0 == other
+    }
+
+    fn as_str(&self) -> &str {
+        self.0
+    }
+}
+
+impl IdentExt<String> for Ident<String> {
+    fn matches(&self, other: &String) -> bool {
+        &self.0 == other
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl<'a> From<&'a str> for Ident<&'a str> {
+    fn from(s: &'a str) -> Self {
+        Ident(s)
+    }
+}
+
+impl<T> ToString for Ident<T> 
+where T: ToString {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl<T> Into<String> for Ident<T> 
+where T: ToString {
+    fn into(self) -> String {
+        self.0.to_string()
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Comment<T> {
+    pub kind: CommentKind,
+    pub content: T,
+    pub tail_content: Option<T>,
+}
+
+pub trait CommentExt<T> {
+    fn from_parts(content: T, kind: CommentKind, tail_content: Option<T>) -> Comment<T>;
+    fn new_single_line(content: T) -> Comment<T>;
+    fn new_multi_line(content: T) -> Comment<T>;
+    fn new_html(content: T, tail_content: Option<T>) -> Comment<T>;
+    fn new_html_no_tail(content: T) -> Comment<T>;
+    fn new_html_with_tail(content: T, tail: T) -> Comment<T>;
+    fn is_multi_line(&self) -> bool;
+    fn is_single_line(&self) -> bool;
+    fn is_html(&self) -> bool;
+}
+
+impl<'a> CommentExt<&'a str> for Comment<&'a str> {
+    fn from_parts(content: &'a str, kind: CommentKind, tail_content: Option<&'a str>) -> Self {
+        Comment {
+            content,
+            kind,
+            tail_content,
+        }
+    }
+
+    fn new_single_line(content: &'a str) -> Self {
+        Comment::from_parts(content, CommentKind::Single, None)
+    }
+
+    fn new_multi_line(content: &'a str) -> Self {
+        Comment::from_parts(content, CommentKind::Multi, None)
+    }
+
+    fn new_html(content: &'a str, tail_content: Option<&'a str>) -> Self {
+        Comment::from_parts(content, CommentKind::Html, tail_content)
+    }
+
+    fn new_html_no_tail(content: &'a str) -> Self {
+        Comment::new_html(content, None)
+    }
+
+    fn new_html_with_tail(content: &'a str, tail: &'a str) -> Self {
+        Comment::new_html(content, Some(tail))
+    }
+
+    fn is_multi_line(&self) -> bool {
+        self.kind == CommentKind::Multi
+    }
+
+    fn is_single_line(&self) -> bool {
+        self.kind == CommentKind::Single
+    }
+
+    fn is_html(&self) -> bool {
+        self.kind == CommentKind::Multi
+    }
+}
+impl CommentExt<String> for Comment<String> {
+    fn from_parts(content: String, kind: CommentKind, tail_content: Option<String>) -> Self {
+        Comment {
+            content: content,
+            kind,
+            tail_content: tail_content,
+        }
+    }
+
+    fn new_single_line(content: String) -> Self {
+        Comment::from_parts(content, CommentKind::Single, None)
+    }
+
+    fn new_multi_line(content: String) -> Self {
+        Comment::from_parts(content, CommentKind::Multi, None)
+    }
+
+    fn new_html(content: String, tail_content: Option<String>) -> Self {
+        Comment::from_parts(content, CommentKind::Html, tail_content)
+    }
+
+    fn new_html_no_tail(content: String) -> Self {
+        Comment::new_html(content, None)
+    }
+
+    fn new_html_with_tail(content: String, tail: String) -> Self {
+        Comment::new_html(content, Some(tail))
+    }
+
+    fn is_multi_line(&self) -> bool {
+        self.kind == CommentKind::Multi
+    }
+
+    fn is_single_line(&self) -> bool {
+        self.kind == CommentKind::Single
+    }
+
+    fn is_html(&self) -> bool {
+        self.kind == CommentKind::Multi
+    }
+}
+
+impl ToString for Comment<String> {
+    fn to_string(&self) -> String {
+        match self.kind {
+            CommentKind::Single => format!("//{}", self.content),
+            CommentKind::Multi => format!("/*{}*/", self.content),
+            CommentKind::Html => format!("<!--{}-->", self.content),
+        }
+    }
+}
+impl ToString for Comment<&str> {
+    fn to_string(&self) -> String {
+        match self.kind {
+            CommentKind::Single => format!("//{}", self.content),
+            CommentKind::Multi => format!("/*{}*/", self.content),
+            CommentKind::Html => format!("<!--{}-->", self.content),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Number<T>(T);
+
+pub trait NumberExt {
+    fn kind(&self) -> NumberKind;
+    fn is_hex(&self) -> bool;
+    fn is_bin(&self) -> bool;
+    fn is_oct(&self) -> bool;
+    fn is_dec(&self) -> bool;
+    fn has_exponent(&self) -> bool;
+}
+
+impl<'a> NumberExt for Number<&'a str> {
+    fn kind(&self) -> NumberKind {
+        if self.0.starts_with("0x") {
+            NumberKind::Hex
+        } else if self.0.starts_with("0b") {
+            NumberKind::Bin
+        } else if self.0.starts_with("0o") {
+            NumberKind::Oct
+        } else {
+            NumberKind::Dec
+        }
+    }
+
+    fn is_hex(&self) -> bool {
+        self.kind() == NumberKind::Hex
+    }
+    fn is_bin(&self) -> bool {
+        self.kind() == NumberKind::Bin
+    }
+    fn is_oct(&self) -> bool {
+        self.kind() == NumberKind::Oct
+    }
+    fn is_dec(&self) -> bool {
+        self.kind() == NumberKind::Dec
+    }
+    fn has_exponent(&self) -> bool {
+        match self.kind() {
+            NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
+            _ => false,
+        }
+    }
+}
+impl NumberExt for Number<String> {
+    fn kind(&self) -> NumberKind {
+        if self.0.starts_with("0x") {
+            NumberKind::Hex
+        } else if self.0.starts_with("0b") {
+            NumberKind::Bin
+        } else if self.0.starts_with("0o") {
+            NumberKind::Oct
+        } else {
+            NumberKind::Dec
+        }
+    }
+
+    fn is_hex(&self) -> bool {
+        self.kind() == NumberKind::Hex
+    }
+    fn is_bin(&self) -> bool {
+        self.kind() == NumberKind::Bin
+    }
+    fn is_oct(&self) -> bool {
+        self.kind() == NumberKind::Oct
+    }
+    fn is_dec(&self) -> bool {
+        self.kind() == NumberKind::Dec
+    }
+    fn has_exponent(&self) -> bool {
+        match self.kind() {
+            NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
     }
 }
 
-impl BooleanLiteral {
-    /// Create a BooleanLiteral from raw text
+impl<'a> From<&'a str> for Number<&'a str> {
+    fn from(s: &'a str) -> Self {
+        Number(s)
+    }
+}
+
+impl<'a> ToString for Number<&'a str> {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
+
+impl<'a> PartialEq<str> for Number<&'a str> {
+    fn eq(&self, other: &str) -> bool {
+        self.0.eq(other)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct RegEx<T> {
+    pub body: T,
+    pub flags: Option<T>,
+}
+
+pub trait RegExExt<T> {
+    fn from_parts(body: T, flags: Option<T>) -> RegEx<T>;
+}
+
+impl<'a> RegExExt<&'a str> for RegEx<&'a str> {
+    fn from_parts(body: &'a str, flags: Option<&'a str>) -> Self {
+        let flags = if let Some(flags) = flags {
+            if flags == "" {
+                None
+            } else {
+                Some(flags)
+            }
+        } else {
+            None
+        };
+        RegEx { body, flags }
+    }
+}
+impl RegExExt<String> for RegEx<String> {
+    fn from_parts(body: String, flags: Option<String>) -> Self {
+        let flags = if let Some(flags) = flags {
+            if flags == "" {
+                None
+            } else {
+                Some(flags)
+            }
+        } else {
+            None
+        };
+        RegEx { body, flags }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum StringLit<T> {
+    Single(T),
+    Double(T),
+}
+
+impl<'a> ToString for RegEx<&'a str> {
+    fn to_string(&self) -> String {
+        let f = if let Some(ref f) = self.flags {
+            f.to_string()
+        } else {
+            String::new()
+        };
+        format!("/{}/{}", self.body, f)
+    }
+}
+
+pub trait StringLitExt<T> {
+    fn single(content: T) -> StringLit<T>;
+    fn double(content: T) -> StringLit<T>;
+    fn is_single(&self) -> bool;
+    fn is_double(&self) -> bool;
+    fn no_quote(&self) -> T;
+}
+
+impl<T> ToString for StringLit<T> 
+where T: ::core::fmt::Display {
+    fn to_string(&self) -> String {
+        match self {
+            StringLit::Single(ref s) => format!(r#"'{}'"#, s),
+            StringLit::Double(ref s) => format!(r#""{}""#, s),
+        }
+    }
+}
+
+impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
+    fn single(content: &'a str) -> Self {
+        StringLit::Single(content)
+    }
+    fn double(content: &'a str) -> Self {
+        StringLit::Double(content)
+    }
+    fn is_single(&self) -> bool {
+        match self {
+            StringLit::Single(_) => true,
+            _ => false,
+        }
+    }
+    fn is_double(&self) -> bool {
+        match self {
+            StringLit::Double(_) => true,
+            _ => false,
+        }
+    }
+    fn no_quote(&self) -> &'a str {
+        match self {
+            StringLit::Single(ref inner) => inner,
+            StringLit::Double(ref inner) => inner,
+        }
+    }
+}
+impl StringLitExt<String> for StringLit<String> {
+    fn single(content: String) -> Self {
+        StringLit::Single(content)
+    }
+    fn double(content: String) -> Self {
+        StringLit::Double(content)
+    }
+    fn is_single(&self) -> bool {
+        match self {
+            StringLit::Single(_) => true,
+            _ => false,
+        }
+    }
+    fn is_double(&self) -> bool {
+        match self {
+            StringLit::Double(_) => true,
+            _ => false,
+        }
+    }
+    fn no_quote(&self) -> String {
+        match self {
+            StringLit::Single(ref inner) => inner.clone(),
+            StringLit::Double(ref inner) => inner.clone(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Template<T> {
+    NoSub(T),
+    Head(T),
+    Middle(T),
+    Tail(T),
+}
+
+pub trait TemplateExt<T> {
+    fn no_sub_template(content: T) -> Template<T>;
+    fn template_head(content: T) -> Template<T>;
+    fn template_middle(content: T) -> Template<T>;
+    fn template_tail(content: T) -> Template<T>;
+    fn is_head(&self) -> bool;
+    fn is_middle(&self) -> bool;
+    fn is_tail(&self) -> bool;
+    fn is_no_sub(&self) -> bool;
+}
+
+impl<'a> TemplateExt<&'a str> for Template<&'a str> {
+    fn no_sub_template(content: &'a str) -> Self {
+        Template::NoSub(content)
+    }
+    fn template_head(content: &'a str) -> Self {
+        Template::Head(content)
+    }
+    fn template_middle(content: &'a str) -> Self {
+        Template::Middle(content)
+    }
+    fn template_tail(content: &'a str) -> Self {
+        Template::Tail(content)
+    }
+    fn is_head(&self) -> bool {
+        match self {
+            Template::Head(_) => true,
+            _ => false,
+        }
+    }
+    fn is_middle(&self) -> bool {
+        match self {
+            Template::Middle(_) => true,
+            _ => false,
+        }
+    }
+    fn is_tail(&self) -> bool {
+        match self {
+            Template::Tail(_) => true,
+            _ => false,
+        }
+    }
+    fn is_no_sub(&self) -> bool {
+        match self {
+            Template::NoSub(_) => true,
+            _ => false,
+        }
+    }
+}
+impl TemplateExt<String> for Template<String> {
+    fn no_sub_template(content: String) -> Self {
+        Template::NoSub(content)
+    }
+    fn template_head(content: String) -> Self {
+        Template::Head(content)
+    }
+    fn template_middle(content: String) -> Self {
+        Template::Middle(content)
+    }
+    fn template_tail(content: String) -> Self {
+        Template::Tail(content)
+    }
+    fn is_head(&self) -> bool {
+        match self {
+            Template::Head(_) => true,
+            _ => false,
+        }
+    }
+    fn is_middle(&self) -> bool {
+        match self {
+            Template::Middle(_) => true,
+            _ => false,
+        }
+    }
+    fn is_tail(&self) -> bool {
+        match self {
+            Template::Tail(_) => true,
+            _ => false,
+        }
+    }
+    fn is_no_sub(&self) -> bool {
+        match self {
+            Template::NoSub(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T> ToString for Template<T> 
+where T: ::core::fmt::Display {
+    fn to_string(&self) -> String {
+        match self {
+            Template::NoSub(ref c) => format!("`{}`", c),
+            Template::Head(ref c) => format!("`{}${{", c),
+            Template::Middle(ref c) => format!("}}{}${{", c),
+            Template::Tail(ref c) => format!("}}{}`", c),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+/// The tokenized representation of `true` or `false`
+pub enum Boolean {
+    True,
+    False,
+}
+impl Boolean {
+    /// Test if this instance represents `true`
+    pub fn is_true(self) -> bool {
+        match self {
+            Boolean::True => true,
+            _ => false,
+        }
+    }
+}
+
+impl Boolean {
+    /// Create a Boolean from raw text
     pub fn from(s: &str) -> Option<Self> {
         if s == "true" {
-            Some(BooleanLiteral::True)
+            Some(Boolean::True)
         } else if s == "false" {
-            Some(BooleanLiteral::False)
+            Some(Boolean::False)
         } else {
             None
         }
     }
 }
 
-impl From<bool> for BooleanLiteral {
+impl From<bool> for Boolean {
     /// Creates a JS Bool for a rust bool
     fn from(b: bool) -> Self {
         if b {
-            BooleanLiteral::True
+            Boolean::True
         } else {
-            BooleanLiteral::False
+            Boolean::False
         }
     }
 }
 
-impl Into<String> for BooleanLiteral {
-    /// Return this BooleanLiteral to the text
+impl Into<String> for Boolean {
+    /// Return this Boolean to the text
     /// that was parsed to create it
     fn into(self) -> String {
         match self {
-            BooleanLiteral::True => "true".into(),
-            BooleanLiteral::False => "false".into(),
+            Boolean::True => "true".into(),
+            Boolean::False => "false".into(),
         }
     }
 }
 
-impl ToString for BooleanLiteral {
-    /// Return this BooleanLiteral to the text
+impl ToString for Boolean {
+    /// Return this Boolean to the text
     /// that was parsed to create it
     fn to_string(&self) -> String {
         match self {
-            BooleanLiteral::True => "true".into(),
-            BooleanLiteral::False => "false".into(),
+            Boolean::True => "true".into(),
+            Boolean::False => "false".into(),
         }
     }
 }
 
-impl Into<bool> for BooleanLiteral {
+impl Into<bool> for Boolean {
     /// Creates a Rust bool for a js bool
     fn into(self) -> bool {
         match self {
-            BooleanLiteral::True => true,
-            BooleanLiteral::False => false,
+            Boolean::True => true,
+            Boolean::False => false,
         }
     }
 }
 
-impl<'a> Into<bool> for &'a BooleanLiteral {
+impl<'a> Into<bool> for &'a Boolean {
     /// Creates a js bool for a rust bool
     fn into(self) -> bool {
         match self {
-            BooleanLiteral::True => true,
-            BooleanLiteral::False => false,
+            Boolean::True => true,
+            Boolean::False => false,
         }
     }
 }
@@ -656,22 +1241,22 @@ impl Keyword {
     }
 }
 
-impl Token for owned::Token {
+impl<'a> TokenExt for Token<&'a str> {
     fn is_boolean(&self) -> bool {
         match self {
-            owned::Token::Boolean(_) => true,
+            Token::Boolean(_) => true,
             _ => false,
         }
     }
     fn is_boolean_true(&self) -> bool {
         match self {
-            owned::Token::Boolean(ref b) => b.into(),
+            Token::Boolean(ref b) => b.into(),
             _ => false,
         }
     }
     fn is_boolean_false(&self) -> bool {
         match self {
-            owned::Token::Boolean(ref b) => {
+            Token::Boolean(ref b) => {
                 let b: bool = b.into();
                 !b
             }
@@ -679,38 +1264,44 @@ impl Token for owned::Token {
         }
     }
     fn is_eof(&self) -> bool {
-        self == &owned::Token::EoF
+        match self {
+            Token::EoF => true,
+            _ => false,
+        }
     }
     fn is_ident(&self) -> bool {
         match self {
-            owned::Token::Ident(_) => true,
+            Token::Ident(_) => true,
             _ => false,
         }
     }
     fn is_keyword(&self) -> bool {
         match self {
-            owned::Token::Keyword(_) => true,
+            Token::Keyword(_) => true,
             _ => false,
         }
     }
     fn is_strict_reserved(&self) -> bool {
         match self {
-            owned::Token::Keyword(ref k) => k.is_strict_reserved(),
+            Token::Keyword(ref k) => k.is_strict_reserved(),
             _ => false,
         }
     }
     fn is_restricted(&self) -> bool {
         match self {
-            owned::Token::Ident(ref i) => i == "arguments" || i == "eval",
+            Token::Ident(ref i) => i == "arguments" || i == "eval",
             _ => false,
         }
     }
     fn is_null(&self) -> bool {
-        self == &owned::Token::Null
+        match self {
+            Token::Null => true,
+            _ => false,
+        }
     }
 
     fn is_number(&self) -> bool {
-        if let owned::Token::Number(ref _n) = self {
+        if let Token::Number(ref _n) = self {
             true
         } else {
             false
@@ -718,30 +1309,30 @@ impl Token for owned::Token {
     }
     fn is_hex_literal(&self) -> bool {
         match self {
-            owned::Token::Number(ref n) => n.is_hex(),
+            Token::Number(ref n) => n.is_hex(),
             _ => false,
         }
     }
     fn is_bin_literal(&self) -> bool {
         match self {
-            owned::Token::Number(ref n) => n.is_bin(),
+            Token::Number(ref n) => n.is_bin(),
             _ => false,
         }
     }
     fn is_oct_literal(&self) -> bool {
         match self {
-            owned::Token::Number(ref n) => n.is_oct(),
+            Token::Number(ref n) => n.is_oct(),
             _ => false,
         }
     }
     fn is_punct(&self) -> bool {
         match self {
-            owned::Token::Punct(_) => true,
+            Token::Punct(_) => true,
             _ => false,
         }
     }
     fn is_string(&self) -> bool {
-        if let owned::Token::String(ref _s) = self {
+        if let Token::String(ref _s) = self {
             true
         } else {
             false
@@ -749,8 +1340,8 @@ impl Token for owned::Token {
     }
     fn is_double_quoted_string(&self) -> bool {
         match self {
-            owned::Token::String(ref s) => match s {
-                owned::StringLit::Double(_) => true,
+            Token::String(ref s) => match s {
+                StringLit::Double(_) => true,
                 _ => false,
             },
             _ => false,
@@ -758,8 +1349,8 @@ impl Token for owned::Token {
     }
     fn is_single_quoted_string(&self) -> bool {
         match self {
-            owned::Token::String(ref s) => match s {
-                owned::StringLit::Single(_) => true,
+            Token::String(ref s) => match s {
+                StringLit::Single(_) => true,
                 _ => false,
             },
             _ => false,
@@ -767,77 +1358,80 @@ impl Token for owned::Token {
     }
     fn is_regex(&self) -> bool {
         match self {
-            owned::Token::RegEx(_) => true,
+            Token::RegEx(_) => true,
             _ => false,
         }
     }
     fn is_template(&self) -> bool {
         match self {
-            owned::Token::Template(_) => true,
+            Token::Template(_) => true,
             _ => false,
         }
     }
     fn is_template_no_sub(&self) -> bool {
         match self {
-            owned::Token::Template(ref s) => s.is_no_sub(),
+            Token::Template(ref s) => s.is_no_sub(),
             _ => false,
         }
     }
     fn is_template_head(&self) -> bool {
         match self {
-            owned::Token::Template(ref s) => s.is_head() || s.is_no_sub(),
+            Token::Template(ref s) => s.is_head() || s.is_no_sub(),
             _ => false,
         }
     }
     fn is_template_body(&self) -> bool {
         match self {
-            owned::Token::Template(ref s) => s.is_middle(),
+            Token::Template(ref s) => s.is_middle(),
             _ => false,
         }
     }
     fn is_template_tail(&self) -> bool {
         match self {
-            owned::Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
+            Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
             _ => false,
         }
     }
     fn is_literal(&self) -> bool {
         match self {
-            owned::Token::Boolean(_) => true,
-            owned::Token::String(_) => true,
-            owned::Token::Null => true,
-            owned::Token::Number(_) => true,
-            owned::Token::RegEx(_) => true,
-            owned::Token::Template(_) => true,
+            Token::Boolean(_) => true,
+            Token::String(_) => true,
+            Token::Null => true,
+            Token::Number(_) => true,
+            Token::RegEx(_) => true,
+            Token::Template(_) => true,
             _ => false,
         }
     }
     fn is_comment(&self) -> bool {
         match self {
-            owned::Token::Comment(_) => true,
+            Token::Comment(_) => true,
             _ => false,
         }
     }
     fn is_multi_line_comment(&self) -> bool {
         match self {
-            owned::Token::Comment(ref t) => t.kind == CommentKind::Multi,
+            Token::Comment(ref t) => t.kind == CommentKind::Multi,
             _ => false,
         }
     }
 
     fn is_single_line_comment(&self) -> bool {
         match self {
-            owned::Token::Comment(ref t) => t.kind == CommentKind::Single,
+            Token::Comment(ref t) => t.kind == CommentKind::Single,
             _ => false,
         }
     }
-    fn matches_boolean(&self, b: BooleanLiteral) -> bool {
-        self == &owned::Token::Boolean(b)
+    fn matches_boolean(&self, b: Boolean) -> bool {
+        match self {
+            Token::Boolean(m) => m == &b,
+            _ => false,
+        }
     }
     fn matches_boolean_str(&self, b: &str) -> bool {
         match self {
-            owned::Token::Boolean(ref lit) => match (lit, b) {
-                (&BooleanLiteral::True, "true") | (&BooleanLiteral::False, "false") => true,
+            Token::Boolean(ref lit) => match (lit, b) {
+                (&Boolean::True, "true") | (&Boolean::False, "false") => true,
                 _ => false,
             },
             _ => false,
@@ -845,288 +1439,54 @@ impl Token for owned::Token {
     }
     fn matches_ident_str(&self, name: &str) -> bool {
         match self {
-            owned::Token::Ident(ref i) => i.matches(name),
+            Token::Ident(i) => i.matches(name),
             _ => false,
         }
     }
     fn matches_keyword(&self, keyword: Keyword) -> bool {
-        self == &owned::Token::Keyword(keyword)
-    }
-    fn matches_keyword_str(&self, name: &str) -> bool {
         match self {
-            owned::Token::Keyword(ref k) => k.as_str() == name,
+            Token::Keyword(k) => k == &keyword,
             _ => false,
         }
     }
-
+    fn matches_keyword_str(&self, name: &str) -> bool {
+        match self {
+            Token::Keyword(n) => n.as_str() == name,
+            _ => false,
+        }
+    }
     fn matches_number_str(&self, number: &str) -> bool {
         match self {
-            owned::Token::Number(n) => n == number,
+            Token::Number(n) => n == number,
             _ => false,
         }
     }
     fn matches_punct(&self, p: Punct) -> bool {
         match self {
-            owned::Token::Punct(inner) => inner == &p,
+            Token::Punct(m) => m == &p,
             _ => false,
         }
     }
+
     fn matches_punct_str(&self, s: &str) -> bool {
         match self {
-            owned::Token::Punct(ref p) => p.matches_str(s),
+            Token::Punct(ref p) => p.matches_str(s),
             _ => false,
         }
     }
 
     fn matches_comment_str(&self, comment: &str) -> bool {
         match self {
-            owned::Token::Comment(ref t) => t.content == comment,
+            Token::Comment(ref t) => t.content == comment,
             _ => false,
         }
     }
 
     fn matches_string_content(&self, content: &str) -> bool {
         match self {
-            owned::Token::String(ref lit) => match lit {
-                owned::StringLit::Single(ref s) => content == s,
-                owned::StringLit::Double(ref s) => content == s,
-            },
-            _ => false,
-        }
-    }
-}
-
-impl<'a> Token for refs::Token<'a> {
-    fn is_boolean(&self) -> bool {
-        match self {
-            refs::Token::Boolean(_) => true,
-            _ => false,
-        }
-    }
-    fn is_boolean_true(&self) -> bool {
-        match self {
-            refs::Token::Boolean(ref b) => b.into(),
-            _ => false,
-        }
-    }
-    fn is_boolean_false(&self) -> bool {
-        match self {
-            refs::Token::Boolean(ref b) => {
-                let b: bool = b.into();
-                !b
-            }
-            _ => false,
-        }
-    }
-    fn is_eof(&self) -> bool {
-        self == &refs::Token::EoF
-    }
-    fn is_ident(&self) -> bool {
-        match self {
-            refs::Token::Ident(_) => true,
-            _ => false,
-        }
-    }
-    fn is_keyword(&self) -> bool {
-        match self {
-            refs::Token::Keyword(_) => true,
-            _ => false,
-        }
-    }
-    fn is_strict_reserved(&self) -> bool {
-        match self {
-            refs::Token::Keyword(ref k) => k.is_strict_reserved(),
-            _ => false,
-        }
-    }
-    fn is_restricted(&self) -> bool {
-        match self {
-            refs::Token::Ident(ref i) => i == "arguments" || i == "eval",
-            _ => false,
-        }
-    }
-    fn is_null(&self) -> bool {
-        self == &refs::Token::Null
-    }
-
-    fn is_number(&self) -> bool {
-        if let refs::Token::Number(ref _n) = self {
-            true
-        } else {
-            false
-        }
-    }
-    fn is_hex_literal(&self) -> bool {
-        match self {
-            refs::Token::Number(ref n) => n.is_hex(),
-            _ => false,
-        }
-    }
-    fn is_bin_literal(&self) -> bool {
-        match self {
-            refs::Token::Number(ref n) => n.is_bin(),
-            _ => false,
-        }
-    }
-    fn is_oct_literal(&self) -> bool {
-        match self {
-            refs::Token::Number(ref n) => n.is_oct(),
-            _ => false,
-        }
-    }
-    fn is_punct(&self) -> bool {
-        match self {
-            refs::Token::Punct(_) => true,
-            _ => false,
-        }
-    }
-    fn is_string(&self) -> bool {
-        if let refs::Token::String(ref _s) = self {
-            true
-        } else {
-            false
-        }
-    }
-    fn is_double_quoted_string(&self) -> bool {
-        match self {
-            refs::Token::String(ref s) => match s {
-                refs::StringLit::Double(_) => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-    fn is_single_quoted_string(&self) -> bool {
-        match self {
-            refs::Token::String(ref s) => match s {
-                refs::StringLit::Single(_) => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-    fn is_regex(&self) -> bool {
-        match self {
-            refs::Token::RegEx(_) => true,
-            _ => false,
-        }
-    }
-    fn is_template(&self) -> bool {
-        match self {
-            refs::Token::Template(_) => true,
-            _ => false,
-        }
-    }
-    fn is_template_no_sub(&self) -> bool {
-        match self {
-            refs::Token::Template(ref s) => s.is_no_sub(),
-            _ => false,
-        }
-    }
-    fn is_template_head(&self) -> bool {
-        match self {
-            refs::Token::Template(ref s) => s.is_head() || s.is_no_sub(),
-            _ => false,
-        }
-    }
-    fn is_template_body(&self) -> bool {
-        match self {
-            refs::Token::Template(ref s) => s.is_middle(),
-            _ => false,
-        }
-    }
-    fn is_template_tail(&self) -> bool {
-        match self {
-            refs::Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
-            _ => false,
-        }
-    }
-    fn is_literal(&self) -> bool {
-        match self {
-            refs::Token::Boolean(_) => true,
-            refs::Token::String(_) => true,
-            refs::Token::Null => true,
-            refs::Token::Number(_) => true,
-            refs::Token::RegEx(_) => true,
-            refs::Token::Template(_) => true,
-            _ => false,
-        }
-    }
-    fn is_comment(&self) -> bool {
-        match self {
-            refs::Token::Comment(_) => true,
-            _ => false,
-        }
-    }
-    fn is_multi_line_comment(&self) -> bool {
-        match self {
-            refs::Token::Comment(ref t) => t.kind == CommentKind::Multi,
-            _ => false,
-        }
-    }
-
-    fn is_single_line_comment(&self) -> bool {
-        match self {
-            refs::Token::Comment(ref t) => t.kind == CommentKind::Single,
-            _ => false,
-        }
-    }
-    fn matches_boolean(&self, b: BooleanLiteral) -> bool {
-        self == &refs::Token::Boolean(b)
-    }
-    fn matches_boolean_str(&self, b: &str) -> bool {
-        match self {
-            refs::Token::Boolean(ref lit) => match (lit, b) {
-                (&BooleanLiteral::True, "true") | (&BooleanLiteral::False, "false") => true,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-    fn matches_ident_str(&self, name: &str) -> bool {
-        match self {
-            refs::Token::Ident(i) => i.matches(name),
-            _ => false,
-        }
-    }
-    fn matches_keyword(&self, keyword: Keyword) -> bool {
-        self == &refs::Token::Keyword(keyword)
-    }
-    fn matches_keyword_str(&self, name: &str) -> bool {
-        match self {
-            refs::Token::Keyword(n) => n.as_str() == name,
-            _ => false,
-        }
-    }
-    fn matches_number_str(&self, number: &str) -> bool {
-        match self {
-            refs::Token::Number(n) => n == number,
-            _ => false,
-        }
-    }
-    fn matches_punct(&self, p: Punct) -> bool {
-        self == &refs::Token::Punct(p)
-    }
-
-    fn matches_punct_str(&self, s: &str) -> bool {
-        match self {
-            refs::Token::Punct(ref p) => p.matches_str(s),
-            _ => false,
-        }
-    }
-
-    fn matches_comment_str(&self, comment: &str) -> bool {
-        match self {
-            refs::Token::Comment(ref t) => t.content == comment,
-            _ => false,
-        }
-    }
-
-    fn matches_string_content(&self, content: &str) -> bool {
-        match self {
-            refs::Token::String(ref lit) => match lit {
-                refs::StringLit::Single(s) => content == *s,
-                refs::StringLit::Double(s) => content == *s,
+            Token::String(ref lit) => match lit {
+                StringLit::Single(s) => content == *s,
+                StringLit::Double(s) => content == *s,
             },
             _ => false,
         }

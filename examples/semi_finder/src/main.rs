@@ -1,7 +1,7 @@
 extern crate ress;
 extern crate walkdir;
 
-use ress::{Punct, RefToken, Scanner};
+use ress::prelude::*;
 use walkdir::WalkDir;
 
 use std::{collections::HashMap, env::args, fs::read_to_string, path::PathBuf};
@@ -75,7 +75,7 @@ fn check_js(js: &str) -> Vec<usize> {
         .filter_map(|item| {
             let item = item.unwrap();
             // If this token matches the `Punct::SemiColon`
-            if let RefToken::Punct(ref inner) = item.token {
+            if let Token::Punct(ref inner) = item.token {
                 match inner {
                     // we want to return the first position of this token
                     // since semi-colons are only 1 character wide we would
