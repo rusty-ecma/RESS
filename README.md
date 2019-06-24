@@ -9,28 +9,7 @@
 A scanner/tokenizer for JS written in Rust
 
 ## Usage
-There are two main interfaces for using `ress` in your Rust code.
-
-The first is the very simple function `tokenize`, this takes in a `String` and outputs a `Vec<Token>`.
-
-```rust
-extern crate ress;
-
-use ress::tokenize;
-
-static JS: &str = include_str!("index.js");
-
-fn main() {
-    let tokens = tokenize(JS);
-    it !tokens.iter().any(|t| t.matches_punct_str(";")) {
-        panic!("No semi-colon!? You nave!");
-    } else {
-        println!("At least you are sane at one point");
-    }
-}
-```
-
-The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has three fields `token` for the `RefToken` found, `span` which represents the start and end of the byte position in the original string and `location` which represents start and end character position with a line and column. It's definition looks like this.
+The primary way to interact with ress is through the `Scanner` struct which implements `Iterator` over the `Item` struct. `Item` has three fields `token` for the `Token` found, `span` which represents the start and end of the byte position in the original string and `location` which represents start and end character position with a line and column. It's definition looks like this.
 
 ```rust
 Item {
@@ -52,7 +31,9 @@ Item {
 }
 ```
 
-Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these unrendered lines
+Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these unrendered lines.
+
+Here is an example that check some JS text for the existence of a semicolon and panics if one is found.
 
 ```rust
 extern crate ress;
@@ -64,6 +45,7 @@ static JS: &str = include_str!("index.js");
 fn main() {
     let s = Scanner::new(JS);
     for token in s {
+        let token = token.unwrap().token;
         if token.matches_punct_str(";") {
             panic!("A semi-colon!? Heathen!");
         }
@@ -71,8 +53,7 @@ fn main() {
     println!("Good show! Why use something that's optional?")
 }
 ```
-
-In either method the major construct that you would be dealing with is a `RefToken` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
+By far the most important part of `Item` is the `Token` enum, which will represent the 11 different types of token's supported by the [ECMAScript specification](https://tc39.es/ecma262/#sec-ecmascript-language-lexical-grammar).
 
 ### ES Tokens
 - Boolean Literal
@@ -84,11 +65,12 @@ In either method the major construct that you would be dealing with is a `RefTok
 - Punctuation
 - String Literal
 - Regular Expression Literal
+- Template String
 - Comment
 
-Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. Please also note that any pending specifications at [tc39](https://github.com/tc39/proposals) may not be included
+Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context, this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. As of the writing of this readme `ress` supports all tokens in the [Stage 2 and Stage 3 ECMAScript Proposals](https://github.com/tc39/proposals) with the exception of the `#!` comments.
 
-For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this
+For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this.
 
 ```rust
 fn is_punct(&self) -> bool;
@@ -97,17 +79,7 @@ fn matches_punct_str(&self, s: &str) -> bool;
 ```
 A similar set of functions are available for each case.
 
-```rust
-let p = Token::Punct(Keyword::This);
-if p.matches_keyword_str("junk") {
-    // panic!
-}
-if p.matches_keyword(Keyword::This) {
-    // Don't panic!
-}
-```
-
-Like all `Iterators` the `Scanner` has a `next` method, It also has a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` implement `Peekable` that will convert them into a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
+Like all `Iterators` the `Scanner` has a `next` method, It also has a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` can be converted into a `Peekable` Iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
 ```rust
 // look_ahead
 let js = "function() { return; }";
@@ -130,14 +102,13 @@ let js = "function() {
 };";
 let mut s = Scanner::new(js);
 let start = s.get_state();
-assert_eq!(s.next().unwrap().token, RefToken::Keyword(Keyword::Function));
-assert_eq!(s.next().unwrap().token, RefToken::Punct(Punct::OpenParen));
-assert_eq!(s.next().unwrap().token, RefToken::Punct(Punct::CloseParen));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Punct(Punct::OpenParen));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Punct(Punct::CloseParen));
 s.set_state(start);
-assert_eq!(s.next().unwrap().token, RefToken::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
 ```
 
-In addition to the `RefToken` enum this crate also provides an `OwnedToken` enum, this will semantically work the same as a `RefToken` (as they both `impl Token`) however it will require a string be allocated to construct. This can be useful if you need to work outside of the lifetime bounds of a `RefToken`.
 
 ## Why?
 Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).

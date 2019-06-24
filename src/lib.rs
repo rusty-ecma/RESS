@@ -21,26 +21,24 @@
 #[macro_use]
 extern crate log;
 
-pub mod tokens;
-mod tokenizer;
 pub mod error;
+mod tokenizer;
+pub mod tokens;
 pub use crate::tokenizer::Tokenizer;
 
 pub mod prelude {
-    pub use super::tokens::prelude::*;
     pub use super::tokenize;
-    pub use super::Scanner;
-    pub use super::SourceLocation;
-    pub use super::Position;
+    pub use super::tokens::prelude::*;
     pub use super::Item;
-    pub use super::ScannerState;
     pub use super::OpenCurlyKind;
+    pub use super::Position;
+    pub use super::Scanner;
+    pub use super::ScannerState;
+    pub use super::SourceLocation;
 }
 use crate::tokenizer::RawToken;
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
-
-
 
 type Res<T> = Result<T, Error>;
 
@@ -56,6 +54,8 @@ pub fn tokenize(text: &str) -> Res<Vec<Token<&str>>> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+/// The start and end position of a token
+/// including the line/column number
 pub struct SourceLocation {
     pub start: Position,
     pub end: Position,
@@ -68,6 +68,8 @@ impl SourceLocation {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+/// A single character position in the
+/// file including the line/column number
 pub struct Position {
     pub line: usize,
     pub column: usize,
@@ -86,7 +88,8 @@ impl Position {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-/// A location in the original source text
+/// The start and end of a token as the byte
+/// index in the original text
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -100,6 +103,8 @@ impl Span {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// A single token with additional metadata
+///
 pub struct Item<T> {
     pub token: T,
     pub span: Span,
@@ -111,9 +116,21 @@ where
     T: TokenExt,
 {
     pub fn new(token: T, span: Span, location: SourceLocation) -> Self {
-        Self { token, span, location }
+        Self {
+            token,
+            span,
+            location,
+        }
     }
-    fn new_(token: T, span_start: usize, span_end: usize, loc_start_line: usize, loc_start_col: usize, loc_end_line: usize, loc_end_col: usize) -> Self {
+    fn new_(
+        token: T,
+        span_start: usize,
+        span_end: usize,
+        loc_start_line: usize,
+        loc_start_col: usize,
+        loc_end_line: usize,
+        loc_end_col: usize,
+    ) -> Self {
         Self {
             token,
             span: Span::new(span_start, span_end),
@@ -135,8 +152,9 @@ where
             || self.token.is_template_tail()
     }
 }
-
-#[allow(unused)]
+/// The primary interface of this crate used
+/// to tokenize any JS text into a stream of
+/// `Item`s.
 pub struct Scanner<'a> {
     pub stream: Tokenizer<'a>,
     pub eof: bool,
@@ -150,6 +168,8 @@ pub struct Scanner<'a> {
 }
 
 impl<'a> Scanner<'a> {
+    /// Create a new `Scanner` by providing the
+    /// JS text
     pub fn new(text: &'a str) -> Self {
         let mut stream = Tokenizer::new(text);
         let (new_line_count, line_cursor) = stream.skip_whitespace();
@@ -222,12 +242,15 @@ impl<'b> Scanner<'b> {
         self.line_cursor = state.line_cursor;
     }
     #[inline]
+    /// The implementation of `Scanner::next` that includes
+    /// the flag for advancing, meaning the `look_ahead` method
+    /// can also use this implementation
     fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<Token<&'b str>>>> {
         if self.errored {
             return None;
         }
         if self.eof {
-            debug!(target: "ress", "end of iterator, returning None");
+            debug!("end of iterator, returning None");
             return None;
         };
         let prev_cursor = self.stream.stream.idx;
@@ -280,7 +303,11 @@ impl<'b> Scanner<'b> {
             let s = &self.original[next.start..next.end];
             let token = match next.ty {
                 RawToken::Boolean(b) => Token::Boolean(b.into()),
-                RawToken::Comment { kind, new_line_count, last_len } => {
+                RawToken::Comment {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
@@ -306,7 +333,7 @@ impl<'b> Scanner<'b> {
                             Token::Comment(Comment::new_html(content, tail))
                         }
                     }
-                },
+                }
                 RawToken::EoF => {
                     self.eof = true;
                     Token::EoF
@@ -317,7 +344,11 @@ impl<'b> Scanner<'b> {
                 RawToken::Number(_) => Token::Number(Number::from(s)),
                 RawToken::Punct(p) => Token::Punct(p),
                 RawToken::RegEx(_) => unreachable!("Regex from next"),
-                RawToken::String { kind, new_line_count, last_len } => {
+                RawToken::String {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
                     len = last_len;
                     new_lines = new_line_count;
                     let s = &s[1..s.len() - 1];
@@ -326,7 +357,11 @@ impl<'b> Scanner<'b> {
                         tokenizer::StringKind::Single => Token::String(StringLit::Single(s)),
                     }
                 }
-                RawToken::Template { kind, new_line_count, last_len } => {
+                RawToken::Template {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
@@ -347,7 +382,7 @@ impl<'b> Scanner<'b> {
                             Token::Template(Template::NoSub(s))
                         }
                     }
-                },
+                }
             };
             self.bump_line_cursors(new_lines, len);
             Item::new_(
@@ -365,7 +400,6 @@ impl<'b> Scanner<'b> {
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
         } else {
-            
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     self.last_open_paren_idx = self.spans.len()
@@ -378,7 +412,10 @@ impl<'b> Scanner<'b> {
         self.pending_new_line = new_line_count > 0;
         Some(Ok(ret))
     }
-
+    /// Detect if the `/` is the beginning of
+    /// a regex or is division
+    ///
+    /// [see this for more details](https://github.com/sweet-js/sweet-core/wiki/design)
     fn is_regex_start(&self) -> bool {
         if let Some(last_token) = self.last_token() {
             match last_token {
@@ -398,7 +435,9 @@ impl<'b> Scanner<'b> {
             true
         }
     }
-
+    /// get the token that we previously parsed
+    ///
+    /// > used in determining if we are at a regex or not
     fn last_token(&self) -> Option<RawToken> {
         if self.spans.is_empty() {
             return None;
@@ -415,7 +454,9 @@ impl<'b> Scanner<'b> {
         }
         None
     }
-
+    /// Check if just passed a conditional expression
+    ///
+    /// > used in determining if we are at a regex or not
     fn check_for_conditional(&self) -> bool {
         if let Ok(before) = self.nth_before_last_open_paren(1) {
             match before {
@@ -429,7 +470,9 @@ impl<'b> Scanner<'b> {
             true
         }
     }
-
+    /// Check if we just passed a function expression
+    ///
+    /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
         if let Ok(before) = self.nth_before_last_open_paren(1) {
             if before == RawToken::Ident {
@@ -446,7 +489,9 @@ impl<'b> Scanner<'b> {
         }
         true
     }
-
+    /// Check if a token is the beginning of an expression
+    ///
+    /// > used in determining if we are at a regex or not
     fn check_for_expression(token: &RawToken) -> bool {
         match token {
             RawToken::Punct(p) => match p {
@@ -512,7 +557,9 @@ impl<'b> Scanner<'b> {
             _ => false,
         }
     }
-
+    /// Look up the token `n` before the last opening parenthesis
+    ///
+    /// > used in determining if we are at a regex or not
     fn nth_before_last_open_paren(&self, n: usize) -> Res<RawToken> {
         if self.spans.len() < n {
             return self.error(RawError {
@@ -522,7 +569,9 @@ impl<'b> Scanner<'b> {
         }
         self.token_for(&self.spans[self.last_open_paren_idx.saturating_sub(n)])
     }
-
+    /// Parse a token for any given span
+    ///
+    /// > used in determining if we are at a regex or not
     fn token_for(&self, span: &Span) -> Res<RawToken> {
         if self.original.len() < span.end {
             return self.error(RawError {
@@ -537,11 +586,11 @@ impl<'b> Scanner<'b> {
         };
         Ok(raw_item.ty)
     }
-
+    /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())
     }
-
+    /// Get a &str for any given span
     pub fn str_for(&self, span: &Span) -> Option<&'b str> {
         if self.original.len() < span.start || self.original.len() < span.end {
             None
@@ -549,7 +598,7 @@ impl<'b> Scanner<'b> {
             Some(&self.original[span.start..span.end])
         }
     }
-
+    /// Get the line/column pair for any given byte index
     pub fn position_for(&self, idx: usize) -> (usize, usize) {
         // Obviously we will start at 0
         let mut line_ct = 1;
@@ -580,6 +629,7 @@ impl<'b> Scanner<'b> {
         (line_ct, byte_position)
     }
     #[inline]
+    /// Helper to handle new lines
     fn bump_line_cursors(&mut self, ct: usize, len: usize) {
         if ct != 0 {
             self.line_cursor = len;
@@ -588,7 +638,7 @@ impl<'b> Scanner<'b> {
             self.line_cursor = self.line_cursor.saturating_add(len)
         }
     }
-
+    /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
         let RawError { idx, msg } = raw_error;
         let (line, column) = self.position_for(idx);
@@ -601,12 +651,17 @@ fn is_line_term(c: char) -> bool {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
+/// For keeping track of the nested-ness of
+/// templates and blocks
 pub enum OpenCurlyKind {
     Template,
     Block,
 }
 
 #[derive(Clone)]
+/// All of the important state
+/// for the scanner, used to
+/// cache and reset a `Scanner`
 pub struct ScannerState {
     pub cursor: usize,
     pub spans_len: usize,
@@ -619,8 +674,8 @@ pub struct ScannerState {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::tokens::*;
+    use super::*;
     #[test]
     fn tokenizer() {
         let js = "
@@ -788,10 +843,10 @@ f`;
     */
 })();";
         let expectation = vec![
-            SourceLocation::new(Position::new(1, 1), Position::new(1,2)), // 0 (
-            SourceLocation::new(Position::new(1 ,2), Position::new(1,10)), // 1 function
-            SourceLocation::new(Position::new(1 ,10), Position::new(1,11)), // 2 (
-            SourceLocation::new(Position::new(1 ,11), Position::new(1,12)), // 3 )
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2)), // 0 (
+            SourceLocation::new(Position::new(1, 2), Position::new(1, 10)), // 1 function
+            SourceLocation::new(Position::new(1, 10), Position::new(1, 11)), // 2 (
+            SourceLocation::new(Position::new(1, 11), Position::new(1, 12)), // 3 )
             SourceLocation::new(Position::new(1, 13), Position::new(1, 14)), // 4 {
             SourceLocation::new(Position::new(2, 5), Position::new(2, 8)), // 5 let
             SourceLocation::new(Position::new(2, 9), Position::new(2, 10)), // 6 x

@@ -328,7 +328,11 @@ impl<'a> Tokenizer<'a> {
                     } else {
                         StringKind::Single
                     };
-                    return self.gen_token(RawToken::String { kind, new_line_count, last_len });
+                    return self.gen_token(RawToken::String {
+                        kind,
+                        new_line_count,
+                        last_len,
+                    });
                 }
                 escaped = false;
             } else {
@@ -671,7 +675,11 @@ impl<'a> Tokenizer<'a> {
         while let Some(c) = self.stream.next_char() {
             if c == '*' && self.look_ahead_matches("/") {
                 self.stream.skip(1);
-                return self.gen_comment(CommentKind::Multi, new_line_count, last_len.saturating_add(2))
+                return self.gen_comment(
+                    CommentKind::Multi,
+                    new_line_count,
+                    last_len.saturating_add(2),
+                );
             } else if c == '\r' {
                 if self.look_ahead_matches("\n") {
                     self.stream.skip(1);
@@ -851,8 +859,17 @@ impl<'a> Tokenizer<'a> {
         self.gen_token(RawToken::Number(n))
     }
     #[inline]
-    fn gen_template(&self, kind: TemplateKind, new_line_count: usize, last_len: usize) -> Res<RawItem> {
-        self.gen_token(RawToken::Template {kind, new_line_count, last_len })
+    fn gen_template(
+        &self,
+        kind: TemplateKind,
+        new_line_count: usize,
+        last_len: usize,
+    ) -> Res<RawItem> {
+        self.gen_token(RawToken::Template {
+            kind,
+            new_line_count,
+            last_len,
+        })
     }
     #[inline]
     fn gen_regex(&self, body_idx: usize) -> Res<RawItem> {
@@ -863,8 +880,17 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    fn gen_comment(&self, kind: CommentKind, new_line_count: usize, last_len: usize) -> Res<RawItem> {
-        self.gen_token(RawToken::Comment { kind, new_line_count, last_len })
+    fn gen_comment(
+        &self,
+        kind: CommentKind,
+        new_line_count: usize,
+        last_len: usize,
+    ) -> Res<RawItem> {
+        self.gen_token(RawToken::Comment {
+            kind,
+            new_line_count,
+            last_len,
+        })
     }
     #[inline]
     fn gen_token(&self, ty: RawToken) -> Res<RawItem> {
@@ -896,9 +922,7 @@ impl<'a> Tokenizer<'a> {
     /// must be handled inline
     #[inline]
     fn is_new_line_not_cr(c: char) -> bool {
-        c == '\n'
-        || c == '\u{2028}'
-        || c == '\u{2029}'
+        c == '\n' || c == '\u{2028}' || c == '\u{2029}'
     }
 }
 
@@ -935,13 +959,17 @@ mod test {
             "\"sequence double quoted\\\r\nis hard\"",
             "'new line sequence\\\r\nmight be harder'",
             r#""\
-""#
+""#,
         ];
         for s in STRINGS {
             let mut t = Tokenizer::new(s);
             let item = t.next().unwrap();
             match &item.ty {
-                RawToken::String { kind, new_line_count:_, last_len:_ } => {
+                RawToken::String {
+                    kind,
+                    new_line_count: _,
+                    last_len: _,
+                } => {
                     if &s[0..1] == "'" {
                         match kind {
                             StringKind::Single => (),
@@ -1126,10 +1154,14 @@ mod test {
 
     fn check_temp(temp: &RawToken, expected_kind: TemplateKind) {
         match temp {
-            RawToken::Template { kind, new_line_count:_, last_len:_ } => {
+            RawToken::Template {
+                kind,
+                new_line_count: _,
+                last_len: _,
+            } => {
                 assert_eq!(kind, &expected_kind);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
     }
 

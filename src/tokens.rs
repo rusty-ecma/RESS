@@ -1,27 +1,13 @@
-
 pub mod prelude {
     pub use super::{
-        Token,
-        TokenExt,
-        Ident,
-        IdentExt,
-        Comment,
-        CommentExt,
-        Number,
-        NumberExt,
-        StringLit,
-        StringLitExt,
-        Template,
-        TemplateExt,
-        RegEx,
-        RegExExt,
-        Boolean,
-        Keyword,
-        Punct
+        Boolean, Comment, CommentExt, Ident, IdentExt, Keyword, Number, NumberExt, Punct, RegEx,
+        RegExExt, StringLit, StringLitExt, Template, TemplateExt, Token, TokenExt,
     };
 }
 
 #[derive(PartialEq, Clone, Debug)]
+/// The representation of any single
+/// JS part
 pub enum Token<T> {
     /// `true` of `false`
     Boolean(Boolean),
@@ -61,6 +47,9 @@ pub enum Token<T> {
     Comment(Comment<T>),
 }
 
+/// Extension methods for
+/// implementing allowing Token
+/// to work with both &str and String
 pub trait TokenExt {
     fn is_boolean(&self) -> bool;
 
@@ -158,9 +147,12 @@ impl<'a> ToString for Token<&'a str> {
 #[derive(Debug, PartialEq, Clone)]
 /// An identifier
 pub struct Ident<T>(T);
-
-pub trait IdentExt<T> 
-    where T: ?Sized {
+/// Extention methods for allowing Ident
+/// to work with both &str and String
+pub trait IdentExt<T>
+where
+    T: ?Sized,
+{
     fn matches(&self, other: &T) -> bool;
     fn as_str(&self) -> &str;
 }
@@ -197,27 +189,39 @@ impl<'a> From<&'a str> for Ident<&'a str> {
     }
 }
 
-impl<T> ToString for Ident<T> 
-where T: ToString {
+impl<T> ToString for Ident<T>
+where
+    T: ToString,
+{
     fn to_string(&self) -> String {
         self.0.to_string()
     }
 }
 
-impl<T> Into<String> for Ident<T> 
-where T: ToString {
+impl<T> Into<String> for Ident<T>
+where
+    T: ToString,
+{
     fn into(self) -> String {
         self.0.to_string()
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
+/// A comment, effectively should be treated
+/// as white space. There are 3 kinds of comments
+/// according to the specification.
+///
+/// - Single line comments: //comment
+/// - Multi line comments: /* comment */
+/// - HTML comments: <!-- comment --> plus more!
 pub struct Comment<T> {
     pub kind: CommentKind,
     pub content: T,
     pub tail_content: Option<T>,
 }
-
+/// Extension methods for comment
+/// to work with both &str and String
 pub trait CommentExt<T> {
     fn from_parts(content: T, kind: CommentKind, tail_content: Option<T>) -> Comment<T>;
     fn new_single_line(content: T) -> Comment<T>;
@@ -333,8 +337,20 @@ impl ToString for Comment<&str> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+/// A JS number literal. There are 4 kinds of number
+/// literals allowed in JS.
+///
+/// - Decimal Literals - This includes integers and decimals with
+///     optional exponent notation
+/// - Hexadecimal Literals - These begin with 0x and consist of numbers
+///     0-9 and letters A-F (case insensitive)
+/// - Octal Literals - These being with 0o and consist of numbers
+///     0-7
+/// - Binary Literals - These begin with 0b and consist of numbers 0 and 1
 pub struct Number<T>(T);
 
+/// Extension methods for allowing Number
+/// to work with both &str and String
 pub trait NumberExt {
     fn kind(&self) -> NumberKind;
     fn is_hex(&self) -> bool;
@@ -428,11 +444,18 @@ impl<'a> PartialEq<str> for Number<&'a str> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+/// A Regular Expression Literal
+///
+/// These being with a `/` and the
+/// body ends with another `/`
+/// optionally a series of one letter
+/// flags can be included after the `/`
 pub struct RegEx<T> {
     pub body: T,
     pub flags: Option<T>,
 }
-
+/// Extension methods for allowing RegEx
+/// to work with both &str and String
 pub trait RegExExt<T> {
     fn from_parts(body: T, flags: Option<T>) -> RegEx<T>;
 }
@@ -467,6 +490,8 @@ impl RegExExt<String> for RegEx<String> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+/// A single or double quoted string
+/// literal
 pub enum StringLit<T> {
     Single(T),
     Double(T),
@@ -482,7 +507,8 @@ impl<'a> ToString for RegEx<&'a str> {
         format!("/{}/{}", self.body, f)
     }
 }
-
+/// Extension methods for allowing StringLit
+/// to work with both &str and String
 pub trait StringLitExt<T> {
     fn single(content: T) -> StringLit<T>;
     fn double(content: T) -> StringLit<T>;
@@ -491,8 +517,10 @@ pub trait StringLitExt<T> {
     fn no_quote(&self) -> T;
 }
 
-impl<T> ToString for StringLit<T> 
-where T: ::core::fmt::Display {
+impl<T> ToString for StringLit<T>
+where
+    T: ::core::fmt::Display,
+{
     fn to_string(&self) -> String {
         match self {
             StringLit::Single(ref s) => format!(r#"'{}'"#, s),
@@ -555,13 +583,19 @@ impl StringLitExt<String> for StringLit<String> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+/// A template string
+///
+/// These include strings that are wrapped in back ticks (`)
+/// which allows for interpolating any js expression between `${`
+/// and `}`
 pub enum Template<T> {
     NoSub(T),
     Head(T),
     Middle(T),
     Tail(T),
 }
-
+/// Extension methods for allowing Template
+/// to work with both &str and String
 pub trait TemplateExt<T> {
     fn no_sub_template(content: T) -> Template<T>;
     fn template_head(content: T) -> Template<T>;
@@ -650,8 +684,10 @@ impl TemplateExt<String> for Template<String> {
     }
 }
 
-impl<T> ToString for Template<T> 
-where T: ::core::fmt::Display {
+impl<T> ToString for Template<T>
+where
+    T: ::core::fmt::Display,
+{
     fn to_string(&self) -> String {
         match self {
             Template::NoSub(ref c) => format!("`{}`", c),
@@ -745,6 +781,7 @@ impl<'a> Into<bool> for &'a Boolean {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+/// The 4 kinds of numbers
 pub enum NumberKind {
     Dec,
     Hex,
@@ -753,6 +790,7 @@ pub enum NumberKind {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+/// All available punctuation
 pub enum Punct {
     Ampersand,
     AmpersandEqual,
@@ -934,6 +972,7 @@ impl ToString for Punct {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
+/// The 3 kinds of comments
 pub enum CommentKind {
     Single,
     Multi,
@@ -943,7 +982,7 @@ pub enum CommentKind {
 #[derive(Debug, PartialEq, Clone, Copy)]
 /// A JS Keyword
 ///
-/// #Standard
+/// # Standard
 /// await
 /// break
 /// case
