@@ -7,16 +7,15 @@
 //! around [`Scanner::collect()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect).
 //!
 //! The `Scanner` will provide a stream of `Item`s, and `Item` is
-//! has 2 properties a [`Token`][token] and a [`Span`][span]. The `Span` is a
+//! has 3 properties a [`Token`][token], a [`Span`][span], and a [`SourceLocation`][location]. The `Span` is a
 //! representation of where the `Item` exists in the original source while the `Token`
 //! provides details about what JavaScript token it represents.
-//!
-//! An example of what a token stream might look like
 //!
 //! [token]: ./enum.Token
 //! [span]: ./struct.Span
 //! [scanner]: ./struct.Scanner
 //! [tokenize]: ../fn.tokenize
+//! [location]: ./struct.SourceLocation
 
 #[macro_use]
 extern crate log;
