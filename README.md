@@ -68,7 +68,7 @@ By far the most important part of `Item` is the `Token` enum, which will represe
 - Template String
 - Comment
 
-Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context, this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. As of the writing of this readme `ress` supports all tokens in the [Stage 2 and Stage 3 ECMAScript Proposals](https://github.com/tc39/proposals) with the exception of the `#!` comments.
+Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context, this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. As of the writing of this readme `ress` supports all tokens in the [Stage 2 and Stage 3 ECMAScript Proposals](https://github.com/tc39/proposals) with the exception of the `#!` comments and number seperators.
 
 For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this.
 
