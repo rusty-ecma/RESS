@@ -30,7 +30,30 @@ fn main() {
 }
 ```
 
-The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has two fields `token` for the `RefToken` found and `Span` for the position in the string.
+The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has three fields `token` for the `RefToken` found, `span` which represents the start and end of the byte position in the original string and `location` which represents start and end character position with a line and column. It's definition looks like this.
+
+```rust
+Item {
+    token: Token::Punct(Punct::Bang),
+    span: Span {
+        start: 0,
+        end: 1,
+    },
+    location: SourceLocation {
+        start: Position {
+            line: 1,
+            column: 1,
+        },
+        end: Position {
+            line: 1,
+            column: 2,
+        }
+    }
+}
+```
+
+Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these unrendered lines
+
 ```rust
 extern crate ress;
 
@@ -72,7 +95,8 @@ fn is_punct(&self) -> bool;
 fn matches_punct(&self, p: Punct) -> bool;
 fn matches_punct_str(&self, s: &str) -> bool;
 ```
-A similar set of functions are available for each case. Be aware that some `_str` implementations panic if the wrong string is provided meaning these would also panic.
+A similar set of functions are available for each case.
+
 ```rust
 let p = Token::Punct(Keyword::This);
 if p.matches_keyword_str("junk") {
