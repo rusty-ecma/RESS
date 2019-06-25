@@ -1,13 +1,13 @@
 ﻿angular,229.5102,0.3128
 angular_min,175.2904,0.4931
-everything_es2015_m,6.1213,0.0131
-everything_es2015_s,5.6905,0.0200
-everything_es5,3.1631,0.0043
 jq,109.4477,0.2310
 jq_min,89.9599,0.2278
 react,29.9170,0.0912
+react_min,11.3002,0.0356
 react_dom,233.8107,0.4438
 react_dom_min,98.4060,0.1894
-react_min,11.3002,0.0356
 vue,135.8106,0.2960
 vue_min,95.5974,0.1877
+everything_es5,3.1631,0.0043
+everything_es2015_s,5.6905,0.0200
+everything_es2015_m,6.1213,0.0131
