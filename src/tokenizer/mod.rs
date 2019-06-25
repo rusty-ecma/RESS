@@ -1,8 +1,9 @@
 use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
 use crate::{is_line_term, OpenCurlyKind};
-use unic_ucd_ident::{is_id_continue, is_id_start};
 mod buffer;
 mod tokens;
+mod unicode;
+use unicode::{is_id_continue, is_id_start};
 pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
 pub(crate) type Res<T> = Result<T, RawError>;
@@ -73,7 +74,7 @@ impl<'a> Tokenizer<'a> {
         while let Some(c) = self.stream.next_char() {
             if end_of_body {
                 if c == '\\' {
-                    if self.look_ahead_matches("u") {
+                    if self.look_ahead_byte_matches('u') {
                         // unicode escape
                         self.stream.skip(1);
                         if let Some(next) = self.stream.next_char() {
@@ -94,9 +95,9 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx,
                         msg: "new line in regex literal".to_string(),
                     });
-                } else if self.look_ahead_matches("[")
-                    || self.look_ahead_matches("/")
-                    || self.look_ahead_matches("\\")
+                } else if self.look_ahead_byte_matches('[')
+                    || self.look_ahead_byte_matches('/')
+                    || self.look_ahead_byte_matches('\\')
                 {
                     self.stream.skip(1);
                 }
@@ -304,7 +305,7 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx - 1,
                     });
                 }
-                if self.look_ahead_matches("\n") {
+                if self.look_ahead_byte_matches('\n') {
                     self.stream.skip(1);
                 }
                 escaped = false;
@@ -411,10 +412,10 @@ impl<'a> Tokenizer<'a> {
         } else if self.look_ahead_matches(">=") {
             self.stream.skip(2);
             self.gen_punct(Punct::DoubleGreaterThanEqual)
-        } else if self.look_ahead_matches(">") {
+        } else if self.look_ahead_byte_matches('>') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleGreaterThan)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::GreaterThanEqual)
         } else {
@@ -426,10 +427,10 @@ impl<'a> Tokenizer<'a> {
         if self.look_ahead_matches("<=") {
             self.stream.skip(2);
             self.gen_punct(Punct::DoubleLessThanEqual)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::LessThanEqual)
-        } else if self.look_ahead_matches("<") {
+        } else if self.look_ahead_byte_matches('<') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleLessThan)
         } else if self.look_ahead_matches("!--") {
@@ -444,10 +445,10 @@ impl<'a> Tokenizer<'a> {
         if self.look_ahead_matches("==") {
             self.stream.skip(2);
             self.gen_punct(Punct::TripleEqual)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleEqual)
-        } else if self.look_ahead_matches(">") {
+        } else if self.look_ahead_byte_matches('>') {
             self.stream.skip(1);
             self.gen_punct(Punct::EqualGreaterThan)
         } else {
@@ -459,7 +460,7 @@ impl<'a> Tokenizer<'a> {
         if self.look_ahead_matches("==") {
             self.stream.skip(2);
             self.gen_punct(Punct::BangDoubleEqual)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::BangEqual)
         } else {
@@ -471,10 +472,10 @@ impl<'a> Tokenizer<'a> {
         if self.look_ahead_matches("*=") {
             self.stream.skip(2);
             self.gen_punct(Punct::DoubleAsteriskEqual)
-        } else if self.look_ahead_matches("*") {
+        } else if self.look_ahead_byte_matches('*') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleAsterisk)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::AsteriskEqual)
         } else {
@@ -483,10 +484,10 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn ampersand(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("&") {
+        if self.look_ahead_byte_matches('&') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleAmpersand)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::AmpersandEqual)
         } else {
@@ -495,10 +496,10 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn pipe(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("|") {
+        if self.look_ahead_byte_matches('|') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoublePipe)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::PipeEqual)
         } else {
@@ -507,10 +508,10 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn plus(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("+") {
+        if self.look_ahead_byte_matches('+') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoublePlus)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::PlusEqual)
         } else {
@@ -519,10 +520,10 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn minus(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("-") {
+        if self.look_ahead_byte_matches('-') {
             self.stream.skip(1);
             self.gen_punct(Punct::DoubleDash)
-        } else if self.look_ahead_matches("=") {
+        } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::DashEqual)
         } else {
@@ -531,12 +532,12 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn forward_slash(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("=") {
+        if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::ForwardSlashEqual)
-        } else if self.look_ahead_matches("*") {
+        } else if self.look_ahead_byte_matches('*') {
             self.multi_comment()
-        } else if self.look_ahead_matches("/") {
+        } else if self.look_ahead_byte_matches('/') {
             self.single_comment()
         } else {
             self.gen_punct(Punct::ForwardSlash)
@@ -544,7 +545,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn percent(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("=") {
+        if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::PercentEqual)
         } else {
@@ -553,7 +554,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn caret(&mut self) -> Res<RawItem> {
-        if self.look_ahead_matches("=") {
+        if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::CaretEqual)
         } else {
@@ -599,9 +600,9 @@ impl<'a> Tokenizer<'a> {
             if c == '\\' {
                 if self.look_ahead_matches("${") {
                     self.stream.skip(2);
-                } else if self.look_ahead_matches("`") || self.look_ahead_matches("\\") {
+                } else if self.look_ahead_byte_matches('`') || self.look_ahead_byte_matches('\\') {
                     self.stream.skip(1);
-                } else if self.look_ahead_matches("0") {
+                } else if self.look_ahead_byte_matches('0') {
                     if let Some(_zero) = self.stream.next_char() {
                         if self.stream.at_decimal() {
                             return Err(RawError {
@@ -625,7 +626,7 @@ impl<'a> Tokenizer<'a> {
                     });
                 }
             } else if c == '\r' {
-                if self.look_ahead_matches("\n") {
+                if self.look_ahead_byte_matches('\n') {
                     self.stream.skip(1);
                 }
                 line_count = line_count.saturating_add(1);
@@ -634,7 +635,7 @@ impl<'a> Tokenizer<'a> {
                 line_count = line_count.saturating_add(1);
                 last_len = 0;
             } else if c == '$' {
-                if self.look_ahead_matches("{") {
+                if self.look_ahead_byte_matches('{') {
                     self.stream.skip(1);
                     self.curly_stack.push(OpenCurlyKind::Template);
                     if start == '`' {
@@ -673,7 +674,7 @@ impl<'a> Tokenizer<'a> {
         let mut new_line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the /
         while let Some(c) = self.stream.next_char() {
-            if c == '*' && self.look_ahead_matches("/") {
+            if c == '*' && self.look_ahead_byte_matches('/') {
                 self.stream.skip(1);
                 return self.gen_comment(
                     CommentKind::Multi,
@@ -681,7 +682,7 @@ impl<'a> Tokenizer<'a> {
                     last_len.saturating_add(2),
                 );
             } else if c == '\r' {
-                if self.look_ahead_matches("\n") {
+                if self.look_ahead_byte_matches('\n') {
                     self.stream.skip(1);
                 }
                 new_line_count = new_line_count.saturating_add(1);
@@ -847,6 +848,10 @@ impl<'a> Tokenizer<'a> {
             || is_id_start(c)
     }
     #[inline]
+    fn look_ahead_byte_matches(&self, c: char) -> bool {
+        self.stream.look_ahead_byte_matches(c as u8)
+    }
+    #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
         self.stream.look_ahead_matches(s.as_bytes())
     }
@@ -922,7 +927,14 @@ impl<'a> Tokenizer<'a> {
     /// must be handled inline
     #[inline]
     fn is_new_line_not_cr(c: char) -> bool {
-        c == '\n' || c == '\u{2028}' || c == '\u{2029}'
+        if c == '\n' {
+            true
+        } else if c < '\u{2028}' {
+            false
+        } else {
+            c == '\u{2028}' 
+            || c == '\u{2029}'
+        }
     }
 }
 

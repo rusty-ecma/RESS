@@ -632,9 +632,9 @@ impl<'b> Scanner<'b> {
     fn bump_line_cursors(&mut self, ct: usize, len: usize) {
         if ct != 0 {
             self.line_cursor = len;
-            self.new_line_count = self.new_line_count.saturating_add(ct);
+            self.new_line_count += ct;
         } else {
-            self.line_cursor = self.line_cursor.saturating_add(len)
+            self.line_cursor += len;
         }
     }
     /// Helper to handle the error cases

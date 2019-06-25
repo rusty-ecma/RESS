@@ -16,6 +16,7 @@ fn semi_example() {
 }
 
 #[test]
+#[allow(unused_variables)]
 fn failed_compile_borrow() {
     // look_ahead
     let js = "function() { return; }";

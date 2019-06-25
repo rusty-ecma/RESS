@@ -1,5 +1,5 @@
 use std::char;
-
+use super::unicode::is_other_whitespace;
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
@@ -26,19 +26,21 @@ impl<'a> JSBuffer<'a> {
         let init = (x & (0x7F >> 2)) as u32;
         let y = self.next_or_zero();
         let mut ch = Self::utf8_acc_cont_byte(init, y);
-        if x >= 0xE0 {
+        if x < 0xE0 {
+            return char::from_u32(ch);
+        }
             // [[x y z] w] case
             // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-            let z = self.next_or_zero();
-            let y_z = Self::utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
-            ch = init << 12 | y_z;
-            if x >= 0xF0 {
-                // [x y z w] case
-                // use only the lower 3 bits of `init`
-                let w = self.next_or_zero();
-                ch = (init & 7) << 18 | Self::utf8_acc_cont_byte(y_z, w);
-            }
+        let z = self.next_or_zero();
+        let y_z = Self::utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
+        ch = init << 12 | y_z;
+        if x < 0xF0 {
+            return char::from_u32(ch);
         }
+        // [x y z w] case
+        // use only the lower 3 bits of `init`
+        let w = self.next_or_zero();
+        ch = (init & 7) << 18 | Self::utf8_acc_cont_byte(y_z, w);
         char::from_u32(ch)
     }
     #[inline]
@@ -120,11 +122,20 @@ impl<'a> JSBuffer<'a> {
     #[inline]
     pub fn look_ahead_matches(&self, s: &[u8]) -> bool {
         let len = s.len();
-        let end = self.idx.saturating_add(len);
+        let end = self.idx + len;
         if end > self.len {
             return false;
         }
         end <= self.len && &self.buffer[self.idx..end] == s
+    }
+    
+    #[inline]
+    pub fn look_ahead_byte_matches(&self, b: u8) -> bool {
+        if self.at_end() {
+            false
+        } else {
+            self.buffer[self.idx] == b
+        }
     }
 
     /// Skip the number of characters provided
@@ -158,19 +169,31 @@ impl<'a> JSBuffer<'a> {
                     || c == '\u{FEFF}'
                     || c == '\u{2028}'
                     || c == '\u{2029}'
-                    || match unic_ucd_category::GeneralCategory::of(c) {
-                        unic_ucd_category::GeneralCategory::SpaceSeparator => true,
-                        _ => false,
-                    }
+                    || is_other_whitespace(c)
             }
     }
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
-        self.look_ahead_matches(b"\r\n")
-            || self.look_ahead_matches(b"\n")
-            || self.look_ahead_matches(b"\r")
-            || self.look_ahead_matches("\u{2028}".as_bytes())
+        if self.at_end() {
+            return false;
+        }
+        let byte = self.buffer[self.idx];
+        if byte < 10 {
+            false
+        } else if byte == 10 {
+            true
+        } else if byte < 13 {
+            false
+        } else if byte == 13 {
+            true
+        } else if byte < 226 {
+            return false
+        } else if byte == 226 {
+            self.look_ahead_matches("\u{2028}".as_bytes())
             || self.look_ahead_matches("\u{2029}".as_bytes())
+        } else {
+            false
+        }
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
