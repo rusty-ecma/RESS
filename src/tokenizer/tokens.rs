@@ -1,6 +1,6 @@
 use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum RawToken {
     /// `true` of `false`
     Boolean(bool),
