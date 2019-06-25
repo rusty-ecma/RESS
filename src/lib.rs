@@ -62,7 +62,8 @@ pub struct SourceLocation {
 }
 
 impl SourceLocation {
-    pub fn new(start: Position, end: Position) -> Self {
+    #[inline]
+    pub const fn new(start: Position, end: Position) -> Self {
         Self { start, end }
     }
 }
@@ -82,7 +83,8 @@ impl ::std::fmt::Display for Position {
 }
 
 impl Position {
-    pub fn new(line: usize, column: usize) -> Self {
+    #[inline]
+    pub const fn new(line: usize, column: usize) -> Self {
         Self { line, column }
     }
 }
@@ -97,7 +99,8 @@ pub struct Span {
 
 impl Span {
     /// Create a new Span from its parts
-    pub fn new(start: usize, end: usize) -> Self {
+    #[inline]
+    pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
 }
