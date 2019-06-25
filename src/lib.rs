@@ -40,6 +40,7 @@ use crate::tokens::prelude::*;
 use error::{Error, RawError};
 
 type Res<T> = Result<T, Error>;
+mod look_behind;
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -157,13 +158,13 @@ where
 pub struct Scanner<'a> {
     pub stream: Tokenizer<'a>,
     pub eof: bool,
-    pub spans: Vec<Span>,
-    last_open_paren_idx: usize,
     pub pending_new_line: bool,
     original: &'a str,
     errored: bool,
     new_line_count: usize,
     line_cursor: usize,
+    before_last_open: look_behind::LookBehind,
+    last_three: look_behind::LookBehind,
 }
 
 impl<'a> Scanner<'a> {
@@ -175,13 +176,13 @@ impl<'a> Scanner<'a> {
         Self {
             stream,
             eof: false,
-            spans: Vec::new(),
-            last_open_paren_idx: 0,
             pending_new_line: false,
             original: text,
             errored: false,
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
+            before_last_open: look_behind::LookBehind::new(),
+            last_three: look_behind::LookBehind::new(),
         }
     }
 }
@@ -223,22 +224,22 @@ impl<'b> Scanner<'b> {
     pub fn get_state(&self) -> ScannerState {
         ScannerState {
             cursor: self.stream.stream.idx,
-            spans_len: self.spans.len(),
-            last_paren: self.last_open_paren_idx,
-            replacement: 0,
             curly_stack: self.stream.curly_stack.clone(),
             new_line_count: self.new_line_count,
             line_cursor: self.line_cursor,
+            last_three: self.last_three.clone(),
+            paren_three: self.before_last_open.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
+    #[inline]
     pub fn set_state(&mut self, state: ScannerState) {
         self.stream.stream.idx = state.cursor;
-        self.spans.truncate(state.spans_len);
-        self.last_open_paren_idx = state.last_paren;
         self.stream.curly_stack = state.curly_stack;
         self.new_line_count = state.new_line_count;
         self.line_cursor = state.line_cursor;
+        self.last_three = state.last_three;
+        self.before_last_open = state.paren_three;
     }
     #[inline]
     /// The implementation of `Scanner::next` that includes
@@ -394,17 +395,27 @@ impl<'b> Scanner<'b> {
                 self.line_cursor,
             )
         };
+        
         if !advance_cursor {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
         } else {
+            if !next.ty.is_comment() {
+                self.last_three.push(next.ty);
+            }
+
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
-                    self.last_open_paren_idx = self.spans.len()
+                    ::std::mem::replace(
+                        &mut self.before_last_open,
+                        ::std::mem::replace(
+                            &mut self.last_three,
+                            look_behind::LookBehind::new()
+                        )
+                    );
                 }
             }
-            self.spans.push(ret.span);
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
@@ -416,7 +427,7 @@ impl<'b> Scanner<'b> {
     ///
     /// [see this for more details](https://github.com/sweet-js/sweet-core/wiki/design)
     fn is_regex_start(&self) -> bool {
-        if let Some(last_token) = self.last_token() {
+        if let Some(ref last_token) = self.last_three.last() {
             match last_token {
                 RawToken::Keyword(k) => match k {
                     Keyword::This => false,
@@ -434,30 +445,12 @@ impl<'b> Scanner<'b> {
             true
         }
     }
-    /// get the token that we previously parsed
-    ///
-    /// > used in determining if we are at a regex or not
-    fn last_token(&self) -> Option<RawToken> {
-        if self.spans.is_empty() {
-            return None;
-        }
-        let mut current_idx = self.spans.len().saturating_sub(1);
-        while current_idx > 0 {
-            if let Ok(t) = self.token_for(&self.spans[current_idx]) {
-                if t.is_comment() {
-                    current_idx = current_idx.saturating_sub(1);
-                } else {
-                    return Some(t);
-                }
-            }
-        }
-        None
-    }
+    
     /// Check if just passed a conditional expression
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_conditional(&self) -> bool {
-        if let Ok(before) = self.nth_before_last_open_paren(1) {
+        if let Some(ref before) = self.before_last_open.last() {
             match before {
                 RawToken::Keyword(k) => match k {
                     Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
@@ -473,14 +466,14 @@ impl<'b> Scanner<'b> {
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
-        if let Ok(before) = self.nth_before_last_open_paren(1) {
-            if before == RawToken::Ident {
-                if let Ok(three_before) = self.nth_before_last_open_paren(3) {
-                    return Self::check_for_expression(&three_before);
+        if let Some(ref before) = self.before_last_open.last() {
+            if before == &RawToken::Ident {
+                if let Some(ref three) = self.before_last_open.three() {
+                    return Self::check_for_expression(three)
                 }
-            } else if before == RawToken::Keyword(Keyword::Function) {
-                if let Ok(two_before) = self.nth_before_last_open_paren(2) {
-                    return Self::check_for_expression(&two_before);
+            } else if before == &RawToken::Keyword(Keyword::Function) {
+                if let Some(ref two) = self.before_last_open.two() {
+                    return Self::check_for_expression(two);
                 } else {
                     return false;
                 }
@@ -556,35 +549,7 @@ impl<'b> Scanner<'b> {
             _ => false,
         }
     }
-    /// Look up the token `n` before the last opening parenthesis
-    ///
-    /// > used in determining if we are at a regex or not
-    fn nth_before_last_open_paren(&self, n: usize) -> Res<RawToken> {
-        if self.spans.len() < n {
-            return self.error(RawError {
-                msg: format!("Not enough spans to get {}", n),
-                idx: self.stream.stream.idx,
-            });
-        }
-        self.token_for(&self.spans[self.last_open_paren_idx.saturating_sub(n)])
-    }
-    /// Parse a token for any given span
-    ///
-    /// > used in determining if we are at a regex or not
-    fn token_for(&self, span: &Span) -> Res<RawToken> {
-        if self.original.len() < span.end {
-            return self.error(RawError {
-                msg: "span is too large for javascript text".to_string(),
-                idx: self.stream.stream.idx,
-            });
-        }
-        let s = &self.original[span.start..span.end];
-        let raw_item = match Tokenizer::new(s).next() {
-            Ok(i) => i,
-            Err(e) => return self.error(e),
-        };
-        Ok(raw_item.ty)
-    }
+    
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())
@@ -663,12 +628,11 @@ pub enum OpenCurlyKind {
 /// cache and reset a `Scanner`
 pub struct ScannerState {
     pub cursor: usize,
-    pub spans_len: usize,
-    pub last_paren: usize,
-    pub replacement: usize,
     pub curly_stack: Vec<OpenCurlyKind>,
     pub new_line_count: usize,
     pub line_cursor: usize,
+    pub last_three: look_behind::LookBehind,
+    pub paren_three: look_behind::LookBehind,
 }
 
 #[cfg(test)]
