@@ -3,9 +3,9 @@ use crate::{is_line_term, OpenCurlyKind};
 mod buffer;
 mod tokens;
 mod unicode;
-use unicode::{is_id_continue, is_id_start};
-pub(super) use self::tokens::{RawToken, StringKind, TemplateKind};
+pub use self::tokens::{RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
+use unicode::{is_id_continue, is_id_start};
 pub(crate) type Res<T> = Result<T, RawError>;
 
 pub struct RawItem {
@@ -932,8 +932,7 @@ impl<'a> Tokenizer<'a> {
         } else if c < '\u{2028}' {
             false
         } else {
-            c == '\u{2028}' 
-            || c == '\u{2029}'
+            c == '\u{2028}' || c == '\u{2029}'
         }
     }
 }

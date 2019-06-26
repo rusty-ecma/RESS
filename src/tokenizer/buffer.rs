@@ -1,5 +1,5 @@
-use std::char;
 use super::unicode::is_other_whitespace;
+use std::char;
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
@@ -29,8 +29,8 @@ impl<'a> JSBuffer<'a> {
         if x < 0xE0 {
             return char::from_u32(ch);
         }
-            // [[x y z] w] case
-            // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
+        // [[x y z] w] case
+        // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
         let z = self.next_or_zero();
         let y_z = Self::utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
         ch = init << 12 | y_z;
@@ -128,7 +128,7 @@ impl<'a> JSBuffer<'a> {
         }
         end <= self.len && &self.buffer[self.idx..end] == s
     }
-    
+
     #[inline]
     pub fn look_ahead_byte_matches(&self, b: u8) -> bool {
         if self.at_end() {
@@ -187,10 +187,10 @@ impl<'a> JSBuffer<'a> {
         } else if byte == 13 {
             true
         } else if byte < 226 {
-            return false
+            return false;
         } else if byte == 226 {
             self.look_ahead_matches("\u{2028}".as_bytes())
-            || self.look_ahead_matches("\u{2029}".as_bytes())
+                || self.look_ahead_matches("\u{2029}".as_bytes())
         } else {
             false
         }

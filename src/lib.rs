@@ -42,6 +42,8 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
+use look_behind::{LookBehind, MetaToken};
+
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
 pub fn tokenize(text: &str) -> Res<Vec<Token<&str>>> {
@@ -166,8 +168,8 @@ pub struct Scanner<'a> {
     errored: bool,
     new_line_count: usize,
     line_cursor: usize,
-    before_last_open: look_behind::LookBehind,
-    last_three: look_behind::LookBehind,
+    before_last_open: LookBehind,
+    last_three: LookBehind,
 }
 
 impl<'a> Scanner<'a> {
@@ -184,8 +186,8 @@ impl<'a> Scanner<'a> {
             errored: false,
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
-            before_last_open: look_behind::LookBehind::new(),
-            last_three: look_behind::LookBehind::new(),
+            before_last_open: LookBehind::new(),
+            last_three: LookBehind::new(),
         }
     }
 }
@@ -405,7 +407,7 @@ impl<'b> Scanner<'b> {
             self.line_cursor = prev_line_cursor;
         } else {
             if !next.ty.is_comment() {
-                self.last_three.push(next.ty);
+                self.last_three.push((&next.ty).into());
             }
 
             if let Token::Punct(ref p) = &ret.token {
@@ -414,7 +416,7 @@ impl<'b> Scanner<'b> {
                         &mut self.before_last_open,
                         ::std::mem::replace(
                             &mut self.last_three,
-                            look_behind::LookBehind::new()
+                            LookBehind::new()
                         )
                     );
                 }
@@ -432,11 +434,11 @@ impl<'b> Scanner<'b> {
     fn is_regex_start(&self) -> bool {
         if let Some(ref last_token) = self.last_three.last() {
             match last_token {
-                RawToken::Keyword(k) => match k {
+                MetaToken::Keyword(k) => match k {
                     Keyword::This => false,
                     _ => true,
                 },
-                RawToken::Punct(p) => match p {
+                MetaToken::Punct(p) => match p {
                     Punct::CloseBracket => false,
                     Punct::CloseParen => self.check_for_conditional(),
                     Punct::CloseBrace => self.check_for_func(),
@@ -455,7 +457,7 @@ impl<'b> Scanner<'b> {
     fn check_for_conditional(&self) -> bool {
         if let Some(ref before) = self.before_last_open.last() {
             match before {
-                RawToken::Keyword(k) => match k {
+                MetaToken::Keyword(k) => match k {
                     Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
                     _ => false,
                 },
@@ -470,11 +472,11 @@ impl<'b> Scanner<'b> {
     /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
         if let Some(ref before) = self.before_last_open.last() {
-            if before == &RawToken::Ident {
+            if before == &MetaToken::Ident {
                 if let Some(ref three) = self.before_last_open.three() {
                     return Self::check_for_expression(three)
                 }
-            } else if before == &RawToken::Keyword(Keyword::Function) {
+            } else if before == &MetaToken::Keyword(Keyword::Function) {
                 if let Some(ref two) = self.before_last_open.two() {
                     return Self::check_for_expression(two);
                 } else {
@@ -487,9 +489,9 @@ impl<'b> Scanner<'b> {
     /// Check if a token is the beginning of an expression
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_expression(token: &RawToken) -> bool {
+    fn check_for_expression(token: &MetaToken) -> bool {
         match token {
-            RawToken::Punct(p) => match p {
+            MetaToken::Punct(p) => match p {
                 Punct::OpenParen => true,
                 Punct::OpenBrace => true,
                 Punct::OpenBracket => true,
@@ -537,7 +539,7 @@ impl<'b> Scanner<'b> {
                 Punct::BangDoubleEqual => true,
                 _ => false,
             },
-            RawToken::Keyword(k) => match k {
+            MetaToken::Keyword(k) => match k {
                 Keyword::In => true,
                 Keyword::TypeOf => true,
                 Keyword::InstanceOf => true,
@@ -634,8 +636,8 @@ pub struct ScannerState {
     pub curly_stack: Vec<OpenCurlyKind>,
     pub new_line_count: usize,
     pub line_cursor: usize,
-    pub last_three: look_behind::LookBehind,
-    pub paren_three: look_behind::LookBehind,
+    pub last_three: LookBehind,
+    pub paren_three: LookBehind,
 }
 
 #[cfg(test)]

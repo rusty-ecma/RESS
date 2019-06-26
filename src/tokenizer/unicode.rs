@@ -2284,13 +2284,13 @@ pub(crate) fn is_id_start(c: char) -> bool {
         return false;
     } else if c >= '\u{2F800}' && c <= '\u{2FA1D}' {
         return true;
-    } 
+    }
     false
 }
 
 #[inline]
 pub(crate) fn is_id_continue(c: char) -> bool {
-        if c < '\u{30}' {
+    if c < '\u{30}' {
         return false;
     } else if c >= '\u{30}' && c <= '\u{39}' {
         return true;
@@ -4994,7 +4994,7 @@ pub(crate) fn is_id_continue(c: char) -> bool {
         return false;
     } else if c >= '\u{E0100}' && c <= '\u{E01EF}' {
         return true;
-    } 
+    }
     false
 }
 
@@ -5008,11 +5008,11 @@ pub(crate) fn is_other_whitespace(c: char) -> bool {
         false
     } else if c == '\u{202F}' {
         true
-    } else if c <  '\u{205F}' {
+    } else if c < '\u{205F}' {
         false
     } else if c == '\u{205F}' {
         true
-    }  else if c <  '\u{3000}' {
+    } else if c < '\u{3000}' {
         false
     } else if c == '\u{3000}' {
         true

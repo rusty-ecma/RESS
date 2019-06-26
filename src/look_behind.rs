@@ -1,9 +1,9 @@
 use crate::tokenizer::RawToken;
-
+use crate::tokens::{Keyword, Punct};
 
 #[derive(Clone, Debug)]
 pub struct LookBehind {
-    list: [Option<RawToken>; 3],
+    list: [Option<MetaToken>; 3],
     pointer: u8,
 }
 
@@ -16,20 +16,20 @@ impl LookBehind {
         }
     }
     #[inline]
-    pub fn push(&mut self, tok: RawToken) {
+    pub fn push(&mut self, tok: &RawToken) {
         if self.pointer >= 2 {
             self.pointer = 0;
         } else {
             self.pointer += 1;
         }
-        self.list[self.pointer as usize] = Some(tok);
+        self.list[self.pointer as usize] = Some(tok.into());
     }
     #[inline]
-    pub fn last(&self) -> &Option<RawToken> {
+    pub fn last(&self) -> &Option<MetaToken> {
         &self.list[self.pointer as usize]
     }
     #[inline]
-    pub fn two(&self) -> &Option<RawToken> {
+    pub fn two(&self) -> &Option<MetaToken> {
         if self.pointer == 0 {
             &self.list[2]
         } else {
@@ -37,7 +37,7 @@ impl LookBehind {
         }
     }
     #[inline]
-    pub fn three(&self) -> &Option<RawToken> {
+    pub fn three(&self) -> &Option<MetaToken> {
         if self.pointer == 2 {
             &self.list[0]
         } else {
@@ -45,52 +45,61 @@ impl LookBehind {
         }
     }
 }
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum MetaToken {
+    Keyword(Keyword),
+    Punct(Punct),
+    Ident,
+    Other,
+}
+
+impl From<&RawToken> for MetaToken {
+    fn from(other: &RawToken) -> Self {
+        match other {
+            RawToken::Keyword(k) => MetaToken::Keyword(*k),
+            RawToken::Punct(p) => MetaToken::Punct(*p),
+            RawToken::Ident => MetaToken::Ident,
+            _ => MetaToken::Other,
+        }
+    }
+}
+
+
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::tokens::Punct;
-    #[test]
-    fn three() {
-        let first = RawToken::EoF;
-        let second = RawToken::Ident;
-        let third = RawToken::Null;
-        let mut l = LookBehind::new();
-        l.push(first);
-        test(&l, Some(first), None, None);
-        l.push(second);
-        test(&l, Some(second), Some(first), None);
-        l.push(third);
-        test(&l, Some(third), Some(second), Some(first));
-    }
 
     #[test]
     fn six() {
         let first = RawToken::EoF;
         let second = RawToken::Ident;
-        let third = RawToken::Null;
+        let third = RawToken::Keyword(Keyword::Function);
         let fourth = RawToken::Punct(Punct::Ampersand);
         let fifth = RawToken::Punct(Punct::Bang);
         let sixth = RawToken::Punct(Punct::Caret);
         let mut l = LookBehind::new();
-        l.push(first);
-        test(&l, Some(first), None, None);
-        l.push(second);
-        test(&l, Some(second), Some(first), None);
-        l.push(third);
-        test(&l, Some(third), Some(second), Some(first));
-        l.push(fourth);
-        test(&l, Some(fourth), Some(third), Some(second));
-        l.push(fifth);
-        test(&l, Some(fifth), Some(fourth), Some(third));
-        l.push(sixth);
-        test(&l, Some(sixth), Some(fifth), Some(fourth));
+        l.push(&first);
+        test(&l, Some((&first).into()), None, None);
+        l.push(&second);
+        test(&l, Some((&second).into()), Some((&first).into()), None);
+        l.push(&third);
+        test(&l, Some((&third).into()), Some((&second).into()), Some((&first).into()));
+        l.push(&fourth);
+        test(&l, Some((&fourth).into()), Some((&third).into()), Some((&second).into()));
+        l.push(&fifth);
+        test(&l, Some((&fifth).into()), Some((&fourth).into()), Some((&third).into()));
+        l.push(&sixth);
+        test(&l, Some((&sixth).into()), Some((&fifth).into()), Some((&fourth).into()));
     }
 
-    fn test(l: &LookBehind, first: Option<RawToken>, second: Option<RawToken>, third: Option<RawToken>) {
+    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>, third: Option<MetaToken>) {
         println!("{:?}", l);
         assert_eq!(l.last(), &first);
         assert_eq!(l.two(), &second);
         assert_eq!(l.three(), &third);
     }
 }
+
