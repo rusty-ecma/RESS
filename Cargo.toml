@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -16,8 +16,6 @@ appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github
 
 [dependencies]
 log = "0.4"
-unic-ucd-ident = { version = "0.9", features = ["id"] }
-unic-ucd-category = "0.9"
 flate2 = { version = "1", optional = true }
 reqwest = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true}
