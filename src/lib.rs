@@ -406,10 +406,6 @@ impl<'b> Scanner<'b> {
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
         } else {
-            if !next.ty.is_comment() {
-                self.last_three.push((&next.ty).into());
-            }
-
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     ::std::mem::replace(
@@ -420,6 +416,9 @@ impl<'b> Scanner<'b> {
                         )
                     );
                 }
+            }
+            if !next.ty.is_comment() {
+                self.last_three.push((&next.ty).into());
             }
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
