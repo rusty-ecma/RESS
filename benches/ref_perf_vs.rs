@@ -1,13 +1,15 @@
 #![cfg(test)]
 #![feature(test)]
-extern crate combine;
 extern crate ress;
 extern crate test;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate criterion;
 
-use combine::Parser;
-use test::{black_box, Bencher};
+use criterion::{black_box, Criterion};
+use ress::{Scanner, Tokenizer};
+
 static KEYWORDS: &[&str] = &[
     "implements",
     "interface",
@@ -51,8 +53,7 @@ static KEYWORDS: &[&str] = &[
 ];
 static PUNCTS: &[&str] = &[
     "{", "}", "(", ")", ".", ";", ",", "[", "]", ":", "?", "~", ">", "<", "=", "!", "+", "-", "/",
-    "*", "%", "&", "|", "^", ">>>=", //3 char
-    "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
+    "*", "%", "&", "|", "^", "#", "@", ">>>=", "...", "===", "!==", ">>>", "<<=", ">>=", "**=",
     "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=", "^=", "%=",
     "<=", ">=", "=>", "**",
 ];
@@ -87,7 +88,6 @@ static NUMBERS: &[&str] = &[
     "0.00",
     "10.00",
     ".0",
-    ".0",
     "0e0",
     "0E0",
     "0.e0",
@@ -99,7 +99,7 @@ static NUMBERS: &[&str] = &[
     "0b0",
     "0b0100101",
     "0o0",
-    "0o777",
+    "0o01234567",
     "2e308",
 ];
 static REGEX: &[&str] = &[
@@ -138,10 +138,10 @@ static TEMPLATE_STARTS: &[&str] = &[
 ];
 
 static TEMPLATE_CONTINUATIONS: &[&str] = &[
-    " and animals and minerals`",
-    "`}`",
-    " and animals and minerals`",
-    " and places and people ${",
+    "`${} and animals and minerals`",
+    "`${}`",
+    "`${} and animals and minerals`",
+    "`${} and places and people ${",
 ];
 
 static IDENTS: &[&str] = &[
@@ -182,234 +182,139 @@ lazy_static! {
         .chain(TEMPLATE_STARTS.into_iter())
         .map(|s| *s)
         .collect();
+    static ref JS: String = TOKENS.join("\n");
 }
 
-#[bench]
-fn keywords(b: &mut Bencher) {
-    b.iter(|| {
-        for key in KEYWORDS {
-            black_box(ress::keywords::literal().parse(*key).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn keywords_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for key in KEYWORDS {
-            black_box(ress::refs::keywords::literal().parse(*key).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn punct(b: &mut Bencher) {
-    b.iter(|| {
-        for punct in PUNCTS {
-            black_box(ress::punct::punctuation().parse(*punct).unwrap());
-        }
+fn keywords(c: &mut Criterion) {
+    c.bench_function("keywords", |b| {
+        b.iter(|| {
+            for key in KEYWORDS {
+                black_box(Tokenizer::new(key).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn punct_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for punct in PUNCTS {
-            black_box(ress::refs::punct::punctuation().parse(*punct).unwrap());
-        }
+fn punct(c: &mut Criterion) {
+    c.bench_function("punct", |b| {
+        b.iter(|| {
+            for punct in PUNCTS {
+                black_box(Tokenizer::new(punct).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn strings(b: &mut Bencher) {
-    b.iter(|| {
-        for s in STRINGS {
-            black_box(ress::strings::literal().parse(*s).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn strings_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for s in STRINGS {
-            black_box(ress::refs::strings::literal().parse(*s).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn comments(b: &mut Bencher) {
-    b.iter(|| {
-        for c in COMMENTS {
-            black_box(ress::comments::comment().parse(*c).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn comments_refs(b: &mut Bencher) {
-    b.iter(|| {
-        for c in COMMENTS {
-            black_box(ress::refs::comments::comment().parse(*c).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn numbers(b: &mut Bencher) {
-    b.iter(|| {
-        for n in NUMBERS {
-            black_box(ress::numeric::literal().parse(*n).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn numbers_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for n in NUMBERS {
-            black_box(ress::refs::numbers::literal().parse(*n).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn regex(b: &mut Bencher) {
-    b.iter(|| {
-        for r in REGEX {
-            black_box(ress::regex::regex_tail().parse(*r).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn regex_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for r in REGEX {
-            black_box(ress::refs::regex::regex_tail().parse(*r).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn templates(b: &mut Bencher) {
-    b.iter(|| {
-        for t in TEMPLATE_CONTINUATIONS {
-            black_box(ress::strings::template_continuation().parse(*t).unwrap());
-        }
-        for t in TEMPLATE_STARTS {
-            black_box(ress::strings::template_start().parse(*t).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn templates_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for t in TEMPLATE_CONTINUATIONS {
-            black_box(
-                ress::refs::strings::template_continuation()
-                    .parse(*t)
-                    .unwrap(),
-            );
-        }
-        for t in TEMPLATE_STARTS {
-            black_box(ress::refs::strings::template_start().parse(*t).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn bools(b: &mut Bencher) {
-    b.iter(|| {
-        for b in BOOLS {
-            black_box(ress::tokens::boolean_literal().parse(*b).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn bools_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for b in BOOLS {
-            black_box(ress::refs::tokens::boolean_literal().parse(*b).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn null(b: &mut Bencher) {
-    b.iter(|| {
-        for n in NULL {
-            black_box(ress::tokens::null_literal().parse(*n).unwrap());
-        }
-    });
-}
-#[bench]
-fn null_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for n in NULL {
-            black_box(ress::refs::tokens::null_literal().parse(*n).unwrap());
-        }
+fn strings(c: &mut Criterion) {
+    c.bench_function("strings", |b| {
+        b.iter(|| {
+            for s in STRINGS {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn idents(b: &mut Bencher) {
-    b.iter(|| {
-        for i in IDENTS {
-            black_box(ress::tokens::ident().parse(*i).unwrap());
-        }
-    })
-}
-
-#[bench]
-fn idents_ref(b: &mut Bencher) {
-    b.iter(|| {
-        for i in IDENTS {
-            black_box(ress::refs::tokens::ident().parse(*i).unwrap());
-        }
-    })
-}
-
-#[bench]
-pub fn token(b: &mut Bencher) {
-    b.iter(|| {
-        for t in TOKENS.iter() {
-            black_box(ress::tokens::token().parse(*t).unwrap());
-        }
-    })
-}
-
-#[bench]
-pub fn token_ref(b: &mut Bencher) {
-    println!("[");
-    b.iter(|| {
-        for t in TOKENS.iter() {
-            println!("{:?}", t);
-            black_box(ress::refs::tokens::token().parse(*t).unwrap());
-        }
-        println!("];")
-    })
-}
-
-#[bench]
-fn scanner(b: &mut Bencher) {
-    let js = include_str!("../node_modules/jquery/dist/jquery.js");
-    use ress::{Item, Scanner};
-    b.iter(|| {
-        let s = Scanner::new(js);
-        black_box(s.collect::<Vec<Item>>())
+fn comments(c: &mut Criterion) {
+    c.bench_function("comments", |b| {
+        b.iter(|| {
+            for c in COMMENTS {
+                black_box(Tokenizer::new(c).next().unwrap());
+            }
+        })
     });
 }
 
-#[bench]
-fn scanner_ref(b: &mut Bencher) {
-    let js = include_str!("../node_modules/jquery/dist/jquery.js");
-    use ress::refs::{RefItem as Item, RefScanner as Scanner};
-    b.iter(|| {
-        let s = Scanner::new(js);
-        black_box(s.collect::<Vec<Item>>())
+fn numbers(c: &mut Criterion) {
+    c.bench_function("numbers", |b| {
+        b.iter(|| {
+            for n in NUMBERS {
+                black_box(Tokenizer::new(n).next().unwrap());
+            }
+        })
     });
 }
+
+fn regex(c: &mut Criterion) {
+    c.bench_function("regex", |b| {
+        b.iter(|| {
+            for r in REGEX {
+                black_box(Tokenizer::new(r).next_regex().unwrap());
+            }
+        })
+    });
+}
+
+fn templates(c: &mut Criterion) {
+    c.bench_function("TEMPLATE_CONTINUATIONS", |b| {
+        b.iter(|| {
+            for s in TEMPLATE_CONTINUATIONS {
+                let mut t = Tokenizer::new(&s);
+                let _ = t.next().unwrap();
+                black_box(t.next().unwrap());
+            }
+        })
+    });
+    c.bench_function("TEMPLATE_STARTS", |b| {
+        b.iter(|| {
+            for s in TEMPLATE_STARTS {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
+    });
+}
+
+fn bools(c: &mut Criterion) {
+    c.bench_function("bools", |b| {
+        b.iter(|| {
+            for b in BOOLS {
+                black_box(Tokenizer::new(b).next().unwrap());
+            }
+        })
+    });
+}
+
+fn null(c: &mut Criterion) {
+    c.bench_function("null", |b| {
+        b.iter(|| {
+            for b in NULL {
+                black_box(Tokenizer::new(b).next().unwrap());
+            }
+        })
+    });
+}
+
+fn idents(c: &mut Criterion) {
+    c.bench_function("idents", |b| {
+        b.iter(|| {
+            for i in IDENTS {
+                black_box(Tokenizer::new(i).next().unwrap());
+            }
+        })
+    });
+}
+
+pub fn token(c: &mut Criterion) {
+    c.bench_function("token", |b| {
+        b.iter(|| {
+            for s in TOKENS.iter() {
+                black_box(Tokenizer::new(s).next().unwrap());
+            }
+        })
+    });
+}
+
+fn scanner(c: &mut Criterion) {
+    c.bench_function("scanner", |b| {
+        b.iter(|| {
+            let s = Scanner::new(&JS);
+            black_box(s.collect::<Vec<_>>())
+        })
+    });
+}
+
+criterion_group!(
+    benches, punct, keywords, idents, strings, comments, numbers, regex, templates, bools, null,
+    token, scanner
+);
+criterion_main!(benches);

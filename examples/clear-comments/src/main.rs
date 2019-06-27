@@ -19,7 +19,8 @@ use std::{
 
 use docopt::Docopt;
 
-use ress::{Boolean, Keyword, Punct, Scanner, Token};
+use ress::prelude::*;
+type RefToken<'a> = Token<&'a str>;
 
 const USAGE: &'static str = "
 clear-comments
@@ -41,7 +42,7 @@ fn main() {
         eprintln!("Unable to read in-path");
         ::std::process::exit(1);
     };
-    let s = Scanner::new(js);
+    let s = Scanner::new(&js);
     let mut indent = 0;
     let f = File::create(&opts.arg_out_path).expect("Error opening outfile");
     let mut out = BufWriter::new(f);
@@ -53,6 +54,7 @@ fn main() {
     let mut if_parens = 0;
     let mut unbraced_if = false;
     for item in s {
+        let item = item.unwrap();
         println!("{:?}", item);
         let token = item.token;
         if token.matches_keyword(Keyword::If) {
@@ -130,8 +132,8 @@ fn main() {
     }
 }
 
-fn space_before(last_token: &Token, token: &Token) -> bool {
-    if last_token.matches_punct(Punct::Assign) || token.matches_punct(Punct::Assign) {
+fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
+    if last_token.matches_punct(Punct::Equal) || token.matches_punct(Punct::DoubleEqual) {
         return true;
     }
     if last_token.matches_punct(Punct::Period)
@@ -210,13 +212,13 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
     if token.matches_punct(Punct::Colon) {
         return false;
     }
-    if last_token.matches_punct(Punct::Not) {
+    if last_token.matches_punct(Punct::Bang) {
         return false;
     }
     if last_token.matches_punct(Punct::Comma) {
         return true;
     }
-    if token.matches_punct(Punct::Not) {
+    if token.matches_punct(Punct::Bang) {
         return false;
     }
     if last_token.matches_keyword(Keyword::Function) && token.matches_punct(Punct::OpenBrace) {
@@ -243,7 +245,7 @@ fn space_before(last_token: &Token, token: &Token) -> bool {
     false
 }
 
-fn token_to_string(t: &Token) -> String {
+fn token_to_string(t: &RefToken) -> String {
     match t {
         &Token::Boolean(ref t) => if t == &Boolean::True { "true" } else { "false" }.to_string(),
         &Token::Comment(ref comment) => {
@@ -256,7 +258,7 @@ fn token_to_string(t: &Token) -> String {
         &Token::Ident(ref name) => name.to_string(),
         &Token::Keyword(ref key) => key.to_string(),
         &Token::Null => "null".to_string(),
-        &Token::Numeric(ref number) => number.to_string(),
+        &Token::Number(ref number) => number.to_string(),
         &Token::Punct(ref p) => p.to_string(),
         &Token::RegEx(ref regex) => match regex.flags {
             Some(ref f) => format!("/{}/{}", regex.body, f),

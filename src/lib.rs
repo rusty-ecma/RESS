@@ -1,6 +1,5 @@
-//! js_parse
+//! ress
 //! A crate for parsing raw JS into a token stream
-//!
 //!
 //! The primary interfaces are the function [`tokenize`][tokenize] and
 //! the struct [`Scanner`][scanner]. The [`Scanner`][scanner] struct impls [`Iterator`](https://doc.rust-lang.org/std/iter/trait.Iterator.html)
@@ -8,304 +7,478 @@
 //! around [`Scanner::collect()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect).
 //!
 //! The `Scanner` will provide a stream of `Item`s, and `Item` is
-//! has 2 properties a [`Token`][token] and a [`Span`][span]. The `Span` is a
+//! has 3 properties a [`Token`][token], a [`Span`][span], and a [`SourceLocation`][location]. The `Span` is a
 //! representation of where the `Item` exists in the original source while the `Token`
 //! provides details about what JavaScript token it represents.
-//!
-//! An example of what a token stream might look like
 //!
 //! [token]: ./enum.Token
 //! [span]: ./struct.Span
 //! [scanner]: ./struct.Scanner
 //! [tokenize]: ../fn.tokenize
-#[cfg(test)]
-#[macro_use]
-extern crate proptest;
-#[macro_use]
-extern crate combine;
+//! [location]: ./struct.SourceLocation
+
 #[macro_use]
 extern crate log;
-extern crate unic_ucd_ident;
 
-pub mod refs;
-
-use combine::Parser;
-pub mod comments;
-pub mod keywords;
-pub mod numeric;
-pub mod punct;
-pub mod regex;
-pub mod strings;
+pub mod error;
+mod tokenizer;
 pub mod tokens;
-pub mod unicode;
-pub use comments::{Comment, Kind as CommentKind};
-pub use keywords::Keyword;
-pub use numeric::Number;
-pub use punct::Punct;
-pub use regex::RegEx;
-pub use strings::{StringLit, Template};
-pub use tokens::{BooleanLiteral as Boolean, Ident, Item, Span, Token};
+pub use crate::tokenizer::Tokenizer;
+
+pub mod prelude {
+    pub use super::tokenize;
+    pub use super::tokens::prelude::*;
+    pub use super::Item;
+    pub use super::OpenCurlyKind;
+    pub use super::Position;
+    pub use super::Scanner;
+    pub use super::ScannerState;
+    pub use super::SourceLocation;
+}
+use crate::tokenizer::RawToken;
+use crate::tokens::prelude::*;
+use error::{Error, RawError};
+
+type Res<T> = Result<T, Error>;
+mod look_behind;
+
+use look_behind::{LookBehind, MetaToken};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
-pub fn tokenize(text: &str) -> Vec<Token> {
-    Scanner::new(text).map(|i| i.token).collect()
+pub fn tokenize(text: &str) -> Res<Vec<Token<&str>>> {
+    let mut ret = Vec::new();
+    for i in Scanner::new(text) {
+        let inner = i?.token;
+        ret.push(inner);
+    }
+    Ok(ret)
 }
 
-/// An iterator over a js token stream
-pub struct Scanner {
-    pub stream: String,
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// The start and end position of a token
+/// including the line/column number
+pub struct SourceLocation {
+    pub start: Position,
+    pub end: Position,
+}
+
+impl SourceLocation {
+    #[inline]
+    pub const fn new(start: Position, end: Position) -> Self {
+        Self { start, end }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+/// A single character position in the
+/// file including the line/column number
+pub struct Position {
+    pub line: usize,
+    pub column: usize,
+}
+
+impl ::std::fmt::Display for Position {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{}:{}", self.line, self.column)
+    }
+}
+
+impl Position {
+    #[inline]
+    pub const fn new(line: usize, column: usize) -> Self {
+        Self { line, column }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+/// The start and end of a token as the byte
+/// index in the original text
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Span {
+    /// Create a new Span from its parts
+    #[inline]
+    pub const fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+/// A single token with additional metadata
+///
+pub struct Item<T> {
+    pub token: T,
+    pub span: Span,
+    pub location: SourceLocation,
+}
+
+impl<T> Item<T>
+where
+    T: TokenExt,
+{
+    pub fn new(token: T, span: Span, location: SourceLocation) -> Self {
+        Self {
+            token,
+            span,
+            location,
+        }
+    }
+    fn new_(
+        token: T,
+        span_start: usize,
+        span_end: usize,
+        loc_start_line: usize,
+        loc_start_col: usize,
+        loc_end_line: usize,
+        loc_end_col: usize,
+    ) -> Self {
+        Self {
+            token,
+            span: Span::new(span_start, span_end),
+            location: SourceLocation::new(
+                Position::new(loc_start_line, loc_start_col),
+                Position::new(loc_end_line, loc_end_col),
+            ),
+        }
+    }
+    pub fn is_string(&self) -> bool {
+        self.token.is_string()
+    }
+    pub fn is_eof(&self) -> bool {
+        self.token.is_eof()
+    }
+    pub fn is_template(&self) -> bool {
+        self.token.is_template_head()
+            || self.token.is_template_body()
+            || self.token.is_template_tail()
+    }
+}
+/// The primary interface of this crate used
+/// to tokenize any JS text into a stream of
+/// `Item`s.
+pub struct Scanner<'a> {
+    pub stream: Tokenizer<'a>,
     pub eof: bool,
-    pub cursor: usize,
-    pub spans: Vec<Span>,
-    last_open_paren_idx: usize,
-    replacement: usize,
     pub pending_new_line: bool,
-    curly_stack: Vec<OpenCurlyKind>,
+    original: &'a str,
+    errored: bool,
+    new_line_count: usize,
+    line_cursor: usize,
+    before_last_open: LookBehind,
+    last_three: LookBehind,
 }
 
-impl Scanner {
-    /// Create a new Scanner with the raw JS text
-    pub fn new(text: impl Into<String>) -> Self {
-        let text = text.into();
-        let cursor = text.len() - text.trim_start_matches(whitespace).len();
-        Scanner {
-            stream: text,
+impl<'a> Scanner<'a> {
+    /// Create a new `Scanner` by providing the
+    /// JS text
+    pub fn new(text: &'a str) -> Self {
+        let mut stream = Tokenizer::new(text);
+        let (new_line_count, line_cursor) = stream.skip_whitespace();
+        Self {
+            stream,
             eof: false,
-            cursor,
-            spans: Vec::new(),
-            last_open_paren_idx: 0,
-            replacement: 0,
             pending_new_line: false,
-            curly_stack: Vec::new(),
+            original: text,
+            errored: false,
+            new_line_count,
+            line_cursor: usize::max(line_cursor, 1),
+            before_last_open: LookBehind::new(),
+            last_three: LookBehind::new(),
         }
     }
 }
 
-impl Iterator for Scanner {
-    type Item = Item;
-    fn next(&mut self) -> Option<Item> {
+impl<'a> Iterator for Scanner<'a> {
+    type Item = Res<Item<Token<&'a str>>>;
+    fn next(&mut self) -> Option<Self::Item> {
         self.get_next_token(true)
     }
 }
 
-impl Scanner {
+impl<'b> Scanner<'b> {
     /// Attempts to look ahead 1 token
     ///
     /// Similar to how `Peekable::peek` works however the
     /// returned value will not be a borrowed `Item`. Since
     /// there isn't a borrow happening this essentially duplicates
     /// the cost of calling `next`.
-    ///
-    /// ```
-    /// # extern crate ress;
-    /// # use ress::{Scanner,Token};
-    /// # fn main() {
-    /// let js = "function thing() { return; }";
-    /// let mut s = Scanner::new(js);
-    /// assert_eq!(s.look_ahead().unwrap().token, Token::keyword("function"));
-    /// assert_eq!(s.next().unwrap().token, Token::keyword("function"));
-    /// # }
-    /// ```
-    pub fn look_ahead(&mut self) -> Option<Item> {
+    pub fn look_ahead(&mut self) -> Option<Res<Item<Token<&'b str>>>> {
         self.get_next_token(false)
     }
     /// Skip any upcoming comments to get the
     /// next valid js token
-    pub fn skip_comments(&mut self) {
+    pub fn skip_comments(&mut self) -> Res<()> {
         debug!(target: "ress", "skipping comments");
-        let mut new_cursor = self.cursor;
-        while let Some(ref item) = self.next() {
-            if item.token.is_comment() {
-                new_cursor = self.cursor;
+        let mut new_cursor = self.stream.stream.idx;
+        while let Some(item) = self.next() {
+            if let Token::Comment(_) = item?.token {
+                new_cursor = self.stream.stream.idx;
             } else {
                 break;
             }
         }
-        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.cursor));
-        self.cursor = new_cursor;
+        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.stream.stream.idx));
+        self.stream.stream.idx = new_cursor;
+        Ok(())
     }
     /// Get a copy of the scanner's current state
     pub fn get_state(&self) -> ScannerState {
         ScannerState {
-            cursor: self.cursor,
-            spans_len: self.spans.len(),
-            last_paren: self.last_open_paren_idx,
-            replacement: self.replacement,
-            curly_stack: self.curly_stack.clone(),
+            cursor: self.stream.stream.idx,
+            curly_stack: self.stream.curly_stack.clone(),
+            new_line_count: self.new_line_count,
+            line_cursor: self.line_cursor,
+            last_three: self.last_three.clone(),
+            paren_three: self.before_last_open.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
+    #[inline]
     pub fn set_state(&mut self, state: ScannerState) {
-        self.cursor = state.cursor;
-        self.spans.truncate(state.spans_len);
-        self.last_open_paren_idx = state.last_paren;
-        self.replacement = state.replacement;
-        self.curly_stack = state.curly_stack;
+        self.stream.stream.idx = state.cursor;
+        self.stream.curly_stack = state.curly_stack;
+        self.new_line_count = state.new_line_count;
+        self.line_cursor = state.line_cursor;
+        self.last_three = state.last_three;
+        self.before_last_open = state.paren_three;
     }
-
-    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Item> {
+    #[inline]
+    /// The implementation of `Scanner::next` that includes
+    /// the flag for advancing, meaning the `look_ahead` method
+    /// can also use this implementation
+    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<Token<&'b str>>>> {
+        if self.errored {
+            return None;
+        }
         if self.eof {
-            debug!(target: "ress", "end of iterator, returning None");
+            debug!("end of iterator, returning None");
             return None;
         };
-        let prev_cursor = self.cursor;
-        let result = tokens::token().parse(&self.stream[self.cursor..]);
-        match result {
-            Ok(pair) => {
-                if (pair.0.matches_punct(Punct::ForwardSlash)
-                    || pair.0.matches_punct(Punct::DivideAssign))
-                    && self.is_regex_start()
-                {
-                    match regex::regex_tail().parse(&self.stream[self.cursor + 1..]) {
-                        Ok(regex_pair) => {
-                            let full_len = self.stream.len();
-                            let span_end = full_len - regex_pair.1.len();
-                            let span = Span::new(self.cursor, span_end);
-                            if advance_cursor {
-                                self.spans.push(span.clone());
-                                self.cursor = self.stream.len()
-                                    - regex_pair
-                                        .1
-                                        .trim_start_matches(whitespace_or_line_term)
-                                        .len();
-                                let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(is_line_term);
-                            }
-                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next regex item" } else {"look ahead"}, regex_pair.0);
-                            Some(Item::new(regex_pair.0, span))
+        let prev_cursor = self.stream.stream.idx;
+        let prev_lines = self.new_line_count;
+        let prev_line_cursor = self.line_cursor;
+        let mut next = match self.stream.next() {
+            Ok(n) => n,
+            Err(e) => {
+                self.errored = true;
+                return Some(self.error(e));
+            }
+        };
+        let mut len = next.end - next.start;
+        let ret = if next.ty.is_punct()
+            && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
+            && self.is_regex_start()
+        {
+            next = match self.stream.next_regex() {
+                Ok(t) => t,
+                Err(e) => {
+                    self.errored = true;
+                    return Some(self.error(e));
+                }
+            };
+            match next.ty {
+                RawToken::RegEx(body_end) => {
+                    self.line_cursor = self.line_cursor.saturating_add(len);
+                    let flags = if next.end > body_end {
+                        Some(&self.original[body_end..next.end])
+                    } else {
+                        None
+                    };
+                    Item::new_(
+                        Token::RegEx(RegEx {
+                            body: &self.original[next.start + 1..body_end - 1],
+                            flags,
+                        }),
+                        next.start,
+                        next.end,
+                        prev_lines + 1,
+                        prev_line_cursor,
+                        prev_lines + 1,
+                        self.line_cursor,
+                    )
+                }
+                _ => unreachable!("non-regex from next_regex"),
+            }
+        } else {
+            let mut new_lines = 0;
+            let s = &self.original[next.start..next.end];
+            let token = match next.ty {
+                RawToken::Boolean(b) => Token::Boolean(b.into()),
+                RawToken::Comment {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
+                    len = last_len;
+                    new_lines = new_line_count;
+                    match kind {
+                        tokens::CommentKind::Multi => {
+                            Token::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
                         }
-                        Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {}",
-                            self.cursor, e,
-                        ),
-                    }
-                } else if pair.0.matches_punct(Punct::CloseBrace) && self.looking_for_template_end()
-                {
-                    match strings::template_continuation().parse(pair.1) {
-                        Ok(pair) => {
-                            if pair.0.is_template_tail() && advance_cursor {
-                                let _ = self.curly_stack.pop();
-                            }
-                            let full_len = self.stream.len();
-                            let span_end = full_len - pair.1.len();
-                            let span = Span::new(self.cursor, span_end);
-                            if advance_cursor {
-                                self.spans.push(span.clone());
-                                self.cursor = self.stream.len()
-                                    - pair.1.trim_start_matches(whitespace_or_line_term).len();
-                                let whitespace = &self.stream[prev_cursor..self.cursor];
-                                self.pending_new_line = whitespace.chars().any(is_line_term);
-                            }
-                            debug!(target: "ress", "{}: {:?}", if advance_cursor { "next template item" } else {"look ahead"}, pair.0);
-                            Some(Item::new(pair.0, span))
+                        tokens::CommentKind::Single => {
+                            Token::Comment(Comment::new_single_line(&s[2..]))
                         }
-                        Err(e) => panic!(
-                            "Failed to parse token last successful parse ended {}\nError: {}",
-                            self.cursor, e,
-                        ),
+                        tokens::CommentKind::Html => {
+                            let (content, tail) = if let Some(idx) = s.rfind("-->") {
+                                let actual_end = idx.saturating_add(3);
+                                if actual_end < next.end {
+                                    let tail = &s[actual_end..];
+                                    let tail = if tail == "" { None } else { Some(tail) };
+                                    (&s[4..idx], tail)
+                                } else {
+                                    (&s[4..], None)
+                                }
+                            } else {
+                                (&s[4..], None)
+                            };
+                            Token::Comment(Comment::new_html(content, tail))
+                        }
                     }
-                } else {
-                    if pair.0.matches_punct(Punct::OpenBrace) {
-                        self.curly_stack.push(OpenCurlyKind::Block);
+                }
+                RawToken::EoF => {
+                    self.eof = true;
+                    Token::EoF
+                }
+                RawToken::Ident => Token::Ident(Ident::from(s)),
+                RawToken::Keyword(k) => Token::Keyword(k),
+                RawToken::Null => Token::Null,
+                RawToken::Number(_) => Token::Number(Number::from(s)),
+                RawToken::Punct(p) => Token::Punct(p),
+                RawToken::RegEx(_) => unreachable!("Regex from next"),
+                RawToken::String {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
+                    len = last_len;
+                    new_lines = new_line_count;
+                    let s = &s[1..s.len() - 1];
+                    match kind {
+                        tokenizer::StringKind::Double => Token::String(StringLit::Double(s)),
+                        tokenizer::StringKind::Single => Token::String(StringLit::Single(s)),
                     }
-                    if pair.0.matches_punct(Punct::CloseBrace) {
-                        let _ = self.curly_stack.pop();
+                }
+                RawToken::Template {
+                    kind,
+                    new_line_count,
+                    last_len,
+                } => {
+                    len = last_len;
+                    new_lines = new_line_count;
+                    match kind {
+                        tokenizer::TemplateKind::Head => {
+                            let s = &s[1..s.len() - 2];
+                            Token::Template(Template::Head(s))
+                        }
+                        tokenizer::TemplateKind::Body => {
+                            let s = &s[1..s.len() - 2];
+                            Token::Template(Template::Middle(s))
+                        }
+                        tokenizer::TemplateKind::Tail => {
+                            let s = &s[1..s.len() - 1];
+                            Token::Template(Template::Tail(s))
+                        }
+                        tokenizer::TemplateKind::NoSub => {
+                            let s = &s[1..s.len() - 1];
+                            Token::Template(Template::NoSub(s))
+                        }
                     }
-                    if pair.0.matches_punct(Punct::OpenParen) && advance_cursor {
-                        self.last_open_paren_idx = self.spans.len();
-                    }
-                    if pair.0.is_eof() && advance_cursor {
-                        self.eof = true;
-                    }
-                    if pair.0.is_template_head() && advance_cursor && !pair.0.is_template_tail() {
-                        self.curly_stack.push(OpenCurlyKind::Template);
-                    }
-                    let full_len = self.stream.len();
-                    let span_end = full_len - pair.1.len();
-                    let span = Span::new(self.cursor, span_end);
-                    if advance_cursor {
-                        self.spans.push(span.clone());
-                        self.cursor = self.stream.len()
-                            - pair.1.trim_start_matches(whitespace_or_line_term).len();
-                        let whitespace = &self.stream[prev_cursor..self.cursor];
-                        self.pending_new_line = whitespace.chars().any(|c| is_line_term(c));
-                    }
-                    debug!(target: "ress", "{}: {:?}", if advance_cursor { "next item" } else {"look ahead"}, pair.0);
-                    Some(Item::new(pair.0, span))
+                }
+            };
+            self.bump_line_cursors(new_lines, len);
+            Item::new_(
+                token,
+                next.start,
+                next.end,
+                prev_lines.saturating_add(1),
+                prev_line_cursor,
+                self.new_line_count.saturating_add(1),
+                self.line_cursor,
+            )
+        };
+        
+        if !advance_cursor {
+            self.stream.stream.idx = prev_cursor;
+            self.new_line_count = prev_lines;
+            self.line_cursor = prev_line_cursor;
+        } else {
+            if !next.ty.is_comment() {
+                self.last_three.push((&next.ty).into());
+            }
+
+            if let Token::Punct(ref p) = &ret.token {
+                if let Punct::OpenParen = p {
+                    ::std::mem::replace(
+                        &mut self.before_last_open,
+                        ::std::mem::replace(
+                            &mut self.last_three,
+                            LookBehind::new()
+                        )
+                    );
                 }
             }
-            Err(e) => panic!(
-                "Failed to parse token last successful parse ended {}\nError: {}",
-                self.cursor, e,
-            ),
         }
+        let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
+        self.bump_line_cursors(new_line_count, leading_whitespace);
+        self.pending_new_line = new_line_count > 0;
+        Some(Ok(ret))
     }
-
-    fn looking_for_template_end(&self) -> bool {
-        if let Some(last) = self.curly_stack.last() {
-            last == &OpenCurlyKind::Template
-        } else {
-            false
-        }
-    }
-
+    /// Detect if the `/` is the beginning of
+    /// a regex or is division
+    ///
+    /// [see this for more details](https://github.com/sweet-js/sweet-core/wiki/design)
     fn is_regex_start(&self) -> bool {
-        if let Some(last_token) = self.last_token() {
-            if (!last_token.is_keyword() && !last_token.is_punct())
-                || last_token.matches_keyword(Keyword::This)
-                || last_token.matches_punct(Punct::CloseBracket)
-            {
-                false
-            } else if last_token.matches_punct(Punct::CloseParen) {
-                self.check_for_conditional()
-            } else if last_token.matches_punct(Punct::CloseBrace) {
-                self.check_for_func()
-            } else {
-                true
+        if let Some(ref last_token) = self.last_three.last() {
+            match last_token {
+                MetaToken::Keyword(k) => match k {
+                    Keyword::This => false,
+                    _ => true,
+                },
+                MetaToken::Punct(p) => match p {
+                    Punct::CloseBracket => false,
+                    Punct::CloseParen => self.check_for_conditional(),
+                    Punct::CloseBrace => self.check_for_func(),
+                    _ => true,
+                },
+                _ => false,
             }
         } else {
             true
         }
     }
-
-    fn last_token(&self) -> Option<Token> {
-        if self.spans.is_empty() {
-            return None;
-        }
-        let mut current_idx = self.spans.len().saturating_sub(1);
-        while current_idx > 0 {
-            if let Some(t) = self.token_for(&self.spans[current_idx]) {
-                if t.is_comment() {
-                    current_idx = current_idx.saturating_sub(1);
-                } else {
-                    return Some(t);
-                }
-            }
-        }
-        None
-    }
-
+    
+    /// Check if just passed a conditional expression
+    ///
+    /// > used in determining if we are at a regex or not
     fn check_for_conditional(&self) -> bool {
-        if let Some(before) = self.nth_before_last_open_paren(1) {
-            before.matches_keyword(Keyword::If)
-                || before.matches_keyword(Keyword::For)
-                || before.matches_keyword(Keyword::While)
-                || before.matches_keyword(Keyword::With)
+        if let Some(ref before) = self.before_last_open.last() {
+            match before {
+                MetaToken::Keyword(k) => match k {
+                    Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
+                    _ => false,
+                },
+                _ => false,
+            }
         } else {
             true
         }
     }
-
+    /// Check if we just passed a function expression
+    ///
+    /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
-        if let Some(before) = self.nth_before_last_open_paren(1) {
-            if before.is_ident() {
-                if let Some(three_before) = self.nth_before_last_open_paren(3) {
-                    return Self::check_for_expression(&three_before);
+        if let Some(ref before) = self.before_last_open.last() {
+            if before == &MetaToken::Ident {
+                if let Some(ref three) = self.before_last_open.three() {
+                    return Self::check_for_expression(three)
                 }
-            } else if before.matches_keyword(Keyword::Function) {
-                if let Some(two_before) = self.nth_before_last_open_paren(2) {
-                    return Self::check_for_expression(&two_before);
+            } else if before == &MetaToken::Keyword(Keyword::Function) {
+                if let Some(ref two) = self.before_last_open.two() {
+                    return Self::check_for_expression(two);
                 } else {
                     return false;
                 }
@@ -313,143 +486,163 @@ impl Scanner {
         }
         true
     }
-
-    fn check_for_expression(token: &Token) -> bool {
-        token.matches_punct(Punct::OpenParen)
-            && !token.matches_punct(Punct::OpenBrace)
-            && !token.matches_punct(Punct::OpenBracket)
-            && !token.matches_punct(Punct::Assign)
-            && !token.matches_punct(Punct::AddAssign)
-            && !token.matches_punct(Punct::SubtractAssign)
-            && !token.matches_punct(Punct::MultiplyAssign)
-            && !token.matches_punct(Punct::ExponentAssign)
-            && !token.matches_punct(Punct::DivideAssign)
-            && !token.matches_punct(Punct::ModuloAssign)
-            && !token.matches_punct(Punct::LeftShiftAssign)
-            && !token.matches_punct(Punct::RightShiftAssign)
-            && !token.matches_punct(Punct::UnsignedRightShiftAssign)
-            && !token.matches_punct(Punct::BitwiseAndAssign)
-            && !token.matches_punct(Punct::BitwiseOrAssign)
-            && !token.matches_punct(Punct::BitwiseXOrAssign)
-            && !token.matches_punct(Punct::Comma)
-            && !token.matches_punct(Punct::Plus)
-            && !token.matches_punct(Punct::Minus)
-            && !token.matches_punct(Punct::Asterisk)
-            && !token.matches_punct(Punct::Exponent)
-            && !token.matches_punct(Punct::ForwardSlash)
-            && !token.matches_punct(Punct::Modulo)
-            && !token.matches_punct(Punct::Increment)
-            && !token.matches_punct(Punct::Decrement)
-            && !token.matches_punct(Punct::LeftShift)
-            && !token.matches_punct(Punct::RightShift)
-            && !token.matches_punct(Punct::UnsignedRightShift)
-            && !token.matches_punct(Punct::And)
-            && !token.matches_punct(Punct::Pipe)
-            && !token.matches_punct(Punct::Caret)
-            && !token.matches_punct(Punct::Not)
-            && !token.matches_punct(Punct::BitwiseNot)
-            && !token.matches_punct(Punct::LogicalAnd)
-            && !token.matches_punct(Punct::LogicalOr)
-            && !token.matches_punct(Punct::QuestionMark)
-            && !token.matches_punct(Punct::Colon)
-            && !token.matches_punct(Punct::StrictEquals)
-            && !token.matches_punct(Punct::Equal)
-            && !token.matches_punct(Punct::GreaterThanEqual)
-            && !token.matches_punct(Punct::LessThanEqual)
-            && !token.matches_punct(Punct::LessThan)
-            && !token.matches_punct(Punct::GreaterThan)
-            && !token.matches_punct(Punct::NotEqual)
-            && !token.matches_punct(Punct::StrictNotEquals)
-            && !token.matches_keyword(Keyword::In)
-            && !token.matches_keyword(Keyword::TypeOf)
-            && !token.matches_keyword(Keyword::InstanceOf)
-            && !token.matches_keyword(Keyword::New)
-            && !token.matches_keyword(Keyword::Return)
-            && !token.matches_keyword(Keyword::Case)
-            && !token.matches_keyword(Keyword::Delete)
-            && !token.matches_keyword(Keyword::Throw)
-            && !token.matches_keyword(Keyword::Void)
-    }
-
-    fn nth_before_last_open_paren(&self, n: usize) -> Option<Token> {
-        if self.spans.len() < n {
-            return None;
-        }
-        self.token_for(&self.spans[self.last_open_paren_idx - n])
-    }
-
-    fn token_for(&self, span: &Span) -> Option<Token> {
-        if let Ok(t) = tokens::token().parse(&self.stream[span.start..span.end]) {
-            Some(t.0)
-        } else {
-            None
+    /// Check if a token is the beginning of an expression
+    ///
+    /// > used in determining if we are at a regex or not
+    fn check_for_expression(token: &MetaToken) -> bool {
+        match token {
+            MetaToken::Punct(p) => match p {
+                Punct::OpenParen => true,
+                Punct::OpenBrace => true,
+                Punct::OpenBracket => true,
+                Punct::Equal => true,
+                Punct::PlusEqual => true,
+                Punct::DashEqual => true,
+                Punct::AsteriskEqual => true,
+                Punct::DoubleAsteriskEqual => true,
+                Punct::ForwardSlashEqual => true,
+                Punct::PercentEqual => true,
+                Punct::DoubleLessThanEqual => true,
+                Punct::DoubleGreaterThanEqual => true,
+                Punct::TripleGreaterThanEqual => true,
+                Punct::AmpersandEqual => true,
+                Punct::PipeEqual => true,
+                Punct::CaretEqual => true,
+                Punct::Comma => true,
+                Punct::Plus => true,
+                Punct::Dash => true,
+                Punct::Asterisk => true,
+                Punct::DoubleAsterisk => true,
+                Punct::ForwardSlash => true,
+                Punct::Percent => true,
+                Punct::DoublePlus => true,
+                Punct::DoubleDash => true,
+                Punct::DoubleLessThan => true,
+                Punct::DoubleGreaterThan => true,
+                Punct::TripleGreaterThan => true,
+                Punct::Ampersand => true,
+                Punct::Pipe => true,
+                Punct::Caret => true,
+                Punct::Bang => true,
+                Punct::Tilde => true,
+                Punct::DoubleAmpersand => true,
+                Punct::DoublePipe => true,
+                Punct::QuestionMark => true,
+                Punct::Colon => true,
+                Punct::TripleEqual => true,
+                Punct::DoubleEqual => true,
+                Punct::GreaterThanEqual => true,
+                Punct::LessThanEqual => true,
+                Punct::LessThan => true,
+                Punct::GreaterThan => true,
+                Punct::BangEqual => true,
+                Punct::BangDoubleEqual => true,
+                _ => false,
+            },
+            MetaToken::Keyword(k) => match k {
+                Keyword::In => true,
+                Keyword::TypeOf => true,
+                Keyword::InstanceOf => true,
+                Keyword::New => true,
+                Keyword::Return => true,
+                Keyword::Case => true,
+                Keyword::Delete => true,
+                Keyword::Throw => true,
+                Keyword::Void => true,
+                _ => false,
+            },
+            _ => false,
         }
     }
-
+    
+    /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
-        if self.stream.len() < span.start || self.stream.len() < span.end {
+        Some(self.str_for(span)?.to_string())
+    }
+    /// Get a &str for any given span
+    pub fn str_for(&self, span: &Span) -> Option<&'b str> {
+        if self.original.len() < span.start || self.original.len() < span.end {
             None
         } else {
-            Some(self.stream[span.start..span.end].to_string())
+            Some(&self.original[span.start..span.end])
         }
     }
+    /// Get the line/column pair for any given byte index
+    pub fn position_for(&self, idx: usize) -> (usize, usize) {
+        // Obviously we will start at 0
+        let mut line_ct = 1;
+        // This is the byte position, not the character
+        // position to account for multi byte chars
+        let mut byte_position = 0;
+        // loop over the characters
+        for c in self.original[0..idx].chars() {
+            match c {
+                '\r' => {
+                    // look ahead 1 char to see if it is a newline pair
+                    // if so, don't include it, it will get included in the next
+                    // iteration
+                    if let Some(next) = self.original.get(byte_position..byte_position + 2) {
+                        if next != "\r\n" {
+                            line_ct += 1;
+                            byte_position = 0;
+                        }
+                    }
+                }
+                '\n' | '\u{2028}' | '\u{2029}' => {
+                    line_ct += 1;
+                    byte_position = 0;
+                }
+                _ => byte_position += c.len_utf8(),
+            };
+        }
+        (line_ct, byte_position)
+    }
+    #[inline]
+    /// Helper to handle new lines
+    fn bump_line_cursors(&mut self, ct: usize, len: usize) {
+        if ct != 0 {
+            self.line_cursor = len;
+            self.new_line_count += ct;
+        } else {
+            self.line_cursor += len;
+        }
+    }
+    /// Helper to handle the error cases
+    fn error<T>(&self, raw_error: RawError) -> Res<T> {
+        let RawError { idx, msg } = raw_error;
+        let (line, column) = self.position_for(idx);
+        Err(Error { line, column, msg })
+    }
 }
-
-fn whitespace_or_line_term(c: char) -> bool {
-    whitespace(c) || is_line_term(c)
-}
-
-fn whitespace(c: char) -> bool {
-    c.is_whitespace() || c as u32 == 65279
-}
-
-pub(crate) fn is_source_char(c: char) -> bool {
-    c as u32 <= 0x10_FF_FF
-}
-
-pub(crate) fn is_line_term(c: char) -> bool {
+#[inline]
+fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
 }
 
-pub mod error {
-    #[derive(Debug)]
-    pub enum Error {
-        DataMismatch(String),
-    }
-
-    impl ::std::fmt::Display for Error {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
-            match self {
-                Error::DataMismatch(ref msg) => msg.fmt(f),
-            }
-        }
-    }
-
-    impl ::std::error::Error for Error {}
-
-    impl From<::std::num::ParseIntError> for Error {
-        fn from(other: ::std::num::ParseIntError) -> Self {
-            Error::DataMismatch(format!("Error parsing int: {}", other))
-        }
-    }
-}
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+/// For keeping track of the nested-ness of
+/// templates and blocks
 pub enum OpenCurlyKind {
     Template,
     Block,
 }
 
 #[derive(Clone)]
+/// All of the important state
+/// for the scanner, used to
+/// cache and reset a `Scanner`
 pub struct ScannerState {
     pub cursor: usize,
-    pub spans_len: usize,
-    pub last_paren: usize,
-    pub replacement: usize,
     pub curly_stack: Vec<OpenCurlyKind>,
+    pub new_line_count: usize,
+    pub line_cursor: usize,
+    pub last_three: LookBehind,
+    pub paren_three: LookBehind,
 }
 
 #[cfg(test)]
 mod test {
+    use super::tokens::*;
     use super::*;
     #[test]
     fn tokenizer() {
@@ -460,35 +653,36 @@ function thing() {
     console.log('stuff');
 }";
         let expectation = vec![
-            Token::single_quoted_string("use strict"),
-            Token::punct(";"),
-            Token::keyword("function"),
-            Token::ident("thing"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct("{"),
-            Token::keyword("let"),
-            Token::ident("x"),
-            Token::punct("="),
-            Token::numeric("0"),
-            Token::punct(";"),
-            Token::ident("console"),
-            Token::punct("."),
-            Token::ident("log"),
-            Token::punct("("),
-            Token::single_quoted_string("stuff"),
-            Token::punct(")"),
-            Token::punct(";"),
-            Token::punct("}"),
+            Token::String(StringLit::Single("use strict")),
+            Token::Punct(Punct::SemiColon),
+            Token::Keyword(Keyword::Function),
+            Token::Ident("thing".into()),
+            Token::Punct(Punct::OpenParen),
+            Token::Punct(Punct::CloseParen),
+            Token::Punct(Punct::OpenBrace),
+            Token::Keyword(Keyword::Let),
+            Token::Ident("x".into()),
+            Token::Punct(Punct::Equal),
+            Token::Number("0".into()),
+            Token::Punct(Punct::SemiColon),
+            Token::Ident("console".into()),
+            Token::Punct(Punct::Period),
+            Token::Ident("log".into()),
+            Token::Punct(Punct::OpenParen),
+            Token::String(StringLit::Single("stuff")),
+            Token::Punct(Punct::CloseParen),
+            Token::Punct(Punct::SemiColon),
+            Token::Punct(Punct::CloseBrace),
             Token::EoF,
         ];
-        for tok in tokenize(js).into_iter().zip(expectation.into_iter()) {
-            assert_eq!(tok.0, tok.1);
+        for (lhs, rhs) in Scanner::new(js).zip(expectation.into_iter()) {
+            let lhs = lhs.unwrap();
+            assert_eq!(lhs.token, rhs);
         }
     }
 
     #[test]
-    fn scanner() {
+    fn tok_scanner() {
         let s = super::Scanner::new(
             "(function() {
 this.x = 100;
@@ -496,106 +690,57 @@ this.y = 0;
 })();",
         );
         let expected = vec![
-            Token::punct("("),
-            Token::keyword("function"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct("{"),
-            Token::keyword("this"),
-            Token::punct("."),
-            Token::ident("x"),
-            Token::punct("="),
-            Token::numeric("100"),
-            Token::punct(";"),
-            Token::keyword("this"),
-            Token::punct("."),
-            Token::ident("y"),
-            Token::punct("="),
-            Token::numeric("0"),
-            Token::punct(";"),
-            Token::punct("}"),
-            Token::punct(")"),
-            Token::punct("("),
-            Token::punct(")"),
-            Token::punct(";"),
+            Token::Punct(Punct::OpenParen), //"("
+            Token::Keyword(Keyword::Function),
+            Token::Punct(Punct::OpenParen),  //"("
+            Token::Punct(Punct::CloseParen), //")"
+            Token::Punct(Punct::OpenBrace),  //"{"
+            Token::Keyword(Keyword::This),
+            Token::Punct(Punct::Period), //"."
+            Token::Ident("x".into()),
+            Token::Punct(Punct::Equal), //"="
+            Token::Number("100".into()),
+            Token::Punct(Punct::SemiColon), //";"
+            Token::Keyword(Keyword::This),
+            Token::Punct(Punct::Period), //"."
+            Token::Ident("y".into()),
+            Token::Punct(Punct::Equal), //"="
+            Token::Number("0".into()),
+            Token::Punct(Punct::SemiColon),  //";"
+            Token::Punct(Punct::CloseBrace), //"}"
+            Token::Punct(Punct::CloseParen), //")"
+            Token::Punct(Punct::OpenParen),  //"("
+            Token::Punct(Punct::CloseParen), //")"
+            Token::Punct(Punct::SemiColon),  //";"
             Token::EoF,
         ];
         validate(s, expected);
     }
 
     #[test]
-    fn template_one_sub() {
-        let one_sub = "`things and stuff times ${x}`";
-        let s = Scanner::new(one_sub);
-        let expected = vec![
-            Token::template_head("things and stuff times "),
-            Token::ident("x"),
-            Token::template_tail(""),
-        ];
-        validate(s, expected);
+    fn tok_scanner_jq() {
+        let js = include_str!("../node_modules/jquery/dist/jquery.js");
+        let t = Scanner::new(js);
+        let _: Vec<_> = t.collect();
     }
 
-    #[test]
-    fn template_two_subs() {
-        let two_subs = "`things and stuff times ${x} divided by ${y}`";
-        let s = Scanner::new(two_subs);
-        let expected = vec![
-            Token::template_head("things and stuff times "),
-            Token::ident("x"),
-            Token::template_middle(" divided by "),
-            Token::ident("y"),
-            Token::template_tail(""),
-        ];
-        validate(s, expected);
-    }
-    #[test]
-    fn multiline_template() {
-        let plain = "`things and
-        stuff`";
-        let p_r = tokens::token().parse(plain).unwrap();
-        assert_eq!(
-            p_r,
-            (Token::no_sub_template(&plain[1..plain.len() - 1]), "")
-        );
-        let subbed = "`things and
-        stuff times ${x}`";
-        let s = Scanner::new(subbed);
-        let expected = vec![
-            Token::template_head("things and\n        stuff times "),
-            Token::ident("x"),
-            Token::template_tail(""),
-        ];
-        validate(s, expected);
-    }
-    #[test]
-    fn nested_template() {
-        let test = "`outer ${`inner ${0}`}`";
-        let expected = vec![
-            Token::template_head("outer "),
-            Token::template_head("inner "),
-            Token::numeric("0"),
-            Token::template_tail(""),
-            Token::template_tail(""),
-        ];
-        let s = Scanner::new(test);
-        validate(s, expected);
-    }
     #[test]
     fn look_ahead() {
         let js = "function() { return; }";
         let mut s = Scanner::new(js);
-        loop {
-            let peek = s.look_ahead();
-            let next = s.next();
-            assert_eq!(peek, next);
-            if peek.is_none() {
-                break;
+        while let Some(peek) = s.look_ahead() {
+            let peek = peek.unwrap();
+            if let Some(next) = s.next() {
+                let next = next.unwrap();
+                assert_eq!(peek, next);
             }
         }
     }
 
-    fn validate(s: Scanner, expected: Vec<Token>) {
+    fn validate(s: Scanner, expected: Vec<Token<&str>>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
+            let lhs = lhs.unwrap();
+            println!("{:?}, {:?}", lhs.token, rhs);
             assert_eq!((i, lhs.token), (i, rhs));
         }
     }
@@ -606,30 +751,19 @@ this.y = 0;
         let mut s = Scanner::new(js);
         let strs = js.split(' ');
         for (i, p) in strs.enumerate() {
-            let item = s.next().unwrap();
+            let item = s.next().unwrap().unwrap();
             let q = s.string_for(&item.span).unwrap();
             assert_eq!((i, p.to_string()), (i, q))
         }
     }
 
     #[test]
-    fn item_deref_to_token() {
-        let js = "function ( ) { return ; }";
-        let mut s = Scanner::new(js);
-        let i: Item = s.next().unwrap();
-
-        // explicit reference to token
-        assert!(i.token.is_keyword());
-        // implicit deref to token
-        assert!(i.is_keyword());
-    }
-
-    #[test]
     fn spans() {
         let js = include_str!("../node_modules/esprima/dist/esprima.js");
         let mut s = Scanner::new(js);
-        while let Some(ref item) = s.next() {
-            let from_stream = &s.stream[item.span.start..item.span.end];
+        while let Some(item) = s.next() {
+            let item = item.unwrap();
+            let from_stream = &js[item.span.start..item.span.end];
             let token = item.token.to_string();
 
             if from_stream != token {
@@ -641,11 +775,67 @@ this.y = 0;
     #[test]
     fn local_host_regex() {
         let js = r#"/^(http|https):\/\/(localhost|127\.0\.0\.1)/"#;
+        let regex = RegEx::from_parts(r"^(http|https):\/\/(localhost|127\.0\.0\.1)", None);
         let mut s = Scanner::new(js);
-        let r = s.next().unwrap();
-        assert_eq!(
-            r.token,
-            Token::regex(r#"^(http|https):\/\/(localhost|127\.0\.0\.1)"#, None)
-        );
+        let r = s.next().unwrap().unwrap();
+        assert_eq!(r.token, Token::RegEx(regex));
+    }
+
+    #[test]
+    fn error() {
+        let js = "
+(function() {
+    let x = 'asdf
+    ';
+})()";
+        for item in Scanner::new(js) {
+            match item {
+                Ok(_) => (),
+                Err(e) => {
+                    assert_eq!(e.line, 3);
+                    assert_eq!(e.column, 17);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn locations() {
+        let js = r"(function() {
+    let x = 'asdf\
+';
+    let y = `asd
+f`;
+    /*
+    * things
+    */
+})();";
+        let expectation = vec![
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2)), // 0 (
+            SourceLocation::new(Position::new(1, 2), Position::new(1, 10)), // 1 function
+            SourceLocation::new(Position::new(1, 10), Position::new(1, 11)), // 2 (
+            SourceLocation::new(Position::new(1, 11), Position::new(1, 12)), // 3 )
+            SourceLocation::new(Position::new(1, 13), Position::new(1, 14)), // 4 {
+            SourceLocation::new(Position::new(2, 5), Position::new(2, 8)), // 5 let
+            SourceLocation::new(Position::new(2, 9), Position::new(2, 10)), // 6 x
+            SourceLocation::new(Position::new(2, 11), Position::new(2, 12)), // 7 =
+            SourceLocation::new(Position::new(2, 13), Position::new(3, 1)), // 8 'asdf'
+            SourceLocation::new(Position::new(3, 1), Position::new(3, 2)), // 9 ;
+            SourceLocation::new(Position::new(4, 5), Position::new(4, 8)), // 10 let
+            SourceLocation::new(Position::new(4, 9), Position::new(4, 10)), // 11 y
+            SourceLocation::new(Position::new(4, 11), Position::new(4, 12)), // 12 =
+            SourceLocation::new(Position::new(4, 13), Position::new(5, 2)), // 13 `asdf`
+            SourceLocation::new(Position::new(5, 2), Position::new(5, 3)), // 14 ;
+            SourceLocation::new(Position::new(6, 5), Position::new(8, 6)), // 15 comment
+            SourceLocation::new(Position::new(9, 1), Position::new(9, 2)), // 16 }
+            SourceLocation::new(Position::new(9, 2), Position::new(9, 3)), // 17 )
+            SourceLocation::new(Position::new(9, 3), Position::new(9, 4)), // 18 (
+            SourceLocation::new(Position::new(9, 4), Position::new(9, 5)), // 19 )
+            SourceLocation::new(Position::new(9, 5), Position::new(9, 6)), // 20 ;
+        ];
+        for (i, (lhs, rhs)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
+            let item = lhs.expect("error parsing item");
+            assert_eq!((i, item.location), (i, *rhs))
+        }
     }
 }

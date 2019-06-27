@@ -9,48 +9,51 @@
 A scanner/tokenizer for JS written in Rust
 
 ## Usage
-There are two main interfaces for using `ress` in your Rust code.
-
-The first is the very simple function `tokenize`, this takes in a `String` and outputs a `Vec<Token>`.
+The primary way to interact with ress is through the `Scanner` struct which implements `Iterator` over the `Item` struct. `Item` has three fields `token` for the `Token` found, `span` which represents the start and end of the byte position in the original string and `location` which represents start and end character position with a line and column. It's definition looks like this.
 
 ```rust
-extern crate ress;
-
-use ress::tokenize;
-
-static &str JS = include_str!("index.js");
-
-fn main() {
-    let tokens = tokenize(JS);
-    it !tokens.iter().any(|t| t.is_punct_with(";")) {
-        panic!("No semi-colon!? You nave!");
-    } else {
-        println!("At least you are sane at one point");
+Item {
+    token: Token::Punct(Punct::Bang),
+    span: Span {
+        start: 0,
+        end: 1,
+    },
+    location: SourceLocation {
+        start: Position {
+            line: 1,
+            column: 1,
+        },
+        end: Position {
+            line: 1,
+            column: 2,
+        }
     }
 }
-
 ```
 
-The other option is to create a `Scanner`, an iterator over the `Item` struct. `Item` has two fields `token` for the `Token` found and `Span` for the position in the string.
+Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these unrendered lines.
+
+Here is an example that check some JS text for the existence of a semicolon and panics if one is found.
+
 ```rust
 extern crate ress;
 
 use ress::{Scanner};
 
-const &str JS = include_str!("index.js");
+static JS: &str = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
     for token in s {
-        if token.is_punct_with(";") {
+        let token = token.unwrap().token;
+        if token.matches_punct_str(";") {
             panic!("A semi-colon!? Heathen!");
         }
     }
     println!("Good show! Why use something that's optional?")
 }
 ```
-
-In either method the major construct that you would be dealing with is a `Token` enum. This enum represents the 10 different tokens defined in the ECMAScript specification.
+By far the most important part of `Item` is the `Token` enum, which will represent the 11 different types of token's supported by the [ECMAScript specification](https://tc39.es/ecma262/#sec-ecmascript-language-lexical-grammar).
 
 ### ES Tokens
 - Boolean Literal
@@ -62,28 +65,21 @@ In either method the major construct that you would be dealing with is a `Token`
 - Punctuation
 - String Literal
 - Regular Expression Literal
+- Template String
 - Comment
 
-In its current state it should be able to tokenize any valid JavaScript (I believe the testing is all currently done on ES3 packages). Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context and since my goal is keep this scanner context free this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword.
+Keep in mind that keywords have been moving around a lot in JS between ES3 through ES2019 so you might find some items parsed as keywords in the ES2019 context that are not in the ES3 context, this should be dealt with at a higher level. A good example of this is `yield` which is sometimes a keyword and sometimes an identifier, this package will always parse this as a Keyword. As of the writing of this readme `ress` supports all tokens in the [Stage 2 and Stage 3 ECMAScript Proposals](https://github.com/tc39/proposals) with the exception of the `#!` comments and number seperators.
 
-For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this
+For each of the token cases there is either a struct or enum to provide additional information with the exception of `NullLiteral` and `EoF` which should be self explanatory. The more complicated items do implement `ToString` which should get you back to the original js text for that token. The `Token` enum also provides a number of helper functions for building that picture without pulling the inner data our of the enum. Using the `Punct` case as an example the helper functions look like this.
+
 ```rust
 fn is_punct(&self) -> bool;
 fn matches_punct(&self, p: Punct) -> bool;
 fn matches_punct_str(&self, s: &str) -> bool;
 ```
-A similar set of functions are available for each case. Be aware that some `_str` implementations panic if the wrong string is provided meaning these would also panic.
-```rust
-let p = Token::Punct(Keyword::This);
-if p.matches_keyword_str("junk") {
-    // panic!
-}
-if p.matches_keyword(Keyword::This) {
-    // Don't panic!
-}
-```
+A similar set of functions are available for each case.
 
-Like all `Iterators` the `Scanner` has a `next`, I have also implemented a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` implement `Peekable` that will convert them into a new iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
+Like all `Iterators` the `Scanner` has a `next` method, It also has a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` can be converted into a `Peekable` Iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
 ```rust
 // look_ahead
 let js = "function() { return; }";
@@ -106,32 +102,31 @@ let js = "function() {
 };";
 let mut s = Scanner::new(js);
 let start = s.get_state();
-assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
-assert_eq!(s.next().unwrap().token, Token::Punct(Punct::OpenParen));
-assert_eq!(s.next().unwrap().token, Token::Punct(Punct::CloseParen));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Punct(Punct::OpenParen));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Punct(Punct::CloseParen));
 s.set_state(start);
-assert_eq!(s.next().unwrap().token, Token::Keyword(Keyword::Function));
+assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
 ```
+
 
 ## Why?
 Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
+
 ```sh
 $ cargo run --example clear-comments -- ./in.js ./out.js
 ```
 
-Ideally this project will be the starting point for building a full JS Abstract Syntax Tree (AST) in Rust. The next step would be to build a companion crate that will raise the tokens into a full (AST) ([work in progress](https://github.com/freemasen/resp)). And once we have an AST building JS dev tools in rust would be significantly easier.
-
 # Performance
-I am sure there are a lot of low hanging fruit in this area.
-The below stats are from running `cargo +nightly bench` on a Dell XPS 13 9350 (2.3ghz i5-6200U & 8bg RAM).
+The below stats are from running `cargo +nightly bench` on a MBP (2.9 GHz i9-8850H & 16bg RAM).
 
-|Lib           |Size     |Time     |+/-     |
-|---           |---      |---      |---     |
-|Angular 1.5.6 |1.16mb   |333.33ms |17.29ms |
-|jquery        |271.75kb |171.48ms |73.16ms |
-|React         |59.09kb  | 24.60ms | 4,83ms |
-|React-dom     |641.51kb |288.60ms |25.61ms |
-|Vue           |289.30kb |187.04ms |60.05ms |
+| Lib         | Size     | Time      | +/-        |
+| ----------- | -------- | --------- | ---------- |
+| Angular 1.5 |   1.16mb | 18.991 ms |   4.393 ms |
+| jquery      | 271.75kb |  7.218 ms | 577.236 μs |
+| React       |  59.09kb |  1.976 ms | 116.139 μs |
+| React-dom   | 641.51kb | 16.880 ms |   3.614 ms |
+| Vue         | 289.30kb |  9.675 ms |   1.402 ms |
 
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 
