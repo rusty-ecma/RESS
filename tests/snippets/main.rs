@@ -19,3 +19,24 @@ fn moment_regex_error() {
         println!("{:?}", item);
     }
 }
+
+#[test]
+fn for_regex_error() {
+    use ress::prelude::*;
+    let expecatation = vec![
+        Token::Keyword(Keyword::For),
+        Token::Punct(Punct::OpenParen),
+        Token::Number("1".into()),
+        Token::Punct(Punct::CloseParen),
+        Token::RegEx(RegEx {body: "a", flags: None}),
+        Token::Punct(Punct::Period),
+        Token::Ident("test".into()),
+        Token::Punct(Punct::OpenParen),
+        Token::String(StringLit::Single("a")),
+        Token::Punct(Punct::CloseParen),
+    ];
+    for (i, (item, tok)) in Scanner::new("for(1) /a/.test('a')").zip(expecatation.iter()).enumerate() {
+        let item = item.unwrap();
+        assert_eq!((i, &item.token), (i, tok));
+    }
+}
