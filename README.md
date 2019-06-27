@@ -111,7 +111,7 @@ assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
 
 
 ## Why?
-Wouldn't it be nice to write new JS development tools in Rust? The (clear-comments)[https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs] example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
+Wouldn't it be nice to write new JS development tools in Rust? The [clear-comments](https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs) example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
 
 ```sh
 $ cargo run --example clear-comments -- ./in.js ./out.js
