@@ -201,7 +201,7 @@ impl<'a> JSBuffer<'a> {
     }
     #[inline]
     pub fn at_octal(&self) -> bool {
-        self.buffer[self.idx] > 47 && self.buffer[self.idx] < 56
+        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 56
     }
 }
 
