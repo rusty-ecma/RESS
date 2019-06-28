@@ -1,4 +1,4 @@
-use ress::Scanner;
+use ress::prelude::*;
 
 #[test]
 fn vue_number_error() {
@@ -36,6 +36,26 @@ fn for_regex_error() {
         Token::Punct(Punct::CloseParen),
     ];
     for (i, (item, tok)) in Scanner::new("for(1) /a/.test('a')").zip(expecatation.iter()).enumerate() {
+        let item = item.unwrap();
+        assert_eq!((i, &item.token), (i, tok));
+    }
+}
+#[test]
+fn number_fail() {
+    let js = "assertLatin1(20..toString(16));";
+    let expectation = vec![
+        Token::Ident("assertLatin1".into()),
+        Token::Punct(Punct::OpenParen),
+        Token::Number("20.".into()),
+        Token::Punct(Punct::Period),
+        Token::Ident("toString".into()),
+        Token::Punct(Punct::OpenParen),
+        Token::Number("16".into()),
+        Token::Punct(Punct::CloseParen),
+        Token::Punct(Punct::CloseParen),
+        Token::Punct(Punct::SemiColon),
+    ];
+    for (i, (item, tok)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
         let item = item.unwrap();
         assert_eq!((i, &item.token), (i, tok));
     }

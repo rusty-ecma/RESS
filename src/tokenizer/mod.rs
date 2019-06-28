@@ -789,44 +789,70 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn dec_number(&mut self, seen_point: bool) -> Res<RawItem> {
-        let mut maybe_e: Option<char> = None;
-
-        if seen_point {
-            while let Some(c) = self.stream.next_char() {
-                if !c.is_digit(10) {
-                    maybe_e = Some(c);
-                    break;
-                }
-            }
-        } else {
-            while let Some(c) = self.stream.next_char() {
-                if !c.is_digit(10) && c != '.' {
-                    maybe_e = Some(c);
-                    break;
-                }
+        // let mut maybe_e: Option<char> = None;
+        while self.stream.at_decimal() {
+            self.stream.skip(1);
+        }
+        if !seen_point && self.look_ahead_byte_matches('.') {
+            self.stream.skip(1);
+            while self.stream.at_decimal() {
+                self.stream.skip(1);
             }
         }
-        if let Some(maybe_e) = maybe_e {
-            if !maybe_e.eq_ignore_ascii_case(&'e') {
-                let _ = self.stream.prev_char();
-            } else {
-                if let Some(c) = self.stream.next_char() {
-                    if c != '+' && c != '-' && !c.is_digit(10) {
-                        return Err(RawError {
-                            msg: "Invalid decimal, exponents must be followed by +, - or decimal digits".to_string(), 
-                            idx: self.current_start
-                        });
-                    }
-                }
-                while let Some(c) = self.stream.next_char() {
-                    if !c.is_digit(10) {
-                        let _ = self.stream.prev_char();
-                        break;
-                    }
-                }
+        if self.look_ahead_byte_matches('e') || self.look_ahead_byte_matches('E') {
+            self.stream.skip(1);
+            if self.look_ahead_byte_matches('-') || self.look_ahead_byte_matches('+') {
+                self.stream.skip(1);
+            } else if !self.stream.at_decimal() {
+                return Err(RawError {
+                    msg: "Invalid decimal, exponents must be followed by +, - or decimal digits".to_string(), 
+                    idx: self.current_start
+                });
+            }
+            while self.stream.at_decimal() {
+                self.stream.skip(1);
             }
         }
         self.gen_number(NumberKind::Dec)
+        // if seen_point {
+        //     while let Some(c) = self.stream.next_char() {
+        //         if !c.is_digit(10) {
+        //             maybe_e = Some(c);
+        //             break;
+        //         }
+        //     }
+        // } else {
+        //     while let Some(c) = self.stream.next_char() {
+        //         if !c.is_digit(10) && c != '.' && !seen_point {
+        //             maybe_e = Some(c);
+        //             break;
+        //         }
+        //         if c == '.' {
+        //             seen_point = true;
+        //         }
+        //     }
+        // }
+        // if let Some(maybe_e) = maybe_e {
+        //     if !maybe_e.eq_ignore_ascii_case(&'e') {
+        //         let _ = self.stream.prev_char();
+        //     } else {
+        //         if let Some(c) = self.stream.next_char() {
+        //             if c != '+' && c != '-' && !c.is_digit(10) {
+        //                 return Err(RawError {
+        //                     msg: "Invalid decimal, exponents must be followed by +, - or decimal digits".to_string(), 
+        //                     idx: self.current_start
+        //                 });
+        //             }
+        //         }
+        //         while let Some(c) = self.stream.next_char() {
+        //             if !c.is_digit(10) {
+        //                 let _ = self.stream.prev_char();
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
+        // self.gen_number(NumberKind::Dec)
     }
     #[inline]
     fn is_id_continue(c: char) -> bool {
