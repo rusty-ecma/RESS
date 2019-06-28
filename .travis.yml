@@ -13,7 +13,7 @@ matrix:
         - rm -rf /home/travis/.cargo/registry
       script:
         - cargo test --features moz_central
-        - cargo run --example major_libs --release
+        - cargo run --example major_libs
       stages:
         after_script:
           - if branch in (master, next)
