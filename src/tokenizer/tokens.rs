@@ -74,6 +74,16 @@ impl RawToken {
             _ => false,
         }
     }
+    pub fn is_div_punct(&self) -> bool {
+        match self {
+            RawToken::Punct(ref p) => match p {
+                Punct::ForwardSlash => true,
+                Punct::ForwardSlashEqual => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

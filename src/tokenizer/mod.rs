@@ -63,7 +63,7 @@ impl<'a> Tokenizer<'a> {
         self.punct(next_char)
     }
 
-    pub fn next_regex(&mut self) -> Res<RawItem> {
+    pub fn next_regex(&mut self, start_len: usize) -> Res<RawItem> {
         self.current_start = self.stream.idx;
         let mut end_of_body = false;
         let mut body_idx = 0;
@@ -87,7 +87,7 @@ impl<'a> Tokenizer<'a> {
                     }
                 } else if !Self::is_id_continue(c) {
                     let _ = self.stream.prev_char();
-                    return self.gen_regex(body_idx);
+                    return self.gen_regex(start_len, body_idx);
                 }
             } else if c == '\\' {
                 if self.stream.at_new_line() {
@@ -119,7 +119,7 @@ impl<'a> Tokenizer<'a> {
             }
         }
         if end_of_body {
-            return self.gen_regex(body_idx);
+            return self.gen_regex(start_len, body_idx);
         }
         Err(RawError {
             msg: format!(
@@ -863,9 +863,9 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    fn gen_regex(&self, body_idx: usize) -> Res<RawItem> {
+    fn gen_regex(&self, start_len: usize, body_idx: usize) -> Res<RawItem> {
         Ok(RawItem {
-            start: self.current_start.saturating_sub(1),
+            start: self.current_start.saturating_sub(start_len),
             end: self.stream.idx,
             ty: RawToken::RegEx(body_idx),
         })
@@ -1069,35 +1069,37 @@ mod test {
     #[test]
     fn tokenizer_regex() {
         static REGEX: &[&str] = &[
-            r#"x/"#,
-            r#"|/"#,
-            r#"|||/"#,
-            r#"^$\b\B/"#,
-            r#"(?=(?!(?:(.))))/"#,
-            r#"a.\f\n\r\t\v\0\[\-\/\\\x00\u0000/"#,
-            r#"\d\D\s\S\w\W/"#,
-            r#"\ca\cb\cc\cd\ce\cf\cg\ch\ci\cj\ck\cl\cm\cn\co\cp\cq\cr\cs\ct\cu\cv\cw\cx\cy\cz/"#,
-            r#"\cA\cB\cC\cD\cE\cF\cG\cH\cI\cJ\cK\cL\cM\cN\cO\cP\cQ\cR\cS\cT\cU\cV\cW\cX\cY\cZ/"#,
-            r#"[a-z-]/"#,
-            r#"[^\b\-^]/"#,
-            r#"[/\]\\]/"#,
-            r#"./i"#,
-            r#"./g"#,
-            r#"./m"#,
-            r#"./igm"#,
-            r#".*/"#,
-            r#".*?/"#,
-            r#".+/"#,
-            r#".+?/"#,
-            r#".?/"#,
-            r#".??/"#,
-            r#".{0}/"#,
-            r#".{0,}/"#,
-            r#".{0,0}/"#,
+            r#"/x/"#,
+            r#"/|/"#,
+            r#"/|||/"#,
+            r#"/^$\b\B/"#,
+            r#"/(?=(?!(?:(.))))/"#,
+            r#"/a.\f\n\r\t\v\0\[\-\/\\\x00\u0000/"#,
+            r#"/\d\D\s\S\w\W/"#,
+            r#"/\ca\cb\cc\cd\ce\cf\cg\ch\ci\cj\ck\cl\cm\cn\co\cp\cq\cr\cs\ct\cu\cv\cw\cx\cy\cz/"#,
+            r#"/\cA\cB\cC\cD\cE\cF\cG\cH\cI\cJ\cK\cL\cM\cN\cO\cP\cQ\cR\cS\cT\cU\cV\cW\cX\cY\cZ/"#,
+            r#"/[a-z-]/"#,
+            r#"/[^\b\-^]/"#,
+            r#"/[/\]\\]/"#,
+            r#"/./i"#,
+            r#"/./g"#,
+            r#"/./m"#,
+            r#"/./igm"#,
+            r#"/.*/"#,
+            r#"/.*?/"#,
+            r#"/.+/"#,
+            r#"/.+?/"#,
+            r#"/.?/"#,
+            r#"/.??/"#,
+            r#"/.{0}/"#,
+            r#"/.{0,}/"#,
+            r#"/.{0,0}/"#,
+            r#"/=/"#,
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
-            let item = t.next_regex().unwrap();
+            let next = t.next().unwrap();
+            let item = t.next_regex(next.end - next.start).unwrap();
             assert!(match item.ty {
                 RawToken::RegEx(_) => true,
                 _ => false,

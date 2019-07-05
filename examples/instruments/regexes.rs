@@ -34,7 +34,7 @@ static REGEX: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for r in REGEX {
-            let d = Tokenizer::new(r).next_regex().unwrap();
+            let d = Tokenizer::new(r).next_regex(1).unwrap();
             core::mem::forget(d);
         }
     }
