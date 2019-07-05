@@ -239,7 +239,7 @@ fn regex(c: &mut Criterion) {
     c.bench_function("regex", |b| {
         b.iter(|| {
             for r in REGEX {
-                black_box(Tokenizer::new(r).next_regex().unwrap());
+                black_box(Tokenizer::new(r).next_regex(1).unwrap());
             }
         })
     });

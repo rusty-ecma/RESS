@@ -269,11 +269,10 @@ impl<'b> Scanner<'b> {
             }
         };
         let mut len = next.end - next.start;
-        let ret = if next.ty.is_punct()
-            && &self.stream.stream.buffer[next.start..next.start.saturating_add(1)] == b"/"
+        let ret = if next.ty.is_div_punct()
             && self.is_regex_start()
         {
-            next = match self.stream.next_regex() {
+            next = match self.stream.next_regex(len) {
                 Ok(t) => t,
                 Err(e) => {
                     self.errored = true;
