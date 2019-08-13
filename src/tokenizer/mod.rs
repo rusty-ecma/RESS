@@ -561,9 +561,14 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Caret)
         }
     }
+    /// 10_000
+    /// 
+    /// 
     fn number(&mut self, start: char) -> Res<RawItem> {
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
+                /// start = 1
+                /// next = 0
                 if start == '0' {
                     if next.eq_ignore_ascii_case(&'x') {
                         self.hex_number()
@@ -787,9 +792,13 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_number(NumberKind::Bin)
     }
+    // 900.10e2
     #[inline]
     fn dec_number(&mut self, seen_point: bool) -> Res<RawItem> {
+        //seen_point = false
         while self.stream.at_decimal() {
+            //1 0
+            //2 _
             self.stream.skip(1);
         }
         if !seen_point && self.look_ahead_byte_matches('.') {
@@ -804,8 +813,9 @@ impl<'a> Tokenizer<'a> {
                 self.stream.skip(1);
             } else if !self.stream.at_decimal() {
                 return Err(RawError {
-                    msg: "Invalid decimal, exponents must be followed by +, - or decimal digits".to_string(), 
-                    idx: self.current_start
+                    msg: "Invalid decimal, exponents must be followed by +, - or decimal digits"
+                        .to_string(),
+                    idx: self.current_start,
                 });
             }
             while self.stream.at_decimal() {
@@ -1053,6 +1063,11 @@ mod test {
             "0o777",
             "2e308",
             "1e1",
+            "300_000",
+            "4e56_789",
+            "2.0_00",
+            "0b1010_0001_1000_0101",
+            "0xA0_B0_C0",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
