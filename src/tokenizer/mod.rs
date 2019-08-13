@@ -587,6 +587,8 @@ impl<'a> Tokenizer<'a> {
     fn number(&mut self, start: char) -> Res<RawItem> {
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
+                /// start = 1
+                /// next = 0
                 if start == '0' {
                     if next.eq_ignore_ascii_case(&'x') {
                         self.hex_number()
@@ -828,6 +830,7 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Bin)
     }
+
     #[inline]
     fn dec_number(&mut self, seen_point: bool, mut prev_char: char) -> Res<RawItem> {
         prev_char = self.consume_digits(10, prev_char)?;
@@ -1201,6 +1204,7 @@ mod test {
             "2.0_00",
             "300_000",
             "4e56_789",
+            "0xA0_B0_C0",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
