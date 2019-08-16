@@ -45,6 +45,12 @@ pub enum Token<T> {
     /// */
     /// ```
     Comment(Comment<T>),
+    /// A hashbang comment, the associated value contains the value.
+    /// ```js
+    /// #!/usr/bin/env node
+    /// process.exit(1)
+    /// ```
+    HashbangComment(Comment<T>),
 }
 
 /// Extension methods for
@@ -131,6 +137,7 @@ impl<'a> ToString for Token<&'a str> {
         match self {
             Token::Boolean(ref b) => b.to_string(),
             Token::Comment(ref c) => c.to_string(),
+            Token::HashbangComment(ref c) => c.to_string(),
             Token::EoF => String::new(),
             Token::Ident(ref i) => i.to_string(),
             Token::Keyword(ref k) => k.to_string(),

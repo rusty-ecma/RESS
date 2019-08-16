@@ -49,6 +49,7 @@ fn token_type_str(tok: &Token<&str>) -> &'static str {
         Token::RegEx(_) => "regex",
         Token::Template(_) => "template",
         Token::Comment(_) => "comment",
+        Token::HashbangComment(_) => "hashbang",
         Token::EoF => "eof",
     }
 }
@@ -65,6 +66,7 @@ fn get_initial_counts() -> HashMap<&'static str, usize> {
     counts.insert("punct", 0);
     counts.insert("comment", 0);
     counts.insert("null", 0);
+    counts.insert("hashbang", 0);
     counts.insert("eof", 0);
     counts
 }

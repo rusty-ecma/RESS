@@ -338,6 +338,9 @@ impl<'b> Scanner<'b> {
                         }
                     }
                 }
+                RawToken::HashbangComment => {
+                    Token::HashbangComment(Comment::new_single_line(&s[2..]))
+                },
                 RawToken::EoF => {
                     self.eof = true;
                     Token::EoF
@@ -644,13 +647,18 @@ mod test {
     use super::*;
     #[test]
     fn tokenizer() {
-        let js = "
+        let js = "#!/usr/bin/env node
 'use strict';
 function thing() {
     let x = 0;
     console.log('stuff');
 }";
         let expectation = vec![
+            Token::HashbangComment(Comment {
+                kind: tokens::CommentKind::Single,
+                content: "/usr/bin/env node",
+                tail_content: None,
+            }),
             Token::String(StringLit::Single("use strict")),
             Token::Punct(Punct::SemiColon),
             Token::Keyword(Keyword::Function),
