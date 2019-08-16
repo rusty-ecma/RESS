@@ -967,6 +967,24 @@ mod test {
         }
         assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");
 
+        let b = "#!";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::HashbangComment => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!");
+
+        let b = "#!\nlol";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::HashbangComment => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!");
+
         let b = "#!/usr/bin/env node\nprocess.exit(1)";
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
