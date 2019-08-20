@@ -207,12 +207,6 @@ impl<'a> JSBuffer<'a> {
     fn at_simple_number(&self, radix: u8) -> bool {
         !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 47 + radix + 1
     }
-    pub(crate) fn at_number(&self, radix: u8) -> bool {
-        !self.at_end()
-        && (self.buffer[self.idx] > 47
-        && self.buffer[self.idx] < 47 + radix + 1)
-        || self.buffer[self.idx] == 95
-    }
 }
 
 impl<'a> From<&'a str> for JSBuffer<'a> {

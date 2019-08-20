@@ -587,8 +587,6 @@ impl<'a> Tokenizer<'a> {
     fn number(&mut self, start: char) -> Res<RawItem> {
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
-                /// start = 1
-                /// next = 0
                 if start == '0' {
                     if next.eq_ignore_ascii_case(&'x') {
                         self.hex_number()
@@ -887,6 +885,17 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    #[inline]
+    fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
+        if char_1 == '_' && char_2 == '_' {
+            Err(RawError {
+                msg: "double numeric seperator".to_string(),
+                idx: self.current_start,
+            })
+        } else {
+            Ok(())
+        }
+    }
     #[inline]
     fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
         if char_1 == '_' && char_2 == '_' {
@@ -1205,6 +1214,7 @@ mod test {
             "300_000",
             "4e56_789",
             "0xA0_B0_C0",
+            "0o6_5",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
