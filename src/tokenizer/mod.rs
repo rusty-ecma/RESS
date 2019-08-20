@@ -561,14 +561,9 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Caret)
         }
     }
-    /// 10_000
-    /// 
-    /// 
     fn number(&mut self, start: char) -> Res<RawItem> {
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
-                /// start = 1
-                /// next = 0
                 if start == '0' {
                     if next.eq_ignore_ascii_case(&'x') {
                         self.hex_number()
@@ -725,88 +720,103 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn hex_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(16) {
                 return Err(RawError {
                     msg: "empty hex literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty hex literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(16) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(16) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
         self.gen_number(NumberKind::Hex)
     }
     #[inline]
     fn oct_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(8) {
                 return Err(RawError {
                     msg: "empty octal literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty octal literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(8) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(8) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
         self.gen_number(NumberKind::Oct)
     }
+
     #[inline]
     fn bin_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(2) {
                 return Err(RawError {
                     msg: "empty binary literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty binary literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(2) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(2) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
         self.gen_number(NumberKind::Bin)
     }
-    // 900.10e2
     #[inline]
     fn dec_number(&mut self, seen_point: bool) -> Res<RawItem> {
-        //seen_point = false
+        // move forward until we find something not a number or _
+        // keeping in mind that __ is and error
         while self.stream.at_decimal() {
-            //1 0
-            //2 _
             self.stream.skip(1);
         }
+        // if we have not yet seen a ., check for that
+        // if there is one repeat the above
+        // also check for prev_char != _
         if !seen_point && self.look_ahead_byte_matches('.') {
             self.stream.skip(1);
             while self.stream.at_decimal() {
                 self.stream.skip(1);
             }
         }
+        // if we find e || E, prev_char != _
+        // allow for + or - next
+        // at least one number is required next
+        // go back to step 1
         if self.look_ahead_byte_matches('e') || self.look_ahead_byte_matches('E') {
             self.stream.skip(1);
             if self.look_ahead_byte_matches('-') || self.look_ahead_byte_matches('+') {
@@ -822,7 +832,19 @@ impl<'a> Tokenizer<'a> {
                 self.stream.skip(1);
             }
         }
+        // prev_char != _
         self.gen_number(NumberKind::Dec)
+    }
+    #[inline]
+    fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
+        if char_1 == '_' && char_2 == '_' {
+            Err(RawError {
+                msg: "double numeric seperator".to_string(),
+                idx: self.current_start,
+            })
+        } else {
+            Ok(())
+        }
     }
     #[inline]
     fn is_id_continue(c: char) -> bool {
@@ -1068,11 +1090,13 @@ mod test {
             "2.0_00",
             "0b1010_0001_1000_0101",
             "0xA0_B0_C0",
+            "0o6_5",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
             let mut t = Tokenizer::new(n);
             let item = t.next().unwrap();
+            dbg!(&n[item.start..item.end]);
             assert!(match item.ty {
                 RawToken::Number(_) => true,
                 _ => false,
