@@ -570,7 +570,7 @@ impl<'a> Tokenizer<'a> {
                     break;
                 }
             }
-            self.gen_token(RawToken::HashbangComment)
+            self.gen_comment(CommentKind::Hashbang, 0, 0)
         } else {
             self.gen_punct(Punct::Hash)
         }
@@ -962,7 +962,7 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::HashbangComment => (),
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");
@@ -971,7 +971,7 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::HashbangComment => (),
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!");
@@ -980,7 +980,7 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::HashbangComment => (),
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!");
@@ -989,7 +989,7 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::HashbangComment => (),
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");

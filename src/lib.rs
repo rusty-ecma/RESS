@@ -336,11 +336,11 @@ impl<'b> Scanner<'b> {
                             };
                             Token::Comment(Comment::new_html(content, tail))
                         }
+                        tokens::CommentKind::Hashbang => {
+                            Token::Comment(Comment::new_hashbang(&s[2..]))
+                        }
                     }
                 }
-                RawToken::HashbangComment => {
-                    Token::HashbangComment(Comment::new_single_line(&s[2..]))
-                },
                 RawToken::EoF => {
                     self.eof = true;
                     Token::EoF
@@ -654,8 +654,8 @@ function thing() {
     console.log('stuff');
 }";
         let expectation = vec![
-            Token::HashbangComment(Comment {
-                kind: tokens::CommentKind::Single,
+            Token::Comment(Comment {
+                kind: tokens::CommentKind::Hashbang,
                 content: "/usr/bin/env node",
                 tail_content: None,
             }),

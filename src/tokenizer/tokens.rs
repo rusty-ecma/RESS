@@ -54,7 +54,6 @@ pub enum RawToken {
         new_line_count: usize,
         last_len: usize,
     },
-    HashbangComment
 }
 
 impl RawToken {
