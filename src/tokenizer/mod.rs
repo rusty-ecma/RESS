@@ -564,7 +564,7 @@ impl<'a> Tokenizer<'a> {
     }
     fn hash(&mut self) -> Res<RawItem> {
         // hashbang comment can only appear at the start
-        if self.current_start == 0 && self.stream.next_char() == Some('!') {
+        if self.current_start == 0 && self.look_ahead_byte_matches('!') {
             while !self.at_new_line() {
                 if self.stream.next_char().is_none() {
                     break;
