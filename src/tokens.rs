@@ -37,9 +37,10 @@ pub enum Token<T> {
     /// The string parts of a template string
     Template(Template<T>),
     /// A comment, the associated value will contain the raw comment
-    /// This will capture both inline comments `// I am an inline comment`
-    /// and multi-line comments
+    /// This will capture inline comments `// I am an inline comment`,
+    /// multi-line comments, HTML-style comments and Unix hashbangs.
     /// ```js
+    /// #!/usr/bin/env node
     /// /*multi lines
     /// * comments
     /// */
@@ -229,9 +230,11 @@ pub trait CommentExt<T> {
     fn new_html(content: T, tail_content: Option<T>) -> Comment<T>;
     fn new_html_no_tail(content: T) -> Comment<T>;
     fn new_html_with_tail(content: T, tail: T) -> Comment<T>;
+    fn new_hashbang(content: T) -> Comment<T>;
     fn is_multi_line(&self) -> bool;
     fn is_single_line(&self) -> bool;
     fn is_html(&self) -> bool;
+    fn is_hashbang(&self) -> bool;
 }
 
 impl<'a> CommentExt<&'a str> for Comment<&'a str> {
@@ -263,6 +266,10 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
         Comment::new_html(content, Some(tail))
     }
 
+    fn new_hashbang(content: &'a str) -> Self {
+        Comment::from_parts(content, CommentKind::Hashbang, None)
+    }
+
     fn is_multi_line(&self) -> bool {
         self.kind == CommentKind::Multi
     }
@@ -273,6 +280,10 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
 
     fn is_html(&self) -> bool {
         self.kind == CommentKind::Multi
+    }
+
+    fn is_hashbang(&self) -> bool {
+        self.kind == CommentKind::Hashbang
     }
 }
 impl CommentExt<String> for Comment<String> {
@@ -304,6 +315,10 @@ impl CommentExt<String> for Comment<String> {
         Comment::new_html(content, Some(tail))
     }
 
+    fn new_hashbang(content: String) -> Self {
+        Comment::from_parts(content, CommentKind::Hashbang, None)
+    }
+
     fn is_multi_line(&self) -> bool {
         self.kind == CommentKind::Multi
     }
@@ -315,6 +330,10 @@ impl CommentExt<String> for Comment<String> {
     fn is_html(&self) -> bool {
         self.kind == CommentKind::Multi
     }
+
+    fn is_hashbang(&self) -> bool {
+        self.kind == CommentKind::Hashbang
+    }
 }
 
 impl ToString for Comment<String> {
@@ -323,6 +342,7 @@ impl ToString for Comment<String> {
             CommentKind::Single => format!("//{}", self.content),
             CommentKind::Multi => format!("/*{}*/", self.content),
             CommentKind::Html => format!("<!--{}-->", self.content),
+            CommentKind::Hashbang => format!("#!{}", self.content),
         }
     }
 }
@@ -332,6 +352,7 @@ impl ToString for Comment<&str> {
             CommentKind::Single => format!("//{}", self.content),
             CommentKind::Multi => format!("/*{}*/", self.content),
             CommentKind::Html => format!("<!--{}-->", self.content),
+            CommentKind::Hashbang => format!("#!{}", self.content),
         }
     }
 }
@@ -972,11 +993,12 @@ impl ToString for Punct {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-/// The 3 kinds of comments
+/// The 4 kinds of comments
 pub enum CommentKind {
     Single,
     Multi,
     Html,
+    Hashbang,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
