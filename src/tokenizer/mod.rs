@@ -896,17 +896,7 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         }
     }
-    #[inline]
-    fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
-        if char_1 == '_' && char_2 == '_' {
-            Err(RawError {
-                msg: "double numeric seperator".to_string(),
-                idx: self.current_start,
-            })
-        } else {
-            Ok(())
-        }
-    }
+    
     #[inline]
     fn is_id_continue(c: char) -> bool {
         c == '$'
