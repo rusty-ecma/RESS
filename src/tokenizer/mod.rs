@@ -742,6 +742,7 @@ impl<'a> Tokenizer<'a> {
             }
             prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Hex)
     }
     #[inline]
@@ -768,6 +769,7 @@ impl<'a> Tokenizer<'a> {
             }
             prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Oct)
     }
 
@@ -795,6 +797,7 @@ impl<'a> Tokenizer<'a> {
             }
             prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Bin)
     }
     #[inline]
@@ -824,14 +827,9 @@ impl<'a> Tokenizer<'a> {
             }
             prev_char = self.consume_digits(10, prev_char)?;
         }
-        if prev_char == '_' {
-            Err(RawError {
-                msg: "Invalid decimal. Numbers cannot end with an underscore".to_string(),
-                idx: self.current_start,
-            })
-        } else {
-            self.gen_number(NumberKind::Dec)
-        }
+
+        self.check_trailing_underscore(prev_char)?;
+        self.gen_number(NumberKind::Dec)
     }
 
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
@@ -844,6 +842,18 @@ impl<'a> Tokenizer<'a> {
             prev_char = c;
         }
         Ok(prev_char)
+    }
+
+    #[inline]
+    fn check_trailing_underscore(&self, prev_char: char) -> Res<()> {
+        if prev_char == '_' {
+            Err(RawError {
+                msg: "Invalid decimal. Numbers cannot end with an underscore".to_string(),
+                idx: self.current_start,
+            })
+        } else {
+            Ok(())
+        }
     }
 
     #[inline]
@@ -890,6 +900,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn gen_number(&self, n: NumberKind) -> Res<RawItem> {
+        // result = Number(n)
         self.gen_token(RawToken::Number(n))
     }
     #[inline]
