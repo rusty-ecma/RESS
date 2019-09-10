@@ -8,6 +8,7 @@ use crate::error::RawError;
 use unicode::{is_id_continue, is_id_start};
 pub(crate) type Res<T> = Result<T, RawError>;
 
+#[derive(Debug)]
 pub struct RawItem {
     pub ty: tokens::RawToken,
     pub start: usize,
@@ -356,7 +357,7 @@ impl<'a> Tokenizer<'a> {
             ']' => self.gen_punct(Punct::CloseBracket),
             ':' => self.gen_punct(Punct::Colon),
             '?' => self.gen_punct(Punct::QuestionMark),
-            '#' => self.gen_punct(Punct::Hash),
+            '#' => self.hash(),
             '~' => self.gen_punct(Punct::Tilde),
             '{' => self.open_curly(OpenCurlyKind::Block, Punct::OpenBrace),
             '}' => self.close_curly(Punct::CloseBrace),
@@ -559,6 +560,19 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::CaretEqual)
         } else {
             self.gen_punct(Punct::Caret)
+        }
+    }
+    fn hash(&mut self) -> Res<RawItem> {
+        // hashbang comment can only appear at the start
+        if self.current_start == 0 && self.look_ahead_byte_matches('!') {
+            while !self.at_new_line() {
+                if self.stream.next_char().is_none() {
+                    break;
+                }
+            }
+            self.gen_comment(CommentKind::Hashbang, 0, 0)
+        } else {
+            self.gen_punct(Punct::Hash)
         }
     }
     fn number(&mut self, start: char) -> Res<RawItem> {
@@ -940,6 +954,54 @@ mod test {
             let item = t.next().unwrap();
             assert!(item.ty.is_punct());
             assert!(t.stream.at_end());
+        }
+    }
+    #[test]
+    fn tokenizer_hashbang() {
+        let b = "#!/usr/bin/env node";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");
+
+        let b = "#!";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!");
+
+        let b = "#!\nlol";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!");
+
+        let b = "#!/usr/bin/env node\nprocess.exit(1)";
+        let mut t = Tokenizer::new(b);
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            _ => panic!("expected hashbang comment, found {:?}", item.ty),
+        }
+        assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");
+
+        // should not parse #! in as hashbang unless it's at the start of the text
+        let b = "\n#!/usr/bin/env node";
+        let mut t = Tokenizer::new(b);
+        t.skip_whitespace();
+        let item = t.next().unwrap();
+        match item.ty {
+            RawToken::Punct(Punct::Hash) => (),
+            _ => panic!("expected hash, found {:?}", item.ty),
         }
     }
     #[test]
