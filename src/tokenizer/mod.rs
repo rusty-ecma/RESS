@@ -397,7 +397,7 @@ impl<'a> Tokenizer<'a> {
             self.stream.skip(2);
             self.gen_punct(Punct::Ellipsis)
         } else if self.stream.at_decimal() {
-            self.dec_number(true)
+            self.dec_number(true, '.')
         } else {
             self.gen_punct(Punct::Period)
         }
@@ -586,18 +586,18 @@ impl<'a> Tokenizer<'a> {
                     } else if next.eq_ignore_ascii_case(&'b') {
                         self.bin_number()
                     } else if next.is_digit(10) {
-                        self.dec_number(false)
+                        self.dec_number(false, next)
                     } else if next == '.' {
-                        self.dec_number(true)
+                        self.dec_number(true, next)
                     } else {
                         let _ = self.stream.prev_char();
-                        self.dec_number(false)
+                        self.dec_number(false, next)
                     }
                 } else if next == '.' {
-                    self.dec_number(true)
+                    self.dec_number(true, next)
                 } else {
                     let _ = self.stream.prev_char();
-                    self.dec_number(next == '.')
+                    self.dec_number(next == '.', next)
                 }
             } else {
                 self.gen_number(NumberKind::Dec)
@@ -734,88 +734,104 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn hex_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(16) {
                 return Err(RawError {
                     msg: "empty hex literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty hex literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(16) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(16) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Hex)
     }
     #[inline]
     fn oct_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(8) {
                 return Err(RawError {
                     msg: "empty octal literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty octal literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(8) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(8) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Oct)
     }
+
     #[inline]
     fn bin_number(&mut self) -> Res<RawItem> {
-        if let Some(c) = self.stream.next_char() {
+        let mut prev_char = if let Some(c) = self.stream.next_char() {
             if !c.is_digit(2) {
                 return Err(RawError {
                     msg: "empty binary literal".to_string(),
                     idx: self.current_start,
                 });
             }
+            c
         } else {
             return Err(RawError {
                 msg: "empty binary literal".to_string(),
                 idx: self.current_start,
             });
-        }
+        };
         while let Some(c) = self.stream.next_char() {
-            if !c.is_digit(2) {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(2) && c != '_' {
                 let _ = self.stream.prev_char();
                 break;
             }
+            prev_char = c;
         }
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Bin)
     }
     #[inline]
-    fn dec_number(&mut self, seen_point: bool) -> Res<RawItem> {
-        while self.stream.at_decimal() {
-            self.stream.skip(1);
-        }
+    fn dec_number(&mut self, seen_point: bool, mut prev_char: char) -> Res<RawItem> {
+        prev_char = self.consume_digits(10, prev_char)?;
+
         if !seen_point && self.look_ahead_byte_matches('.') {
             self.stream.skip(1);
-            while self.stream.at_decimal() {
-                self.stream.skip(1);
-            }
+            prev_char = self.consume_digits(10, '.')?;
         }
+        // if we find e || E, prev_char != _
+        // allow for + or - next
+        // at least one number is required next
+        // go back to step 1
         if self.look_ahead_byte_matches('e') || self.look_ahead_byte_matches('E') {
             self.stream.skip(1);
+            prev_char = 'e';            
             if self.look_ahead_byte_matches('-') || self.look_ahead_byte_matches('+') {
                 self.stream.skip(1);
+                prev_char = '-'; 
             } else if !self.stream.at_decimal() {
                 return Err(RawError {
                     msg: "Invalid decimal, exponents must be followed by +, - or decimal digits"
@@ -823,11 +839,47 @@ impl<'a> Tokenizer<'a> {
                     idx: self.current_start,
                 });
             }
-            while self.stream.at_decimal() {
-                self.stream.skip(1);
-            }
+            prev_char = self.consume_digits(10, prev_char)?;
         }
+
+        self.check_trailing_underscore(prev_char)?;
         self.gen_number(NumberKind::Dec)
+    }
+
+    fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
+        while let Some(c) = self.stream.next_char() {
+            self.check_repeating_underscore(prev_char, c)?;
+            if !c.is_digit(radix) && c != '_' {
+                let _ = self.stream.prev_char();
+                break;
+            }
+            prev_char = c;
+        }
+        Ok(prev_char)
+    }
+
+    #[inline]
+    fn check_trailing_underscore(&self, prev_char: char) -> Res<()> {
+        if prev_char == '_' {
+            Err(RawError {
+                msg: "Invalid decimal. Numbers cannot end with an underscore".to_string(),
+                idx: self.current_start,
+            })
+        } else {
+            Ok(())
+        }
+    }
+
+    #[inline]
+    fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
+        if char_1 == '_' && char_2 == '_' {
+            Err(RawError {
+                msg: "double numeric seperator".to_string(),
+                idx: self.current_start,
+            })
+        } else {
+            Ok(())
+        }
     }
     #[inline]
     fn is_id_continue(c: char) -> bool {
@@ -862,6 +914,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn gen_number(&self, n: NumberKind) -> Res<RawItem> {
+        // result = Number(n)
         self.gen_token(RawToken::Number(n))
     }
     #[inline]
@@ -1128,11 +1181,18 @@ mod test {
             "0o777",
             "2e308",
             "1e1",
+            "0b1010_0001_1000_0101",
+            "0xA0_B0_C0",
+            "0o6_5",
+            "2.0_00",
+            "300_000",
+            "4e56_789",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
             let mut t = Tokenizer::new(n);
             let item = t.next().unwrap();
+            dbg!(&n[item.start..item.end]);
             assert!(match item.ty {
                 RawToken::Number(_) => true,
                 _ => false,

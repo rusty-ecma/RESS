@@ -197,11 +197,15 @@ impl<'a> JSBuffer<'a> {
     }
     #[inline]
     pub fn at_decimal(&self) -> bool {
-        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 58
+        self.at_simple_number(10)
     }
     #[inline]
     pub fn at_octal(&self) -> bool {
-        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 56
+        self.at_simple_number(8)
+    }
+    #[inline]
+    fn at_simple_number(&self, radix: u8) -> bool {
+        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 47 + radix + 1
     }
 }
 
@@ -214,6 +218,27 @@ impl<'a> From<&'a str> for JSBuffer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn at_oct_number() {
+        let s = "012345678";
+        let mut buf = JSBuffer::from(s);
+        for _ in 0..8 {
+            assert!(buf.at_octal());
+            let _ = buf.next_char();
+        }
+        assert!(!buf.at_octal());
+    }
+    #[test]
+    fn at_dec_number() {
+        let s = "0123456789a";
+
+        let mut buf = JSBuffer::from(s);
+        for _ in 0..10 {
+            assert!(buf.at_decimal());
+            let _ = buf.next_char();
+        }
+        assert!(!buf.at_decimal());
+    }
     #[test]
     fn check() {
         let s = "🦜🦡🐁kł둘";
