@@ -818,8 +818,9 @@ impl<'a> Tokenizer<'a> {
                 self.stream.skip(1);
             } else if !self.stream.at_decimal() {
                 return Err(RawError {
-                    msg: "Invalid decimal, exponents must be followed by +, - or decimal digits".to_string(), 
-                    idx: self.current_start
+                    msg: "Invalid decimal, exponents must be followed by +, - or decimal digits"
+                        .to_string(),
+                    idx: self.current_start,
                 });
             }
             while self.stream.at_decimal() {
@@ -962,7 +963,10 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            RawToken::Comment {
+                kind: CommentKind::Hashbang,
+                ..
+            } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");
@@ -971,7 +975,10 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            RawToken::Comment {
+                kind: CommentKind::Hashbang,
+                ..
+            } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!");
@@ -980,7 +987,10 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            RawToken::Comment {
+                kind: CommentKind::Hashbang,
+                ..
+            } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!");
@@ -989,7 +999,10 @@ mod test {
         let mut t = Tokenizer::new(b);
         let item = t.next().unwrap();
         match item.ty {
-            RawToken::Comment { kind: CommentKind::Hashbang, .. } => (),
+            RawToken::Comment {
+                kind: CommentKind::Hashbang,
+                ..
+            } => (),
             _ => panic!("expected hashbang comment, found {:?}", item.ty),
         }
         assert_eq!(&b[item.start..item.end], "#!/usr/bin/env node");

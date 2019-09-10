@@ -20,30 +20,34 @@ fn moment_regex_error() {
     }
 }
 
-
 #[test]
 fn number_member() {
-    compare("20..toString()", &vec![
-        Token::Number("20.".into()),
-        Token::Punct(Punct::Period),
-        Token::Ident("toString".into()),
-        Token::Punct(Punct::OpenParen),
-        Token::Punct(Punct::CloseParen),
-    ]);
+    compare(
+        "20..toString()",
+        &vec![
+            Token::Number("20.".into()),
+            Token::Punct(Punct::Period),
+            Token::Ident("toString".into()),
+            Token::Punct(Punct::OpenParen),
+            Token::Punct(Punct::CloseParen),
+        ],
+    );
 }
-
 #[test]
 fn if_then_regex() {
-    compare("if (1) /a/", &vec![
-        Token::Keyword(Keyword::If),
-        Token::Punct(Punct::OpenParen),
-        Token::Number("1".into()),
-        Token::Punct(Punct::CloseParen),
-        Token::RegEx(RegEx {
-            body: "a",
-            flags: None,
-        }),
-    ]);
+    compare(
+        "if (1) /a/",
+        &vec![
+            Token::Keyword(Keyword::If),
+            Token::Punct(Punct::OpenParen),
+            Token::Number("1".into()),
+            Token::Punct(Punct::CloseParen),
+            Token::RegEx(RegEx {
+                body: "a",
+                flags: None,
+            }),
+        ],
+    );
 }
 
 fn compare(js: &str, expectation: &[Token<&str>]) {
