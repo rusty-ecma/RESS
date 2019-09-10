@@ -358,6 +358,7 @@ pub trait NumberExt {
     fn is_oct(&self) -> bool;
     fn is_dec(&self) -> bool;
     fn has_exponent(&self) -> bool;
+    fn is_big_int(&self) -> bool;
 }
 
 impl<'a> NumberExt for Number<&'a str> {
@@ -368,6 +369,8 @@ impl<'a> NumberExt for Number<&'a str> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
+        } else if self.0.ends_with("n") {
+            NumberKind::BigInt
         } else {
             NumberKind::Dec
         }
@@ -390,6 +393,9 @@ impl<'a> NumberExt for Number<&'a str> {
             NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
+    }
+    fn is_big_int(&self) -> bool {
+        self.kind() == NumberKind::BigInt
     }
 }
 impl NumberExt for Number<String> {
@@ -400,6 +406,8 @@ impl NumberExt for Number<String> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
+        } else if self.0.ends_with("n") {
+            NumberKind::BigInt  
         } else {
             NumberKind::Dec
         }
@@ -422,6 +430,9 @@ impl NumberExt for Number<String> {
             NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
+    }
+    fn is_big_int(&self) -> bool {
+        self.kind() == NumberKind::BigInt
     }
 }
 
@@ -781,12 +792,13 @@ impl<'a> Into<bool> for &'a Boolean {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-/// The 4 kinds of numbers
+/// The 5 kinds of numbers
 pub enum NumberKind {
     Dec,
     Hex,
     Bin,
     Oct,
+    BigInt,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
