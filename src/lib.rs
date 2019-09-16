@@ -565,13 +565,15 @@ impl<'b> Scanner<'b> {
     }
     /// Get the line/column pair for any given byte index
     pub fn position_for(&self, idx: usize) -> (usize, usize) {
-        // Obviously we will start at 0
         let mut line_ct = 1;
         // This is the byte position, not the character
         // position to account for multi byte chars
         let mut byte_position = 0;
         // loop over the characters
-        for c in self.original[0..idx].chars() {
+        for (i, c) in self.original.chars().enumerate() {
+            if i >= idx {
+                return (line_ct, byte_position);
+            }
             match c {
                 '\r' => {
                     // look ahead 1 char to see if it is a newline pair

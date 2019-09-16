@@ -301,9 +301,12 @@ impl<'a> Tokenizer<'a> {
                 last_len = last_len.saturating_add(1);
             } else if c == '\r' {
                 if !escaped {
+                    // back up one to avoid splitting a unicode 
+                    // sequence
+                    let _ = self.stream.prev_char();
                     return Err(RawError {
                         msg: "unescaped new line in string literal".to_string(),
-                        idx: self.stream.idx - 1,
+                        idx: self.stream.idx,
                     });
                 }
                 if self.look_ahead_byte_matches('\n') {
@@ -314,9 +317,12 @@ impl<'a> Tokenizer<'a> {
                 last_len = 0;
             } else if Self::is_new_line_not_cr(c) {
                 if !escaped {
+                    // back up one to avoid splitting a unicode 
+                    // sequence
+                    let _ = self.stream.prev_char();
                     return Err(RawError {
                         msg: "unescaped new line in string literal".to_string(),
-                        idx: self.stream.idx - 1,
+                        idx: self.stream.idx,
                     });
                 }
                 new_line_count = new_line_count.saturating_add(1);
@@ -342,9 +348,12 @@ impl<'a> Tokenizer<'a> {
                 escaped = false;
             }
         }
+        // back up one to avoid splitting a unicode 
+        // sequence
+        let _ = self.stream.prev_char();
         Err(RawError {
             msg: "unterminated string literal".to_string(),
-            idx: self.stream.idx - 1,
+            idx: self.stream.idx,
         })
     }
     fn punct(&mut self, c: char) -> Res<RawItem> {

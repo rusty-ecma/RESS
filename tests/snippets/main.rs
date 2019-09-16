@@ -50,8 +50,19 @@ fn if_then_regex() {
     );
 }
 
+#[test]
+fn line_terminator_in_string_literal() {
+    let js = "' '";
+    for _ in Scanner::new(js) {
+        // just testing for panics on the byte index
+        // for now
+        //TODO: Allow this character in string literals
+        // as per spec under feature "json superset"
+    }
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
-    for (i, (item, tok)) in Scanner::new(js).zip(expectation).enumerate() {
+    for (i, (item, tok)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
         let item = item.unwrap();
         assert_eq!((i, &item.token), (i, tok));
     }
