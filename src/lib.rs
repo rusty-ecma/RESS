@@ -314,10 +314,10 @@ impl<'b> Scanner<'b> {
                     new_lines = new_line_count;
                     match kind {
                         tokens::CommentKind::Multi => {
-                            Token::Comment(Comment::new_multi_line(&s[2..s.len() - 2]))
+                            Token::Comment(Comment::new_multi_line(s.trim_start_matches("/*").trim_end_matches("*/")))
                         }
                         tokens::CommentKind::Single => {
-                            Token::Comment(Comment::new_single_line(&s[2..]))
+                            Token::Comment(Comment::new_single_line(s.trim_start_matches("//")))
                         }
                         tokens::CommentKind::Html => {
                             let (content, tail) = if let Some(idx) = s.rfind("-->") {
