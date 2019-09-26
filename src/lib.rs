@@ -269,9 +269,7 @@ impl<'b> Scanner<'b> {
             }
         };
         let mut len = next.end - next.start;
-        let ret = if next.ty.is_div_punct()
-            && self.is_regex_start()
-        {
+        let ret = if next.ty.is_div_punct() && self.is_regex_start() {
             next = match self.stream.next_regex(len) {
                 Ok(t) => t,
                 Err(e) => {
@@ -402,7 +400,7 @@ impl<'b> Scanner<'b> {
                 self.line_cursor,
             )
         };
-        
+
         if !advance_cursor {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
@@ -412,10 +410,7 @@ impl<'b> Scanner<'b> {
                 if let Punct::OpenParen = p {
                     ::std::mem::replace(
                         &mut self.before_last_open,
-                        ::std::mem::replace(
-                            &mut self.last_three,
-                            LookBehind::new()
-                        )
+                        ::std::mem::replace(&mut self.last_three, LookBehind::new()),
                     );
                 }
             }
@@ -451,7 +446,7 @@ impl<'b> Scanner<'b> {
             true
         }
     }
-    
+
     /// Check if just passed a conditional expression
     ///
     /// > used in determining if we are at a regex or not
@@ -475,7 +470,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             if before == &MetaToken::Ident {
                 if let Some(ref three) = self.before_last_open.three() {
-                    return Self::check_for_expression(three)
+                    return Self::check_for_expression(three);
                 }
             } else if before == &MetaToken::Keyword(Keyword::Function) {
                 if let Some(ref two) = self.before_last_open.two() {
@@ -555,7 +550,7 @@ impl<'b> Scanner<'b> {
             _ => false,
         }
     }
-    
+
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())
@@ -570,13 +565,15 @@ impl<'b> Scanner<'b> {
     }
     /// Get the line/column pair for any given byte index
     pub fn position_for(&self, idx: usize) -> (usize, usize) {
-        // Obviously we will start at 0
         let mut line_ct = 1;
         // This is the byte position, not the character
         // position to account for multi byte chars
         let mut byte_position = 0;
         // loop over the characters
-        for c in self.original[0..idx].chars() {
+        for (i, c) in self.original.chars().enumerate() {
+            if i >= idx {
+                return (line_ct, byte_position);
+            }
             match c {
                 '\r' => {
                     // look ahead 1 char to see if it is a newline pair

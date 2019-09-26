@@ -65,8 +65,6 @@ impl From<&RawToken> for MetaToken {
     }
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -86,20 +84,44 @@ mod test {
         l.push(&second);
         test(&l, Some((&second).into()), Some((&first).into()), None);
         l.push(&third);
-        test(&l, Some((&third).into()), Some((&second).into()), Some((&first).into()));
+        test(
+            &l,
+            Some((&third).into()),
+            Some((&second).into()),
+            Some((&first).into()),
+        );
         l.push(&fourth);
-        test(&l, Some((&fourth).into()), Some((&third).into()), Some((&second).into()));
+        test(
+            &l,
+            Some((&fourth).into()),
+            Some((&third).into()),
+            Some((&second).into()),
+        );
         l.push(&fifth);
-        test(&l, Some((&fifth).into()), Some((&fourth).into()), Some((&third).into()));
+        test(
+            &l,
+            Some((&fifth).into()),
+            Some((&fourth).into()),
+            Some((&third).into()),
+        );
         l.push(&sixth);
-        test(&l, Some((&sixth).into()), Some((&fifth).into()), Some((&fourth).into()));
+        test(
+            &l,
+            Some((&sixth).into()),
+            Some((&fifth).into()),
+            Some((&fourth).into()),
+        );
     }
 
-    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>, third: Option<MetaToken>) {
+    fn test(
+        l: &LookBehind,
+        first: Option<MetaToken>,
+        second: Option<MetaToken>,
+        third: Option<MetaToken>,
+    ) {
         println!("{:?}", l);
         assert_eq!(l.last(), &first);
         assert_eq!(l.two(), &second);
         assert_eq!(l.three(), &third);
     }
 }
-
