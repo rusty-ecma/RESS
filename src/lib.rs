@@ -415,7 +415,7 @@ impl<'b> Scanner<'b> {
                 }
             }
             if !next.ty.is_comment() {
-                self.last_three.push((&next.ty).into());
+                self.last_three.push(&next.ty);
             }
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
@@ -470,11 +470,11 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             if before == &MetaToken::Ident {
                 if let Some(ref three) = self.before_last_open.three() {
-                    return Self::check_for_expression(three);
+                    return Self::check_for_expression(*three);
                 }
             } else if before == &MetaToken::Keyword(Keyword::Function) {
                 if let Some(ref two) = self.before_last_open.two() {
-                    return Self::check_for_expression(two);
+                    return Self::check_for_expression(*two);
                 } else {
                     return false;
                 }
@@ -485,7 +485,7 @@ impl<'b> Scanner<'b> {
     /// Check if a token is the beginning of an expression
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_expression(token: &MetaToken) -> bool {
+    fn check_for_expression(token: MetaToken) -> bool {
         match token {
             MetaToken::Punct(p) => match p {
                 Punct::OpenParen => true,
