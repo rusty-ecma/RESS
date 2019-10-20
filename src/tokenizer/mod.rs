@@ -3,6 +3,7 @@ use crate::{is_line_term, OpenCurlyKind};
 mod buffer;
 mod tokens;
 mod unicode;
+mod keyword_escape;
 pub use self::tokens::{RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
 use unicode::{is_id_continue, is_id_start};
@@ -132,13 +133,17 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn ident(&mut self, start: char) -> Res<RawItem> {
-        if start == '\\' {
+        let mut has_escaped = if start == '\\' {
             // TODO validate escaped ident start
-            self.escaped_ident_part()?;
-        }
+            self.escaped_ident_part(EscapeKind::IdStart)?;
+            true
+        } else {
+            false
+        };
         while let Some(c) = self.stream.next_char() {
             if c == '\\' {
-                self.escaped_ident_part()?;
+                self.escaped_ident_part(EscapeKind::IdCont)?;
+                has_escaped = true;
             }
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
                 // if we have moved past the last valid identifier, go back 1
@@ -146,16 +151,27 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        if let Some(k) = self.at_keyword() {
+        if let Some(k) = self.at_keyword(has_escaped)? {
             self.gen_token(k)
         } else {
             self.gen_token(RawToken::Ident)
         }
     }
     /// Includes keywords, booleans & null
-    fn at_keyword(&self) -> Option<RawToken> {
+    #[allow(clippy::cognitive_complexity)]
+    fn at_keyword(&self, has_escaped: bool) -> Res<Option<RawToken>> {
         let ident = &self.stream.buffer[self.current_start..self.stream.idx];
-        match self.stream.idx - self.current_start {
+        if has_escaped {
+            return if keyword_escape::check_complicated_keyword(ident).is_some() {
+                Err(RawError {
+                    msg: format!("Keywords cannot contain raw escaped characters: {}", String::from_utf8_lossy(ident)),
+                    idx: self.current_start
+                })
+            } else {
+                Ok(None)
+            };
+        }
+        Ok(match self.stream.idx - self.current_start {
             2 if ident == b"do" => Some(RawToken::Keyword(Keyword::Do)),
             2 if ident == b"if" => Some(RawToken::Keyword(Keyword::If)),
             2 if ident == b"in" => Some(RawToken::Keyword(Keyword::In)),
@@ -202,8 +218,9 @@ impl<'a> Tokenizer<'a> {
             10 if ident == b"instanceof" => Some(RawToken::Keyword(Keyword::InstanceOf)),
             10 if ident == b"implements" => Some(RawToken::Keyword(Keyword::Implements)),
             _ => None,
-        }
+        })
     }
+
     /// picking up after the \
     #[inline]
     fn escaped_ident_part(&mut self) -> Res<()> {
