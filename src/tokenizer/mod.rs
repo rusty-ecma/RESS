@@ -135,14 +135,14 @@ impl<'a> Tokenizer<'a> {
     fn ident(&mut self, start: char) -> Res<RawItem> {
         let mut has_escaped = if start == '\\' {
             // TODO validate escaped ident start
-            self.escaped_ident_part(EscapeKind::IdStart)?;
+            self.escaped_ident_part()?;
             true
         } else {
             false
         };
         while let Some(c) = self.stream.next_char() {
             if c == '\\' {
-                self.escaped_ident_part(EscapeKind::IdCont)?;
+                self.escaped_ident_part()?;
                 has_escaped = true;
             }
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
