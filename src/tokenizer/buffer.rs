@@ -212,9 +212,9 @@ impl<'a> JSBuffer<'a> {
         if self.at_end() {
             return false;
         }
-        self.at_simple_number(16) ||
-        (self.buffer[self.idx] >= b'a' && self.buffer[self.idx] <= b'f') ||
-        (self.buffer[self.idx] >= b'A' && self.buffer[self.idx] <= b'F')
+        self.at_simple_number(16)
+            || (self.buffer[self.idx] >= b'a' && self.buffer[self.idx] <= b'f')
+            || (self.buffer[self.idx] >= b'A' && self.buffer[self.idx] <= b'F')
     }
     #[inline]
     fn at_simple_number(&self, radix: u8) -> bool {

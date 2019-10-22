@@ -407,7 +407,7 @@ impl NumberExt for Number<String> {
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
         } else if self.0.ends_with("n") {
-            NumberKind::BigInt  
+            NumberKind::BigInt
         } else {
             NumberKind::Dec
         }
