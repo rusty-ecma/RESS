@@ -1413,9 +1413,11 @@ mod test {
             "<!--crlf\r\n",
             "<!--line separator\u{2028}",
             "<!--paragraph separator\u{2029}",
+            "<!--normally terminated-->"
         ];
         static FAIL_COMMENTS: &[&str] = &[
             "<!--this will fail",
+            "hello world",
         ];
         for c in SUCCESS_COMMENTS {
             let mut t = Tokenizer::new(c);
@@ -1426,7 +1428,7 @@ mod test {
             let mut t = Tokenizer::new(c);
             match t.next() {
                 Err(_) => continue,
-                _ => panic!("FAIL_COMMENTS should fail"),
+                Ok(item) => assert!(!item.ty.is_comment()),
             };
         }
     }
