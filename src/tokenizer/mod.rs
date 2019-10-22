@@ -773,7 +773,7 @@ impl<'a> Tokenizer<'a> {
             prev_char = c;
         }
         let kind = self.bigint_guard(NumberKind::Hex);
-        
+
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
@@ -799,7 +799,7 @@ impl<'a> Tokenizer<'a> {
             prev_char = c;
         }
         let kind = self.bigint_guard(NumberKind::Oct);
-        
+
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
@@ -826,7 +826,7 @@ impl<'a> Tokenizer<'a> {
             prev_char = c;
         }
         let kind = self.bigint_guard(NumberKind::Bin);
-        
+
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
@@ -847,10 +847,10 @@ impl<'a> Tokenizer<'a> {
         if self.look_ahead_byte_matches('e') || self.look_ahead_byte_matches('E') {
             check_for_n = false;
             self.stream.skip(1);
-            prev_char = 'e';            
+            prev_char = 'e';
             if self.look_ahead_byte_matches('-') || self.look_ahead_byte_matches('+') {
                 self.stream.skip(1);
-                prev_char = '-'; 
+                prev_char = '-';
             } else if !self.stream.at_decimal() {
                 return Err(RawError {
                     msg: "Invalid decimal, exponents must be followed by +, - or decimal digits"
@@ -863,12 +863,11 @@ impl<'a> Tokenizer<'a> {
         let kind = self.bigint_guard(NumberKind::Dec);
         if kind == NumberKind::BigInt && check_for_n == false {
             return Err(RawError {
-                msg: "Invalid decimal, Floats cannot be BigInts"
-                    .to_string(),
+                msg: "Invalid decimal, Floats cannot be BigInts".to_string(),
                 idx: self.current_start,
             });
         }
-        
+
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
