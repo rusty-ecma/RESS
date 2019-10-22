@@ -571,6 +571,8 @@ impl<'a> Tokenizer<'a> {
                         self.oct_number()
                     } else if next.eq_ignore_ascii_case(&'b') {
                         self.bin_number()
+                    } else if next == 'n' {
+                        self.gen_number(NumberKind::BigInt)
                     } else if next.is_digit(10) {
                         self.dec_number(false, next)
                     } else if next == '.' {
@@ -581,6 +583,8 @@ impl<'a> Tokenizer<'a> {
                     }
                 } else if next == '.' {
                     self.dec_number(true, next)
+                } else if next == 'n' {
+                    self.gen_number(NumberKind::BigInt)
                 } else {
                     let _ = self.stream.prev_char();
                     self.dec_number(next == '.', next)
@@ -734,16 +738,16 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             });
         };
-        while let Some(c) = self.stream.next_char() {
+
+        while self.stream.at_hex() || self.stream.look_ahead_byte_matches(b'_') {
+            let c = self.stream.next_char().unwrap();
             self.check_repeating_underscore(prev_char, c)?;
-            if !c.is_digit(16) && c != '_' {
-                let _ = self.stream.prev_char();
-                break;
-            }
             prev_char = c;
         }
+        let kind = self.bigint_guard(NumberKind::Hex);
+        
         self.check_trailing_underscore(prev_char)?;
-        self.gen_number(NumberKind::Hex)
+        self.gen_number(kind)
     }
     #[inline]
     fn oct_number(&mut self) -> Res<RawItem> {
@@ -761,16 +765,15 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             });
         };
-        while let Some(c) = self.stream.next_char() {
+        while self.stream.at_octal() || self.stream.look_ahead_byte_matches(b'_') {
+            let c = self.stream.next_char().unwrap();
             self.check_repeating_underscore(prev_char, c)?;
-            if !c.is_digit(8) && c != '_' {
-                let _ = self.stream.prev_char();
-                break;
-            }
             prev_char = c;
         }
+        let kind = self.bigint_guard(NumberKind::Oct);
+        
         self.check_trailing_underscore(prev_char)?;
-        self.gen_number(NumberKind::Oct)
+        self.gen_number(kind)
     }
 
     #[inline]
@@ -789,22 +792,22 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             });
         };
-        while let Some(c) = self.stream.next_char() {
+        while self.stream.at_binary() || self.stream.look_ahead_byte_matches(b'_') {
+            let c = self.stream.next_char().unwrap();
             self.check_repeating_underscore(prev_char, c)?;
-            if !c.is_digit(2) && c != '_' {
-                let _ = self.stream.prev_char();
-                break;
-            }
             prev_char = c;
         }
+        let kind = self.bigint_guard(NumberKind::Bin);
+        
         self.check_trailing_underscore(prev_char)?;
-        self.gen_number(NumberKind::Bin)
+        self.gen_number(kind)
     }
     #[inline]
     fn dec_number(&mut self, seen_point: bool, mut prev_char: char) -> Res<RawItem> {
         prev_char = self.consume_digits(10, prev_char)?;
-
+        let mut check_for_n = !seen_point;
         if !seen_point && self.look_ahead_byte_matches('.') {
+            check_for_n = false;
             self.stream.skip(1);
             prev_char = self.consume_digits(10, '.')?;
         }
@@ -813,6 +816,7 @@ impl<'a> Tokenizer<'a> {
         // at least one number is required next
         // go back to step 1
         if self.look_ahead_byte_matches('e') || self.look_ahead_byte_matches('E') {
+            check_for_n = false;
             self.stream.skip(1);
             prev_char = 'e';            
             if self.look_ahead_byte_matches('-') || self.look_ahead_byte_matches('+') {
@@ -827,9 +831,17 @@ impl<'a> Tokenizer<'a> {
             }
             prev_char = self.consume_digits(10, prev_char)?;
         }
-
+        let kind = self.bigint_guard(NumberKind::Dec);
+        if kind == NumberKind::BigInt && check_for_n == false {
+            return Err(RawError {
+                msg: "Invalid decimal, Floats cannot be BigInts"
+                    .to_string(),
+                idx: self.current_start,
+            });
+        }
+        
         self.check_trailing_underscore(prev_char)?;
-        self.gen_number(NumberKind::Dec)
+        self.gen_number(kind)
     }
 
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
@@ -867,6 +879,17 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         }
     }
+
+    #[inline]
+    fn bigint_guard(&mut self, number_kind: NumberKind) -> NumberKind {
+        if self.look_ahead_byte_matches('n') {
+            let _ = self.stream.next_char();
+            NumberKind::BigInt
+        } else {
+            number_kind
+        }
+    }
+
     #[inline]
     fn is_id_continue(c: char) -> bool {
         c == '$'
@@ -1113,6 +1136,10 @@ mod test {
             "2.0_00",
             "300_000",
             "4e56_789",
+            "1n",
+            "0x1n",
+            "0o6n",
+            "0b1n",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
