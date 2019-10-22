@@ -1406,6 +1406,22 @@ mod test {
     }
 
     #[test]
+    fn tokenizer_html_comment() {
+        static COMMENTS: &[&str] = &[
+            "<!--line feed\n",
+            "<!--carriage return\r",
+            "<!--crlf\r\n",
+            "<!--line separator\u{2028}",
+            "<!--paragraph separator\u{2029}",
+        ];
+        for c in COMMENTS {
+            let mut t = Tokenizer::new(c);
+            let item = t.next().unwrap();
+            assert!(item.ty.is_comment());
+        }
+    }
+
+    #[test]
     fn tokenizer_white_space() {
         let js = "0
 0 0
