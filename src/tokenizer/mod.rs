@@ -730,6 +730,9 @@ impl<'a> Tokenizer<'a> {
                 found_end = true;
                 self.stream.skip(3);
             } else {
+                if self.look_ahead_matches("\n") {
+                    found_end = true;
+                }
                 self.stream.skip(1);
             }
         }
