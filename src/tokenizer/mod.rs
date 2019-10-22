@@ -725,11 +725,16 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
         let mut found_end = false;
-        while !self.at_new_line() && !self.stream.at_end() {
+        while !self.stream.at_end() {
+            if self.stream.at_new_line() {
+                    found_end = true;
+                    break;
+            }
+            
             if self.look_ahead_matches("-->") {
                 found_end = true;
                 self.stream.skip(3);
-            } else {
+            } else {    
                 self.stream.skip(1);
             }
         }
@@ -1397,6 +1402,34 @@ mod test {
             let item = t.next().unwrap();
             assert!(item.ty.is_comment());
             assert!(t.stream.at_end());
+        }
+    }
+
+    #[test]
+    fn tokenizer_html_comment() {
+        static SUCCESS_COMMENTS: &[&str] = &[
+            "<!--line feed\n",
+            "<!--carriage return\r",
+            "<!--crlf\r\n",
+            "<!--line separator\u{2028}",
+            "<!--paragraph separator\u{2029}",
+            "<!--normally terminated-->"
+        ];
+        static FAIL_COMMENTS: &[&str] = &[
+            "<!--this will fail",
+            "hello world",
+        ];
+        for c in SUCCESS_COMMENTS {
+            let mut t = Tokenizer::new(c);
+            let item = t.next().unwrap();
+            assert!(item.ty.is_comment());
+        }
+        for c in FAIL_COMMENTS {
+            let mut t = Tokenizer::new(c);
+            match t.next() {
+                Err(_) => continue,
+                Ok(item) => assert!(!item.ty.is_comment()),
+            };
         }
     }
 
