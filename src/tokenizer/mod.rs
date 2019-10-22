@@ -725,14 +725,16 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
         let mut found_end = false;
-        while !self.at_new_line() && !self.stream.at_end() {
+        while !self.stream.at_end() {
+            if self.stream.at_new_line() {
+                    found_end = true;
+                    break;
+            }
+            
             if self.look_ahead_matches("-->") {
                 found_end = true;
                 self.stream.skip(3);
-            } else {
-                if self.look_ahead_matches("\n") {
-                    found_end = true;
-                }
+            } else {    
                 self.stream.skip(1);
             }
         }
