@@ -17,7 +17,7 @@ pub enum Token<T> {
     /// or a function/method name
     Ident(Ident<T>),
     /// A word that has been reserved to not be used as an identifier
-    Keyword(Keyword),
+    Keyword(Keyword<T>),
     /// A `null` literal value
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
@@ -112,7 +112,7 @@ pub trait TokenExt {
 
     fn matches_ident_str(&self, name: &str) -> bool;
 
-    fn matches_keyword(&self, keyword: Keyword) -> bool;
+    fn matches_keyword(&self, keyword: Keyword<()>) -> bool;
 
     fn matches_keyword_str(&self, name: &str) -> bool;
 
@@ -1001,7 +1001,7 @@ pub enum CommentKind {
     Hashbang,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone)]
 /// A JS Keyword
 ///
 /// # Standard
@@ -1048,110 +1048,210 @@ pub enum CommentKind {
 /// interface
 /// private (40)
 /// public
-pub enum Keyword {
-    Await,
-    Break,
-    Case,
-    Catch,
-    Class,
-    Const,
-    Continue,
-    Debugger,
-    Default,
-    Delete, //10
-    Do,
-    Else,
-    Enum,
-    Export,
-    Finally,
-    For,
-    Function,
-    If,
-    Implements,
-    Import,
-    In,
-    InstanceOf,
-    Interface,
-    Let,
-    New,
-    Package,
-    Private,
-    Protected,
-    Public,
-    Return,
-    Static,
-    Super,
-    Switch,
-    This,
-    Throw,
-    Try,
-    TypeOf,
-    Var,
-    Void,
-    While,
-    With,
-    Yield,
+pub enum Keyword<T> {
+    Await(T),
+    Break(T),
+    Case(T),
+    Catch(T),
+    Class(T),
+    Const(T),
+    Continue(T),
+    Debugger(T),
+    Default(T),
+    Delete(T), //10
+    Do(T),
+    Else(T),
+    Enum(T),
+    Export(T),
+    Finally(T),
+    For(T),
+    Function(T),
+    If(T),
+    Implements(T),
+    Import(T),
+    In(T),
+    InstanceOf(T),
+    Interface(T),
+    Let(T),
+    New(T),
+    Package(T),
+    Private(T),
+    Protected(T),
+    Public(T),
+    Return(T),
+    Static(T),
+    Super(T),
+    Switch(T),
+    This(T),
+    Throw(T),
+    Try(T),
+    TypeOf(T),
+    Var(T),
+    Void(T),
+    While(T),
+    With(T),
+    Yield(T),
 }
 
-impl Keyword {
-    /// convert a &str into a Keyword
-    pub fn from(s: &str) -> Option<Self> {
-        Some(match s {
-            "await" => Keyword::Await,
-            "break" => Keyword::Break,
-            "case" => Keyword::Case,
-            "catch" => Keyword::Catch,
-            "class" => Keyword::Class,
-            "const" => Keyword::Const,
-            "continue" => Keyword::Continue,
-            "debugger" => Keyword::Debugger,
-            "default" => Keyword::Default,
-            "delete" => Keyword::Delete,
-            "do" => Keyword::Do,
-            "else" => Keyword::Else,
-            "finally" => Keyword::Finally,
-            "for" => Keyword::For,
-            "function" => Keyword::Function,
-            "if" => Keyword::If,
-            "instanceof" => Keyword::InstanceOf,
-            "in" => Keyword::In,
-            "new" => Keyword::New,
-            "return" => Keyword::Return,
-            "switch" => Keyword::Switch,
-            "this" => Keyword::This,
-            "throw" => Keyword::Throw,
-            "try" => Keyword::Try,
-            "typeof" => Keyword::TypeOf,
-            "var" => Keyword::Var,
-            "void" => Keyword::Void,
-            "while" => Keyword::While,
-            "with" => Keyword::With,
-            "export" => Keyword::Export,
-            "import" => Keyword::Import,
-            "super" => Keyword::Super,
-            "enum" => Keyword::Enum,
-            "implements" => Keyword::Implements,
-            "interface" => Keyword::Interface,
-            "package" => Keyword::Package,
-            "private" => Keyword::Private,
-            "protected" => Keyword::Protected,
-            "public" => Keyword::Public,
-            "static" => Keyword::Static,
-            "yield" => Keyword::Yield,
-            "let" => Keyword::Let,
-            _ => return None,
-        })
+impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
+    fn eq(&self, other: &Keyword<T>) -> bool {
+        use Keyword::*;
+        match (self, other) {
+              (Await(_), Await(_))
+            | (Break(_), Break(_))
+            | (Case(_), Case(_))
+            | (Catch(_), Catch(_))
+            | (Class(_), Class(_))
+            | (Const(_), Const(_))
+            | (Continue(_), Continue(_))
+            | (Debugger(_), Debugger(_))
+            | (Default(_), Default(_))
+            | (Delete(_), Delete(_))
+            | (Do(_), Do(_))
+            | (Else(_), Else(_))
+            | (Enum(_), Enum(_))
+            | (Export(_), Export(_))
+            | (Finally(_), Finally(_))
+            | (For(_), For(_))
+            | (Function(_), Function(_))
+            | (If(_), If(_))
+            | (Implements(_), Implements(_))
+            | (Import(_), Import(_))
+            | (In(_), In(_))
+            | (InstanceOf(_), InstanceOf(_))
+            | (Interface(_), Interface(_))
+            | (Let(_), Let(_))
+            | (New(_), New(_))
+            | (Package(_), Package(_))
+            | (Private(_), Private(_))
+            | (Protected(_), Protected(_))
+            | (Public(_), Public(_))
+            | (Return(_), Return(_))
+            | (Static(_), Static(_))
+            | (Super(_), Super(_))
+            | (Switch(_), Switch(_))
+            | (This(_), This(_))
+            | (Throw(_), Throw(_))
+            | (Try(_), Try(_))
+            | (TypeOf(_), TypeOf(_))
+            | (Var(_), Var(_))
+            | (Void(_), Void(_))
+            | (While(_), While(_))
+            | (With(_), With(_))
+            | (Yield(_), Yield(_)) => true,
+            _ => false,
+        }
     }
 }
 
-impl ::std::string::ToString for Keyword {
+impl Keyword<()> {
+    pub fn with_str<'a>(&self, s: &'a str) -> Keyword<&'a str> {
+        match self {
+            Keyword::Await(_) => Keyword::Await(s),
+            Keyword::Break(_) => Keyword::Break(s),
+            Keyword::Case(_) => Keyword::Case(s),
+            Keyword::Catch(_) => Keyword::Catch(s),
+            Keyword::Class(_) => Keyword::Class(s),
+            Keyword::Const(_) => Keyword::Const(s),
+            Keyword::Continue(_) => Keyword::Continue(s),
+            Keyword::Debugger(_) => Keyword::Debugger(s),
+            Keyword::Default(_) => Keyword::Default(s),
+            Keyword::Delete(_) => Keyword::Delete(s),
+            Keyword::Do(_) => Keyword::Do(s),
+            Keyword::Else(_) => Keyword::Else(s),
+            Keyword::Enum(_) => Keyword::Enum(s),
+            Keyword::Export(_) => Keyword::Export(s),
+            Keyword::Finally(_) => Keyword::Finally(s),
+            Keyword::For(_) => Keyword::For(s),
+            Keyword::Function(_) => Keyword::Function(s),
+            Keyword::If(_) => Keyword::If(s),
+            Keyword::Implements(_) => Keyword::Implements(s),
+            Keyword::Import(_) => Keyword::Import(s),
+            Keyword::In(_) => Keyword::In(s),
+            Keyword::InstanceOf(_) => Keyword::InstanceOf(s),
+            Keyword::Interface(_) => Keyword::Interface(s),
+            Keyword::Let(_) => Keyword::Let(s),
+            Keyword::New(_) => Keyword::New(s),
+            Keyword::Package(_) => Keyword::Package(s),
+            Keyword::Private(_) => Keyword::Private(s),
+            Keyword::Protected(_) => Keyword::Protected(s),
+            Keyword::Public(_) => Keyword::Public(s),
+            Keyword::Return(_) => Keyword::Return(s),
+            Keyword::Static(_) => Keyword::Static(s),
+            Keyword::Super(_) => Keyword::Super(s),
+            Keyword::Switch(_) => Keyword::Switch(s),
+            Keyword::This(_) => Keyword::This(s),
+            Keyword::Throw(_) => Keyword::Throw(s),
+            Keyword::Try(_) => Keyword::Try(s),
+            Keyword::TypeOf(_) => Keyword::TypeOf(s),
+            Keyword::Var(_) => Keyword::Var(s),
+            Keyword::Void(_) => Keyword::Void(s),
+            Keyword::While(_) => Keyword::While(s),
+            Keyword::With(_) => Keyword::With(s),
+            Keyword::Yield(_) => Keyword::Yield(s),
+        }
+    }
+}
+
+// impl<T> Keyword<T> {
+//     /// convert a &str into a Keyword
+//     pub fn from(s: &str) -> Option<Self> {
+//         Some(match s {
+//             "await" => Keyword::Await,
+//             "break" => Keyword::Break,
+//             "case" => Keyword::Case,
+//             "catch" => Keyword::Catch,
+//             "class" => Keyword::Class,
+//             "const" => Keyword::Const,
+//             "continue" => Keyword::Continue,
+//             "debugger" => Keyword::Debugger,
+//             "default" => Keyword::Default,
+//             "delete" => Keyword::Delete,
+//             "do" => Keyword::Do,
+//             "else" => Keyword::Else,
+//             "finally" => Keyword::Finally,
+//             "for" => Keyword::For,
+//             "function" => Keyword::Function,
+//             "if" => Keyword::If,
+//             "instanceof" => Keyword::InstanceOf,
+//             "in" => Keyword::In,
+//             "new" => Keyword::New,
+//             "return" => Keyword::Return,
+//             "switch" => Keyword::Switch,
+//             "this" => Keyword::This,
+//             "throw" => Keyword::Throw,
+//             "try" => Keyword::Try,
+//             "typeof" => Keyword::TypeOf,
+//             "var" => Keyword::Var,
+//             "void" => Keyword::Void,
+//             "while" => Keyword::While,
+//             "with" => Keyword::With,
+//             "export" => Keyword::Export,
+//             "import" => Keyword::Import,
+//             "super" => Keyword::Super,
+//             "enum" => Keyword::Enum,
+//             "implements" => Keyword::Implements,
+//             "interface" => Keyword::Interface,
+//             "package" => Keyword::Package,
+//             "private" => Keyword::Private,
+//             "protected" => Keyword::Protected,
+//             "public" => Keyword::Public,
+//             "static" => Keyword::Static,
+//             "yield" => Keyword::Yield,
+//             "let" => Keyword::Let,
+//             _ => return None,
+//         })
+//     }
+// }
+
+impl<T> ::std::string::ToString for Keyword<T> {
     /// Convert a keyword into a string
     fn to_string(&self) -> String {
         self.as_str().into()
     }
 }
 
-impl Keyword {
+impl<T> Keyword<T> {
     /// Is this keyword one of the future reserved words
     ///
     /// - enum
@@ -1160,10 +1260,10 @@ impl Keyword {
     /// - super
     pub fn is_future_reserved(self) -> bool {
         match self {
-            Keyword::Enum => true,
-            Keyword::Export => true,
-            Keyword::Implements => true,
-            Keyword::Super => true,
+            Keyword::Enum(_) => true,
+            Keyword::Export(_) => true,
+            Keyword::Implements(_) => true,
+            Keyword::Super(_) => true,
             _ => false,
         }
     }
@@ -1180,17 +1280,17 @@ impl Keyword {
     /// - static
     /// - yield
     /// - let
-    pub fn is_strict_reserved(self) -> bool {
+    pub fn is_strict_reserved(&self) -> bool {
         match self {
-            Keyword::Implements => true,
-            Keyword::Interface => true,
-            Keyword::Package => true,
-            Keyword::Private => true,
-            Keyword::Protected => true,
-            Keyword::Public => true,
-            Keyword::Static => true,
-            Keyword::Yield => true,
-            Keyword::Let => true,
+            Keyword::Implements(_) => true,
+            Keyword::Interface(_) => true,
+            Keyword::Package(_) => true,
+            Keyword::Private(_) => true,
+            Keyword::Protected(_) => true,
+            Keyword::Public(_) => true,
+            Keyword::Static(_) => true,
+            Keyword::Yield(_) => true,
+            Keyword::Let(_) => true,
             _ => false,
         }
     }
@@ -1224,80 +1324,80 @@ impl Keyword {
     /// - with
     pub fn is_reserved(self) -> bool {
         match self {
-            Keyword::Break => true,
-            Keyword::Case => true,
-            Keyword::Catch => true,
-            Keyword::Continue => true,
-            Keyword::Debugger => true,
-            Keyword::Default => true,
-            Keyword::Delete => true,
-            Keyword::Do => true,
-            Keyword::Else => true,
-            Keyword::Finally => true,
-            Keyword::For => true,
-            Keyword::Function => true,
-            Keyword::If => true,
-            Keyword::InstanceOf => true,
-            Keyword::In => true,
-            Keyword::New => true,
-            Keyword::Return => true,
-            Keyword::Switch => true,
-            Keyword::This => true,
-            Keyword::Throw => true,
-            Keyword::Try => true,
-            Keyword::TypeOf => true,
-            Keyword::Var => true,
-            Keyword::Void => true,
-            Keyword::While => true,
-            Keyword::With => true,
+            Keyword::Break(_) => true,
+            Keyword::Case(_) => true,
+            Keyword::Catch(_) => true,
+            Keyword::Continue(_) => true,
+            Keyword::Debugger(_) => true,
+            Keyword::Default(_) => true,
+            Keyword::Delete(_) => true,
+            Keyword::Do(_) => true,
+            Keyword::Else(_) => true,
+            Keyword::Finally(_) => true,
+            Keyword::For(_) => true,
+            Keyword::Function(_) => true,
+            Keyword::If(_) => true,
+            Keyword::InstanceOf(_) => true,
+            Keyword::In(_) => true,
+            Keyword::New(_) => true,
+            Keyword::Return(_) => true,
+            Keyword::Switch(_) => true,
+            Keyword::This(_) => true,
+            Keyword::Throw(_) => true,
+            Keyword::Try(_) => true,
+            Keyword::TypeOf(_) => true,
+            Keyword::Var(_) => true,
+            Keyword::Void(_) => true,
+            Keyword::While(_) => true,
+            Keyword::With(_) => true,
             _ => false,
         }
     }
 
     pub fn as_str(&self) -> &str {
         match self {
-            Keyword::Await => "await",
-            Keyword::Break => "break",
-            Keyword::Case => "case",
-            Keyword::Catch => "catch",
-            Keyword::Class => "class",
-            Keyword::Const => "const",
-            Keyword::Continue => "continue",
-            Keyword::Debugger => "debugger",
-            Keyword::Default => "default",
-            Keyword::Import => "import",
-            Keyword::Delete => "delete",
-            Keyword::Do => "do",
-            Keyword::Else => "else",
-            Keyword::Enum => "enum",
-            Keyword::Export => "export",
-            Keyword::Finally => "finally",
-            Keyword::For => "for",
-            Keyword::Function => "function",
-            Keyword::If => "if",
-            Keyword::In => "in",
-            Keyword::Implements => "implements",
-            Keyword::InstanceOf => "instanceof",
-            Keyword::Interface => "interface",
-            Keyword::Let => "let",
-            Keyword::New => "new",
-            Keyword::Package => "package",
-            Keyword::Private => "private",
-            Keyword::Protected => "protected",
-            Keyword::Public => "public",
-            Keyword::Static => "static",
-            Keyword::Return => "return",
-            Keyword::Super => "super",
-            Keyword::Switch => "switch",
-            Keyword::This => "this",
-            Keyword::Throw => "throw",
-            Keyword::Try => "try",
-            Keyword::TypeOf => "typeof",
-            Keyword::Var => "var",
-            Keyword::Void => "void",
-            Keyword::While => "while",
-            Keyword::With => "with",
-            Keyword::Yield => "yield",
+            Keyword::Await(_) => "await",
+            Keyword::Break(_) => "break",
+            Keyword::Case(_) => "case",
+            Keyword::Catch(_) => "catch",
+            Keyword::Class(_) => "class",
+            Keyword::Const(_) => "const",
+            Keyword::Continue(_) => "continue",
+            Keyword::Debugger(_) => "debugger",
+            Keyword::Default(_) => "default",
+            Keyword::Import(_) => "import",
+            Keyword::Delete(_) => "delete",
+            Keyword::Do(_) => "do",
+            Keyword::Else(_) => "else",
+            Keyword::Enum(_) => "enum",
+            Keyword::Export(_) => "export",
+            Keyword::Finally(_) => "finally",
+            Keyword::For(_) => "for",
+            Keyword::Function(_) => "function",
+            Keyword::If(_) => "if",
+            Keyword::In(_) => "in",
+            Keyword::Implements(_) => "implements",
+            Keyword::InstanceOf(_) => "instanceof",
+            Keyword::Interface(_) => "interface",
+            Keyword::Let(_) => "let",
+            Keyword::New(_) => "new",
+            Keyword::Package(_) => "package",
+            Keyword::Private(_) => "private",
+            Keyword::Protected(_) => "protected",
+            Keyword::Public(_) => "public",
+            Keyword::Static(_) => "static",
+            Keyword::Return(_) => "return",
+            Keyword::Super(_) => "super",
+            Keyword::Switch(_) => "switch",
+            Keyword::This(_) => "this",
+            Keyword::Throw(_) => "throw",
+            Keyword::Try(_) => "try",
+            Keyword::TypeOf(_) => "typeof",
+            Keyword::Var(_) => "var",
+            Keyword::Void(_) => "void",
+            Keyword::While(_) => "while",
+            Keyword::With(_) => "with",
+            Keyword::Yield(_) => "yield",
         }
     }
 }
@@ -1504,7 +1604,7 @@ impl<'a> TokenExt for Token<&'a str> {
             _ => false,
         }
     }
-    fn matches_keyword(&self, keyword: Keyword) -> bool {
+    fn matches_keyword(&self, keyword: Keyword<()>) -> bool {
         match self {
             Token::Keyword(k) => k == &keyword,
             _ => false,

@@ -344,7 +344,7 @@ impl<'b> Scanner<'b> {
                     Token::EoF
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
-                RawToken::Keyword(k) => Token::Keyword(k),
+                RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
                 RawToken::Null => Token::Null,
                 RawToken::Number(_) => Token::Number(Number::from(s)),
                 RawToken::Punct(p) => Token::Punct(p),
@@ -431,7 +431,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref last_token) = self.last_three.last() {
             match last_token {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::This => false,
+                    Keyword::This(_) => false,
                     _ => true,
                 },
                 MetaToken::Punct(p) => match p {
@@ -454,7 +454,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             match before {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
+                    Keyword::If(_) | Keyword::For(_) | Keyword::While(_) | Keyword::With(_) => true,
                     _ => false,
                 },
                 _ => false,
@@ -472,7 +472,7 @@ impl<'b> Scanner<'b> {
                 if let Some(ref three) = self.before_last_open.three() {
                     return Self::check_for_expression(*three);
                 }
-            } else if before == &MetaToken::Keyword(Keyword::Function) {
+            } else if before == &MetaToken::Keyword(Keyword::Function(())) {
                 if let Some(ref two) = self.before_last_open.two() {
                     return Self::check_for_expression(*two);
                 } else {
@@ -536,15 +536,15 @@ impl<'b> Scanner<'b> {
                 _ => false,
             },
             MetaToken::Keyword(k) => match k {
-                Keyword::In => true,
-                Keyword::TypeOf => true,
-                Keyword::InstanceOf => true,
-                Keyword::New => true,
-                Keyword::Return => true,
-                Keyword::Case => true,
-                Keyword::Delete => true,
-                Keyword::Throw => true,
-                Keyword::Void => true,
+                Keyword::In(_) => true,
+                Keyword::TypeOf(_) => true,
+                Keyword::InstanceOf(_) => true,
+                Keyword::New(_) => true,
+                Keyword::Return(_) => true,
+                Keyword::Case(_) => true,
+                Keyword::Delete(_) => true,
+                Keyword::Throw(_) => true,
+                Keyword::Void(_) => true,
                 _ => false,
             },
             _ => false,
@@ -612,6 +612,7 @@ impl<'b> Scanner<'b> {
         Err(Error { line, column, msg })
     }
 }
+
 #[inline]
 fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
@@ -658,12 +659,12 @@ function thing() {
             }),
             Token::String(StringLit::Single("use strict")),
             Token::Punct(Punct::SemiColon),
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Ident("thing".into()),
             Token::Punct(Punct::OpenParen),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::OpenBrace),
-            Token::Keyword(Keyword::Let),
+            Token::Keyword(Keyword::Let("let".into())),
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal),
             Token::Number("0".into()),
@@ -694,17 +695,17 @@ this.y = 0;
         );
         let expected = vec![
             Token::Punct(Punct::OpenParen), //"("
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Punct(Punct::OpenParen),  //"("
             Token::Punct(Punct::CloseParen), //")"
             Token::Punct(Punct::OpenBrace),  //"{"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal), //"="
             Token::Number("100".into()),
             Token::Punct(Punct::SemiColon), //";"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("y".into()),
             Token::Punct(Punct::Equal), //"="

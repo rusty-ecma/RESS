@@ -10,7 +10,7 @@ pub enum RawToken {
     /// or a function/method name
     Ident,
     /// A word that has been reserved to not be used as an identifier
-    Keyword(Keyword),
+    Keyword(Keyword<()>),
     /// A `null` literal value
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
@@ -56,6 +56,8 @@ pub enum RawToken {
     },
 }
 
+impl Copy for Keyword<()> { }
+
 impl RawToken {
     pub fn is_punct(&self) -> bool {
         match self {
@@ -66,11 +68,7 @@ impl RawToken {
 
     pub fn is_comment(&self) -> bool {
         match self {
-            RawToken::Comment {
-                kind: _,
-                new_line_count: _,
-                last_len: _,
-            } => true,
+            RawToken::Comment { .. } => true,
             _ => false,
         }
     }

@@ -57,7 +57,7 @@ fn main() {
         let item = item.unwrap();
         println!("{:?}", item);
         let token = item.token;
-        if token.matches_keyword(Keyword::If) {
+        if token.matches_keyword(Keyword::If(())) {
             in_if = true;
         }
         if in_if && token.matches_punct(Punct::OpenParen) {
@@ -66,10 +66,10 @@ fn main() {
         if in_if && token.matches_punct(Punct::CloseParen) {
             if_parens -= 1;
         }
-        if last_token.matches_keyword(Keyword::For) {
+        if last_token.matches_keyword(Keyword::For(())) {
             in_loop = true;
         }
-        if last_token.matches_keyword(Keyword::Case) || last_token.matches_keyword(Keyword::Default)
+        if last_token.matches_keyword(Keyword::Case(())) || last_token.matches_keyword(Keyword::Default(()))
         {
             in_case = true;
         }
@@ -137,34 +137,34 @@ fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
         return true;
     }
     if last_token.matches_punct(Punct::Period)
-        && (token.is_ident() || token.matches_keyword(Keyword::This))
+        && (token.is_ident() || token.matches_keyword(Keyword::This(())))
     {
         return false;
     }
-    if (last_token.is_ident() || last_token.matches_keyword(Keyword::This))
+    if (last_token.is_ident() || last_token.matches_keyword(Keyword::This(())))
         && token.matches_punct(Punct::Period)
     {
         return false;
     }
-    if token.matches_keyword(Keyword::If) {
+    if token.matches_keyword(Keyword::If(())) {
         return false;
     }
-    if last_token.matches_keyword(Keyword::If) {
+    if last_token.matches_keyword(Keyword::If(())) {
         return true;
     }
-    if last_token.matches_keyword(Keyword::Return) && !token.is_punct() {
+    if last_token.matches_keyword(Keyword::Return(())) && !token.is_punct() {
         return true;
     }
-    if last_token.matches_keyword(Keyword::For) {
+    if last_token.matches_keyword(Keyword::For(())) {
         return true;
     }
-    if last_token.matches_keyword(Keyword::Switch) {
+    if last_token.matches_keyword(Keyword::Switch(())) {
         return true;
     }
     if last_token.matches_punct(Punct::Colon) {
         return true;
     }
-    if token.matches_keyword(Keyword::This) {
+    if token.matches_keyword(Keyword::This(())) {
         return false;
     }
     if token.matches_punct(Punct::OpenParen) {
@@ -221,16 +221,16 @@ fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
     if token.matches_punct(Punct::Bang) {
         return false;
     }
-    if last_token.matches_keyword(Keyword::Function) && token.matches_punct(Punct::OpenBrace) {
+    if last_token.matches_keyword(Keyword::Function(())) && token.matches_punct(Punct::OpenBrace) {
         return false;
     }
-    if last_token.matches_keyword(Keyword::In)
+    if last_token.matches_keyword(Keyword::In(()))
         || last_token.matches_ident_str("of")
-        || last_token.matches_keyword(Keyword::For)
+        || last_token.matches_keyword(Keyword::For(()))
     {
         return true;
     }
-    if token.matches_keyword(Keyword::In) || token.matches_ident_str("of") {
+    if token.matches_keyword(Keyword::In(())) || token.matches_ident_str("of") {
         return true;
     }
     if last_token.is_keyword() {
