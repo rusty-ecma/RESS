@@ -196,16 +196,34 @@ impl<'a> JSBuffer<'a> {
         }
     }
     #[inline]
+    pub fn at_binary(&self) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'1'
+    }
+    #[inline]
     pub fn at_decimal(&self) -> bool {
-        self.at_simple_number(10)
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'9'
     }
     #[inline]
     pub fn at_octal(&self) -> bool {
-        self.at_simple_number(8)
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'7'
     }
     #[inline]
-    fn at_simple_number(&self, radix: u8) -> bool {
-        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 47 + radix + 1
+    pub fn at_hex(&self) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        (self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'9')
+            || (self.buffer[self.idx] >= b'a' && self.buffer[self.idx] <= b'f')
+            || (self.buffer[self.idx] >= b'A' && self.buffer[self.idx] <= b'F')
     }
 }
 
