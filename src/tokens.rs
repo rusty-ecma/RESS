@@ -112,7 +112,7 @@ pub trait TokenExt {
 
     fn matches_ident_str(&self, name: &str) -> bool;
 
-    fn matches_keyword(&self, keyword: Keyword<()>) -> bool;
+    fn matches_keyword<T>(&self, keyword: Keyword<T>) -> bool;
 
     fn matches_keyword_str(&self, name: &str) -> bool;
 
@@ -1400,6 +1400,102 @@ impl<T> Keyword<T> {
             Keyword::Yield(_) => "yield",
         }
     }
+
+    pub fn to_empty(&self) -> Keyword<()> {
+        match self {
+            Keyword::Await(_) => Keyword::Await(()),
+            Keyword::Break(_) => Keyword::Break(()),
+            Keyword::Case(_) => Keyword::Case(()),
+            Keyword::Catch(_) => Keyword::Catch(()),
+            Keyword::Class(_) => Keyword::Class(()),
+            Keyword::Const(_) => Keyword::Const(()),
+            Keyword::Continue(_) => Keyword::Continue(()),
+            Keyword::Debugger(_) => Keyword::Debugger(()),
+            Keyword::Default(_) => Keyword::Default(()),
+            Keyword::Import(_) => Keyword::Import(()),
+            Keyword::Delete(_) => Keyword::Delete(()),
+            Keyword::Do(_) => Keyword::Do(()),
+            Keyword::Else(_) => Keyword::Else(()),
+            Keyword::Enum(_) => Keyword::Enum(()),
+            Keyword::Export(_) => Keyword::Export(()),
+            Keyword::Finally(_) => Keyword::Finally(()),
+            Keyword::For(_) => Keyword::For(()),
+            Keyword::Function(_) => Keyword::Function(()),
+            Keyword::If(_) => Keyword::If(()),
+            Keyword::In(_) => Keyword::In(()),
+            Keyword::Implements(_) => Keyword::Implements(()),
+            Keyword::InstanceOf(_) => Keyword::InstanceOf(()),
+            Keyword::Interface(_) => Keyword::Interface(()),
+            Keyword::Let(_) => Keyword::Let(()),
+            Keyword::New(_) => Keyword::New(()),
+            Keyword::Package(_) => Keyword::Package(()),
+            Keyword::Private(_) => Keyword::Private(()),
+            Keyword::Protected(_) => Keyword::Protected(()),
+            Keyword::Public(_) => Keyword::Public(()),
+            Keyword::Static(_) => Keyword::Static(()),
+            Keyword::Return(_) => Keyword::Return(()),
+            Keyword::Super(_) => Keyword::Super(()),
+            Keyword::Switch(_) => Keyword::Switch(()),
+            Keyword::This(_) => Keyword::This(()),
+            Keyword::Throw(_) => Keyword::Throw(()),
+            Keyword::Try(_) => Keyword::Try(()),
+            Keyword::TypeOf(_) => Keyword::TypeOf(()),
+            Keyword::Var(_) => Keyword::Var(()),
+            Keyword::Void(_) => Keyword::Void(()),
+            Keyword::While(_) => Keyword::While(()),
+            Keyword::With(_) => Keyword::With(()),
+            Keyword::Yield(_) => Keyword::Yield(()),
+        }
+    }
+}
+
+impl<'a> Keyword<&'a str> {
+    fn has_unicode_escape(&self) -> bool {
+        match self {
+            Keyword::Await(s) => s,
+            Keyword::Break(s) => s,
+            Keyword::Case(s) => s,
+            Keyword::Catch(s) => s,
+            Keyword::Class(s) => s,
+            Keyword::Const(s) => s,
+            Keyword::Continue(s) => s,
+            Keyword::Debugger(s) => s,
+            Keyword::Default(s) => s,
+            Keyword::Import(s) => s,
+            Keyword::Delete(s) => s,
+            Keyword::Do(s) => s,
+            Keyword::Else(s) => s,
+            Keyword::Enum(s) => s,
+            Keyword::Export(s) => s,
+            Keyword::Finally(s) => s,
+            Keyword::For(s) => s,
+            Keyword::Function(s) => s,
+            Keyword::If(s) => s,
+            Keyword::In(s) => s,
+            Keyword::Implements(s) => s,
+            Keyword::InstanceOf(s) => s,
+            Keyword::Interface(s) => s,
+            Keyword::Let(s) => s,
+            Keyword::New(s) => s,
+            Keyword::Package(s) => s,
+            Keyword::Private(s) => s,
+            Keyword::Protected(s) => s,
+            Keyword::Public(s) => s,
+            Keyword::Static(s) => s,
+            Keyword::Return(s) => s,
+            Keyword::Super(s) => s,
+            Keyword::Switch(s) => s,
+            Keyword::This(s) => s,
+            Keyword::Throw(s) => s,
+            Keyword::Try(s) => s,
+            Keyword::TypeOf(s) => s,
+            Keyword::Var(s) => s,
+            Keyword::Void(s) => s,
+            Keyword::While(s) => s,
+            Keyword::With(s) => s,
+            Keyword::Yield(s) => s,
+        }.contains("\\u")
+    }
 }
 
 impl<'a> TokenExt for Token<&'a str> {
@@ -1604,7 +1700,7 @@ impl<'a> TokenExt for Token<&'a str> {
             _ => false,
         }
     }
-    fn matches_keyword(&self, keyword: Keyword<()>) -> bool {
+    fn matches_keyword<T>(&self, keyword: Keyword<T>) -> bool {
         match self {
             Token::Keyword(k) => k == &keyword,
             _ => false,
