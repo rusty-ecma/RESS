@@ -1,49 +1,49 @@
 const keywords = {
-    "do": "=> Some(RawToken::Keyword(Keyword::Do))",
-    "if": "=> Some(RawToken::Keyword(Keyword::If))",
-    "in": "=> Some(RawToken::Keyword(Keyword::In))",
-    "for": "=> Some(RawToken::Keyword(Keyword::For))",
-    "new": "=> Some(RawToken::Keyword(Keyword::New))",
-    "try": "=> Some(RawToken::Keyword(Keyword::Try))",
-    "var": "=> Some(RawToken::Keyword(Keyword::Var))",
-    "let": "=> Some(RawToken::Keyword(Keyword::Let))",
-    "case": "=> Some(RawToken::Keyword(Keyword::Case))",
-    "this": "=> Some(RawToken::Keyword(Keyword::This))",
-    "void": "=> Some(RawToken::Keyword(Keyword::Void))",
-    "with": "=> Some(RawToken::Keyword(Keyword::With))",
-    "enum": "=> Some(RawToken::Keyword(Keyword::Enum))",
-    "else": "=> Some(RawToken::Keyword(Keyword::Else))",
+    "do": "=> Some(RawToken::Keyword(RawKeyword::Do))",
+    "if": "=> Some(RawToken::Keyword(RawKeyword::If))",
+    "in": "=> Some(RawToken::Keyword(RawKeyword::In))",
+    "for": "=> Some(RawToken::Keyword(RawKeyword::For))",
+    "new": "=> Some(RawToken::Keyword(RawKeyword::New))",
+    "try": "=> Some(RawToken::Keyword(RawKeyword::Try))",
+    "var": "=> Some(RawToken::Keyword(RawKeyword::Var))",
+    "let": "=> Some(RawToken::Keyword(RawKeyword::Let))",
+    "case": "=> Some(RawToken::Keyword(RawKeyword::Case))",
+    "this": "=> Some(RawToken::Keyword(RawKeyword::This))",
+    "void": "=> Some(RawToken::Keyword(RawKeyword::Void))",
+    "with": "=> Some(RawToken::Keyword(RawKeyword::With))",
+    "enum": "=> Some(RawToken::Keyword(RawKeyword::Enum))",
+    "else": "=> Some(RawToken::Keyword(RawKeyword::Else))",
     "true": "=> Some(RawToken::Boolean(true))",
     "null": "=> Some(RawToken::Null)",
-    "await": "=> Some(RawToken::Keyword(Keyword::Await))",
-    "break": "=> Some(RawToken::Keyword(Keyword::Break))",
-    "catch": "=> Some(RawToken::Keyword(Keyword::Catch))",
-    "class": "=> Some(RawToken::Keyword(Keyword::Class))",
-    "const": "=> Some(RawToken::Keyword(Keyword::Const))",
-    "throw": "=> Some(RawToken::Keyword(Keyword::Throw))",
-    "while": "=> Some(RawToken::Keyword(Keyword::While))",
-    "super": "=> Some(RawToken::Keyword(Keyword::Super))",
-    "yield": "=> Some(RawToken::Keyword(Keyword::Yield))",
+    "await": "=> Some(RawToken::Keyword(RawKeyword::Await))",
+    "break": "=> Some(RawToken::Keyword(RawKeyword::Break))",
+    "catch": "=> Some(RawToken::Keyword(RawKeyword::Catch))",
+    "class": "=> Some(RawToken::Keyword(RawKeyword::Class))",
+    "const": "=> Some(RawToken::Keyword(RawKeyword::Const))",
+    "throw": "=> Some(RawToken::Keyword(RawKeyword::Throw))",
+    "while": "=> Some(RawToken::Keyword(RawKeyword::While))",
+    "super": "=> Some(RawToken::Keyword(RawKeyword::Super))",
+    "yield": "=> Some(RawToken::Keyword(RawKeyword::Yield))",
     "false": "=> Some(RawToken::Boolean(false))",
-    "delete": "=> Some(RawToken::Keyword(Keyword::Delete))",
-    "return": "=> Some(RawToken::Keyword(Keyword::Return))",
-    "switch": "=> Some(RawToken::Keyword(Keyword::Switch))",
-    "typeof": "=> Some(RawToken::Keyword(Keyword::TypeOf))",
-    "export": "=> Some(RawToken::Keyword(Keyword::Export))",
-    "import": "=> Some(RawToken::Keyword(Keyword::Import))",
-    "static": "=> Some(RawToken::Keyword(Keyword::Static))",
-    "public": "=> Some(RawToken::Keyword(Keyword::Public))",
-    "default": "=> Some(RawToken::Keyword(Keyword::Default))",
-    "finally": "=> Some(RawToken::Keyword(Keyword::Finally))",
-    "package": "=> Some(RawToken::Keyword(Keyword::Package))",
-    "private": "=> Some(RawToken::Keyword(Keyword::Private))",
-    "continue": "=> Some(RawToken::Keyword(Keyword::Continue))",
-    "debugger": "=> Some(RawToken::Keyword(Keyword::Debugger))",
-    "function": "=> Some(RawToken::Keyword(Keyword::Function))",
-    "interface": "=> Some(RawToken::Keyword(Keyword::Interface))",
-    "protected": "=> Some(RawToken::Keyword(Keyword::Protected))",
-    "instanceof": "=> Some(RawToken::Keyword(Keyword::InstanceOf))",
-    "implements": "=> Some(RawToken::Keyword(Keyword::Implements))",
+    "delete": "=> Some(RawToken::Keyword(RawKeyword::Delete))",
+    "return": "=> Some(RawToken::Keyword(RawKeyword::Return))",
+    "switch": "=> Some(RawToken::Keyword(RawKeyword::Switch))",
+    "typeof": "=> Some(RawToken::Keyword(RawKeyword::TypeOf))",
+    "export": "=> Some(RawToken::Keyword(RawKeyword::Export))",
+    "import": "=> Some(RawToken::Keyword(RawKeyword::Import))",
+    "static": "=> Some(RawToken::Keyword(RawKeyword::Static))",
+    "public": "=> Some(RawToken::Keyword(RawKeyword::Public))",
+    "default": "=> Some(RawToken::Keyword(RawKeyword::Default))",
+    "finally": "=> Some(RawToken::Keyword(RawKeyword::Finally))",
+    "package": "=> Some(RawToken::Keyword(RawKeyword::Package))",
+    "private": "=> Some(RawToken::Keyword(RawKeyword::Private))",
+    "continue": "=> Some(RawToken::Keyword(RawKeyword::Continue))",
+    "debugger": "=> Some(RawToken::Keyword(RawKeyword::Debugger))",
+    "function": "=> Some(RawToken::Keyword(RawKeyword::Function))",
+    "interface": "=> Some(RawToken::Keyword(RawKeyword::Interface))",
+    "protected": "=> Some(RawToken::Keyword(RawKeyword::Protected))",
+    "instanceof": "=> Some(RawToken::Keyword(RawKeyword::InstanceOf))",
+    "implements": "=> Some(RawToken::Keyword(RawKeyword::Implements))",
 };
 
 /**
@@ -94,8 +94,7 @@ function main() {
         
         newTree += toFinalNewTest(fullEscape, expr);
     }
-    let sig = `use super::tokens::RawToken;
-use crate::tokens::Keyword;
+    let sig = `use super::tokens::{RawToken, RawKeyword};
 
 pub fn check_complicated_keyword(ident: &[u8]) -> Option<RawToken> {
     match ident.len() {
@@ -106,8 +105,25 @@ pub fn check_complicated_keyword(ident: &[u8]) -> Option<RawToken> {
     }).sort((lhs, rhs) => lhs[0] - rhs[0])
         .map(pair => pair[1]).join('\n        ');
     let end = '_ => None,\n    }\n}\n'
+    let test = `
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn check_unicode_escaped_keyword() {
+        let escaped_keywords = vec![
+            (Some(RawToken::Keyword(RawKeyword::Yield)), r"\\u0079ield"),
+            (Some(RawToken::Keyword(RawKeyword::Private)), r"privat\\u0065"),
+            (Some(RawToken::Keyword(RawKeyword::Static)), r"\\u0073\\u0074\\u0061\\u0074\\u0069\\u0063"),
+            (None, r"yield"),
+        ];
+        for (target, test) in escaped_keywords {
+            assert_eq!(target, check_complicated_keyword(test.as_bytes()))
+        }
+    }
+}`
     const fs = require('fs');
-    fs.writeFile('./src/tokenizer/keyword_escape.rs', sig + matchBody + end, (e) => {
+    fs.writeFile('./src/tokenizer/keyword_escape.rs', sig + matchBody + end + test, (e) => {
         if (e) {
             throw e
         }

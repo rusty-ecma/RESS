@@ -1058,7 +1058,7 @@ pub enum Keyword<T> {
     Continue(T),
     Debugger(T),
     Default(T),
-    Delete(T), //10
+    Delete(T),
     Do(T),
     Else(T),
     Enum(T),

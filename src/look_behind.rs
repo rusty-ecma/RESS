@@ -1,5 +1,5 @@
-use crate::tokenizer::RawToken;
-use crate::tokens::{Keyword, Punct};
+use crate::tokenizer::{RawToken, RawKeyword};
+use crate::tokens::Punct;
 
 #[derive(Clone, Debug)]
 pub struct LookBehind {
@@ -48,63 +48,16 @@ impl LookBehind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum MetaToken {
-    Keyword(Keyword<()>),
+    Keyword(RawKeyword),
     Punct(Punct),
     Ident,
     Other,
 }
 
-fn switch_keyword<T>(key: &Keyword<T>) -> Keyword<()> {
-    match key {
-        Keyword::Await(_) => Keyword::Await(()),
-        Keyword::Break(_) => Keyword::Break(()),
-        Keyword::Case(_) => Keyword::Case(()),
-        Keyword::Catch(_) => Keyword::Catch(()),
-        Keyword::Class(_) => Keyword::Class(()),
-        Keyword::Const(_) => Keyword::Const(()),
-        Keyword::Continue(_) => Keyword::Continue(()),
-        Keyword::Debugger(_) => Keyword::Debugger(()),
-        Keyword::Default(_) => Keyword::Default(()),
-        Keyword::Delete(_) => Keyword::Delete(()),
-        Keyword::Do(_) => Keyword::Do(()),
-        Keyword::Else(_) => Keyword::Else(()),
-        Keyword::Enum(_) => Keyword::Enum(()),
-        Keyword::Export(_) => Keyword::Export(()),
-        Keyword::Finally(_) => Keyword::Finally(()),
-        Keyword::For(_) => Keyword::For(()),
-        Keyword::Function(_) => Keyword::Function(()),
-        Keyword::If(_) => Keyword::If(()),
-        Keyword::Implements(_) => Keyword::Implements(()),
-        Keyword::Import(_) => Keyword::Import(()),
-        Keyword::In(_) => Keyword::In(()),
-        Keyword::InstanceOf(_) => Keyword::InstanceOf(()),
-        Keyword::Interface(_) => Keyword::Interface(()),
-        Keyword::Let(_) => Keyword::Let(()),
-        Keyword::New(_) => Keyword::New(()),
-        Keyword::Package(_) => Keyword::Package(()),
-        Keyword::Private(_) => Keyword::Private(()),
-        Keyword::Protected(_) => Keyword::Protected(()),
-        Keyword::Public(_) => Keyword::Public(()),
-        Keyword::Return(_) => Keyword::Return(()),
-        Keyword::Static(_) => Keyword::Static(()),
-        Keyword::Super(_) => Keyword::Super(()),
-        Keyword::Switch(_) => Keyword::Switch(()),
-        Keyword::This(_) => Keyword::This(()),
-        Keyword::Throw(_) => Keyword::Throw(()),
-        Keyword::Try(_) => Keyword::Try(()),
-        Keyword::TypeOf(_) => Keyword::TypeOf(()),
-        Keyword::Var(_) => Keyword::Var(()),
-        Keyword::Void(_) => Keyword::Void(()),
-        Keyword::While(_) => Keyword::While(()),
-        Keyword::With(_) => Keyword::With(()),
-        Keyword::Yield(_) => Keyword::Yield(()),
-    }
-}
-
 impl From<&RawToken> for MetaToken {
     fn from(other: &RawToken) -> Self {
         match other {
-            RawToken::Keyword(k) => MetaToken::Keyword(switch_keyword(k)),
+            RawToken::Keyword(k) => MetaToken::Keyword(*k),
             RawToken::Punct(p) => MetaToken::Punct(*p),
             RawToken::Ident => MetaToken::Ident,
             _ => MetaToken::Other,
@@ -121,7 +74,7 @@ mod test {
     fn six() {
         let first = RawToken::EoF;
         let second = RawToken::Ident;
-        let third = RawToken::Keyword(Keyword::Function(()));
+        let third = RawToken::Keyword(RawKeyword::Function);
         let fourth = RawToken::Punct(Punct::Ampersand);
         let fifth = RawToken::Punct(Punct::Bang);
         let sixth = RawToken::Punct(Punct::Caret);

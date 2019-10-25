@@ -35,7 +35,7 @@ pub mod prelude {
     pub use super::ScannerState;
     pub use super::SourceLocation;
 }
-use crate::tokenizer::RawToken;
+use crate::tokenizer::{RawToken, RawKeyword};
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
 
@@ -431,7 +431,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref last_token) = self.last_three.last() {
             match last_token {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::This(_) => false,
+                    RawKeyword::This => false,
                     _ => true,
                 },
                 MetaToken::Punct(p) => match p {
@@ -454,7 +454,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             match before {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::If(_) | Keyword::For(_) | Keyword::While(_) | Keyword::With(_) => true,
+                    RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                     _ => false,
                 },
                 _ => false,
@@ -472,7 +472,7 @@ impl<'b> Scanner<'b> {
                 if let Some(ref three) = self.before_last_open.three() {
                     return Self::check_for_expression(*three);
                 }
-            } else if before == &MetaToken::Keyword(Keyword::Function(())) {
+            } else if before == &MetaToken::Keyword(RawKeyword::Function) {
                 if let Some(ref two) = self.before_last_open.two() {
                     return Self::check_for_expression(*two);
                 } else {
@@ -536,15 +536,15 @@ impl<'b> Scanner<'b> {
                 _ => false,
             },
             MetaToken::Keyword(k) => match k {
-                Keyword::In(_) => true,
-                Keyword::TypeOf(_) => true,
-                Keyword::InstanceOf(_) => true,
-                Keyword::New(_) => true,
-                Keyword::Return(_) => true,
-                Keyword::Case(_) => true,
-                Keyword::Delete(_) => true,
-                Keyword::Throw(_) => true,
-                Keyword::Void(_) => true,
+                RawKeyword::In => true,
+                RawKeyword::TypeOf => true,
+                RawKeyword::InstanceOf => true,
+                RawKeyword::New => true,
+                RawKeyword::Return => true,
+                RawKeyword::Case => true,
+                RawKeyword::Delete => true,
+                RawKeyword::Throw => true,
+                RawKeyword::Void => true,
                 _ => false,
             },
             _ => false,
