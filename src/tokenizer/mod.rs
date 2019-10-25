@@ -765,7 +765,7 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             });
         };
-        while self.stream.at_octal() || self.stream.look_ahead_byte_matches(b'_') {
+        while self.stream.at_octal() || self.look_ahead_byte_matches('_') {
             let c = self.stream.next_char().unwrap();
             self.check_repeating_underscore(prev_char, c)?;
             prev_char = c;
