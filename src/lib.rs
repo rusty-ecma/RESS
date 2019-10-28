@@ -35,7 +35,7 @@ pub mod prelude {
     pub use super::ScannerState;
     pub use super::SourceLocation;
 }
-use crate::tokenizer::RawToken;
+use crate::tokenizer::{RawToken, RawKeyword};
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
 
@@ -344,7 +344,7 @@ impl<'b> Scanner<'b> {
                     Token::EoF
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
-                RawToken::Keyword(k) => Token::Keyword(k),
+                RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
                 RawToken::Null => Token::Null,
                 RawToken::Number(_) => Token::Number(Number::from(s)),
                 RawToken::Punct(p) => Token::Punct(p),
@@ -415,7 +415,7 @@ impl<'b> Scanner<'b> {
                 }
             }
             if !next.ty.is_comment() {
-                self.last_three.push((&next.ty).into());
+                self.last_three.push(&next.ty);
             }
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
@@ -431,7 +431,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref last_token) = self.last_three.last() {
             match last_token {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::This => false,
+                    RawKeyword::This => false,
                     _ => true,
                 },
                 MetaToken::Punct(p) => match p {
@@ -454,7 +454,7 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             match before {
                 MetaToken::Keyword(k) => match k {
-                    Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
+                    RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                     _ => false,
                 },
                 _ => false,
@@ -470,11 +470,11 @@ impl<'b> Scanner<'b> {
         if let Some(ref before) = self.before_last_open.last() {
             if before == &MetaToken::Ident {
                 if let Some(ref three) = self.before_last_open.three() {
-                    return Self::check_for_expression(three);
+                    return Self::check_for_expression(*three);
                 }
-            } else if before == &MetaToken::Keyword(Keyword::Function) {
+            } else if before == &MetaToken::Keyword(RawKeyword::Function) {
                 if let Some(ref two) = self.before_last_open.two() {
-                    return Self::check_for_expression(two);
+                    return Self::check_for_expression(*two);
                 } else {
                     return false;
                 }
@@ -485,7 +485,7 @@ impl<'b> Scanner<'b> {
     /// Check if a token is the beginning of an expression
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_expression(token: &MetaToken) -> bool {
+    fn check_for_expression(token: MetaToken) -> bool {
         match token {
             MetaToken::Punct(p) => match p {
                 Punct::OpenParen => true,
@@ -536,15 +536,15 @@ impl<'b> Scanner<'b> {
                 _ => false,
             },
             MetaToken::Keyword(k) => match k {
-                Keyword::In => true,
-                Keyword::TypeOf => true,
-                Keyword::InstanceOf => true,
-                Keyword::New => true,
-                Keyword::Return => true,
-                Keyword::Case => true,
-                Keyword::Delete => true,
-                Keyword::Throw => true,
-                Keyword::Void => true,
+                RawKeyword::In => true,
+                RawKeyword::TypeOf => true,
+                RawKeyword::InstanceOf => true,
+                RawKeyword::New => true,
+                RawKeyword::Return => true,
+                RawKeyword::Case => true,
+                RawKeyword::Delete => true,
+                RawKeyword::Throw => true,
+                RawKeyword::Void => true,
                 _ => false,
             },
             _ => false,
@@ -612,6 +612,7 @@ impl<'b> Scanner<'b> {
         Err(Error { line, column, msg })
     }
 }
+
 #[inline]
 fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
@@ -658,12 +659,12 @@ function thing() {
             }),
             Token::String(StringLit::Single("use strict")),
             Token::Punct(Punct::SemiColon),
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Ident("thing".into()),
             Token::Punct(Punct::OpenParen),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::OpenBrace),
-            Token::Keyword(Keyword::Let),
+            Token::Keyword(Keyword::Let("let".into())),
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal),
             Token::Number("0".into()),
@@ -694,17 +695,17 @@ this.y = 0;
         );
         let expected = vec![
             Token::Punct(Punct::OpenParen), //"("
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Punct(Punct::OpenParen),  //"("
             Token::Punct(Punct::CloseParen), //")"
             Token::Punct(Punct::OpenBrace),  //"{"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal), //"="
             Token::Number("100".into()),
             Token::Punct(Punct::SemiColon), //";"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("y".into()),
             Token::Punct(Punct::Equal), //"="

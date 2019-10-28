@@ -1,5 +1,5 @@
-use crate::tokenizer::RawToken;
-use crate::tokens::{Keyword, Punct};
+use crate::tokenizer::{RawToken, RawKeyword};
+use crate::tokens::Punct;
 
 #[derive(Clone, Debug)]
 pub struct LookBehind {
@@ -48,7 +48,7 @@ impl LookBehind {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u8)]
 pub enum MetaToken {
-    Keyword(Keyword),
+    Keyword(RawKeyword),
     Punct(Punct),
     Ident,
     Other,
@@ -74,7 +74,7 @@ mod test {
     fn six() {
         let first = RawToken::EoF;
         let second = RawToken::Ident;
-        let third = RawToken::Keyword(Keyword::Function);
+        let third = RawToken::Keyword(RawKeyword::Function);
         let fourth = RawToken::Punct(Punct::Ampersand);
         let fifth = RawToken::Punct(Punct::Bang);
         let sixth = RawToken::Punct(Punct::Caret);

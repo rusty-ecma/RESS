@@ -146,6 +146,7 @@ impl<'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
+    
     /// check if current char is a valid
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {
@@ -153,11 +154,11 @@ impl<'a> JSBuffer<'a> {
             return false;
         }
         self.buffer[self.idx] == 9
-            || self.buffer[self.idx] == 10
-            || self.buffer[self.idx] == 11
-            || self.buffer[self.idx] == 12
-            || self.buffer[self.idx] == 13
-            || self.buffer[self.idx] == 32
+            || self.buffer[self.idx] == 10 // \n
+            || self.buffer[self.idx] == 11 // \u{000b}
+            || self.buffer[self.idx] == 12 // \f
+            || self.buffer[self.idx] == 13 // \r
+            || self.buffer[self.idx] == 32 // ' '
             || {
                 let c = if let Some(c) = self.next_char() {
                     let _ = self.prev_char();
@@ -187,7 +188,7 @@ impl<'a> JSBuffer<'a> {
         } else if byte == 13 {
             true
         } else if byte < 226 {
-            return false;
+            false
         } else if byte == 226 {
             self.look_ahead_matches("\u{2028}".as_bytes())
                 || self.look_ahead_matches("\u{2029}".as_bytes())

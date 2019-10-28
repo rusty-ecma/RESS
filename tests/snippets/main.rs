@@ -38,7 +38,7 @@ fn if_then_regex() {
     compare(
         "if (1) /a/",
         &vec![
-            Token::Keyword(Keyword::If),
+            Token::Keyword(Keyword::If("If")),
             Token::Punct(Punct::OpenParen),
             Token::Number("1".into()),
             Token::Punct(Punct::CloseParen),

@@ -10,7 +10,7 @@ pub enum RawToken {
     /// or a function/method name
     Ident,
     /// A word that has been reserved to not be used as an identifier
-    Keyword(Keyword),
+    Keyword(RawKeyword),
     /// A `null` literal value
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
@@ -56,6 +56,8 @@ pub enum RawToken {
     },
 }
 
+impl Copy for Keyword<()> { }
+
 impl RawToken {
     pub fn is_punct(&self) -> bool {
         match self {
@@ -66,11 +68,7 @@ impl RawToken {
 
     pub fn is_comment(&self) -> bool {
         match self {
-            RawToken::Comment {
-                kind: _,
-                new_line_count: _,
-                last_len: _,
-            } => true,
+            RawToken::Comment { .. } => true,
             _ => false,
         }
     }
@@ -98,4 +96,98 @@ pub enum TemplateKind {
     Head,
     Body,
     Tail,
+}
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum RawKeyword {
+    Await,
+    Break,
+    Case,
+    Catch,
+    Class,
+    Const,
+    Continue,
+    Debugger,
+    Default,
+    Delete,
+    Do,
+    Else,
+    Enum,
+    Export,
+    Finally,
+    For,
+    Function,
+    If,
+    Implements,
+    Import,
+    In,
+    InstanceOf,
+    Interface,
+    Let,
+    New,
+    Package,
+    Private,
+    Protected,
+    Public,
+    Return,
+    Static,
+    Super,
+    Switch,
+    This,
+    Throw,
+    Try,
+    TypeOf,
+    Var,
+    Void,
+    While,
+    With,
+    Yield,
+}
+
+impl RawKeyword {
+    pub fn with_str<'a>(&self, s: &'a str) -> crate::tokens::Keyword<&'a str> {
+        match self {
+            RawKeyword::Await => Keyword::Await(s),
+            RawKeyword::Break => Keyword::Break(s),
+            RawKeyword::Case => Keyword::Case(s),
+            RawKeyword::Catch => Keyword::Catch(s),
+            RawKeyword::Class => Keyword::Class(s),
+            RawKeyword::Const => Keyword::Const(s),
+            RawKeyword::Continue => Keyword::Continue(s),
+            RawKeyword::Debugger => Keyword::Debugger(s),
+            RawKeyword::Default => Keyword::Default(s),
+            RawKeyword::Delete => Keyword::Delete(s),
+            RawKeyword::Do => Keyword::Do(s),
+            RawKeyword::Else => Keyword::Else(s),
+            RawKeyword::Enum => Keyword::Enum(s),
+            RawKeyword::Export => Keyword::Export(s),
+            RawKeyword::Finally => Keyword::Finally(s),
+            RawKeyword::For => Keyword::For(s),
+            RawKeyword::Function => Keyword::Function(s),
+            RawKeyword::If => Keyword::If(s),
+            RawKeyword::Implements => Keyword::Implements(s),
+            RawKeyword::Import => Keyword::Import(s),
+            RawKeyword::In => Keyword::In(s),
+            RawKeyword::InstanceOf => Keyword::InstanceOf(s),
+            RawKeyword::Interface => Keyword::Interface(s),
+            RawKeyword::Let => Keyword::Let(s),
+            RawKeyword::New => Keyword::New(s),
+            RawKeyword::Package => Keyword::Package(s),
+            RawKeyword::Private => Keyword::Private(s),
+            RawKeyword::Protected => Keyword::Protected(s),
+            RawKeyword::Public => Keyword::Public(s),
+            RawKeyword::Return => Keyword::Return(s),
+            RawKeyword::Static => Keyword::Static(s),
+            RawKeyword::Super => Keyword::Super(s),
+            RawKeyword::Switch => Keyword::Switch(s),
+            RawKeyword::This => Keyword::This(s),
+            RawKeyword::Throw => Keyword::Throw(s),
+            RawKeyword::Try => Keyword::Try(s),
+            RawKeyword::TypeOf => Keyword::TypeOf(s),
+            RawKeyword::Var => Keyword::Var(s),
+            RawKeyword::Void => Keyword::Void(s),
+            RawKeyword::While => Keyword::While(s),
+            RawKeyword::With => Keyword::With(s),
+            RawKeyword::Yield => Keyword::Yield(s),
+        }
+    }
 }

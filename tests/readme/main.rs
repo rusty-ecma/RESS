@@ -40,7 +40,7 @@ fn get_set_state() {
     let start = s.get_state();
     assert_eq!(
         s.next().unwrap().unwrap().token,
-        Token::Keyword(Keyword::Function)
+        Token::Keyword(Keyword::Function("Function"))
     );
     assert_eq!(
         s.next().unwrap().unwrap().token,
@@ -53,6 +53,6 @@ fn get_set_state() {
     s.set_state(start);
     assert_eq!(
         s.next().unwrap().unwrap().token,
-        Token::Keyword(Keyword::Function)
+        Token::Keyword(Keyword::Function("Function"))
     );
 }
