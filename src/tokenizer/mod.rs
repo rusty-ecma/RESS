@@ -151,7 +151,7 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        if let Some(k) = self.at_keyword(has_escaped)? {
+        if let Some(k) = self.at_keyword(has_escaped) {
             self.gen_token(k)
         } else {
             self.gen_token(RawToken::Ident)
@@ -159,19 +159,12 @@ impl<'a> Tokenizer<'a> {
     }
     /// Includes keywords, booleans & null
     #[allow(clippy::cognitive_complexity)]
-    fn at_keyword(&self, has_escaped: bool) -> Res<Option<RawToken>> {
+    fn at_keyword(&self, has_escaped: bool) -> Option<RawToken> {
         let ident = &self.stream.buffer[self.current_start..self.stream.idx];
         if has_escaped {
-            return if keyword_escape::check_complicated_keyword(ident).is_some() {
-                Err(RawError {
-                    msg: format!("Keywords cannot contain raw escaped characters: {}", String::from_utf8_lossy(ident)),
-                    idx: self.current_start
-                })
-            } else {
-                Ok(None)
-            };
+            return keyword_escape::check_complicated_keyword(ident);
         }
-        Ok(match self.stream.idx - self.current_start {
+        match self.stream.idx - self.current_start {
             2 if ident == b"do" => Some(RawToken::Keyword(RawKeyword::Do)),
             2 if ident == b"if" => Some(RawToken::Keyword(RawKeyword::If)),
             2 if ident == b"in" => Some(RawToken::Keyword(RawKeyword::In)),
@@ -218,7 +211,7 @@ impl<'a> Tokenizer<'a> {
             10 if ident == b"instanceof" => Some(RawToken::Keyword(RawKeyword::InstanceOf)),
             10 if ident == b"implements" => Some(RawToken::Keyword(RawKeyword::Implements)),
             _ => None,
-        })
+        }
     }
 
     /// picking up after the \
