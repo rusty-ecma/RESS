@@ -1462,7 +1462,7 @@ impl<T> Keyword<T> {
 }
 
 impl<'a> Keyword<&'a str> {
-    fn has_unicode_escape(&self) -> bool {
+    pub fn has_unicode_escape(&self) -> bool {
         match self {
             Keyword::Await(s) => s,
             Keyword::Break(s) => s,
