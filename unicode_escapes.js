@@ -56,6 +56,16 @@ function toEscapedUnicode(c) {
     let num = `0000${dig.toString(16)}`.substr(-4);
     return `\\u${num}`;
 }
+/**
+ * convert a character to its unicode escape codepoint string
+ * @param {string} c Single character
+ * @returns {string}
+ */
+function toEscapedUnicodeCodepoint(c) {
+    let dig = c.charCodeAt(0);
+    let num = dig.toString(16);
+    return `\\u{${num}}`;
+}
 
 function getPrefix(word) {
     if (word.length > 32) {
@@ -65,6 +75,17 @@ function getPrefix(word) {
 }
 
 function toNewTest(key, escape, i, expr) {
+    let test = '';
+    for (let j = 0; j < key.length;j++) {
+        if (j === i) { 
+            test += escape;
+        } else {
+            test += key[j];
+        }
+    }
+    return toFinalNewTest(test, expr);
+}
+function toNewTestCp(key, escape, i, expr) {
     let test = '';
     for (let j = 0; j < key.length;j++) {
         if (j === i) { 
@@ -86,13 +107,17 @@ function main() {
     for (let key in keywords) {
         let expr = keywords[key];
         let fullEscape = "";
+        let fullEscape2 = "";
         for (let i = 0; i < key.length;i++) {
             let escape = toEscapedUnicode(key[i]);
+            let escape2 = toEscapedUnicodeCodepoint(key[i]);
             fullEscape += escape;
+            fullEscape2 += escape2;
             newTree += toNewTest(key, escape, i, expr);
+            newTree += toNewTest(key, escape2, i, expr);
         }
-        
         newTree += toFinalNewTest(fullEscape, expr);
+        newTree += toFinalNewTest(fullEscape2, expr);
     }
     let sig = `use super::tokens::{RawToken, RawKeyword};
 
@@ -115,6 +140,9 @@ mod test {
             (Some(RawToken::Keyword(RawKeyword::Yield)), r"\\u0079ield"),
             (Some(RawToken::Keyword(RawKeyword::Private)), r"privat\\u0065"),
             (Some(RawToken::Keyword(RawKeyword::Static)), r"\\u0073\\u0074\\u0061\\u0074\\u0069\\u0063"),
+            (Some(RawToken::Keyword(RawKeyword::Yield)), r"\\u{79}ield"),
+            (Some(RawToken::Keyword(RawKeyword::Private)), r"privat\\u{65}"),
+            (Some(RawToken::Keyword(RawKeyword::Static)), r"\\u{73}\\u{74}\\u{61}\\u{74}\\u{69}\\u{63}"),
             (None, r"yield"),
         ];
         for (target, test) in escaped_keywords {
