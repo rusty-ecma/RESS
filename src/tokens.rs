@@ -1270,7 +1270,7 @@ impl<T> Keyword<T> {
     /// - export
     /// - implements
     /// - super
-    pub fn is_future_reserved(self) -> bool {
+    pub fn is_future_reserved(&self) -> bool {
         match self {
             Keyword::Enum(_) => true,
             Keyword::Export(_) => true,
@@ -1334,7 +1334,7 @@ impl<T> Keyword<T> {
     /// - void
     /// - while
     /// - with
-    pub fn is_reserved(self) -> bool {
+    pub fn is_reserved(&self) -> bool {
         match self {
             Keyword::Break(_) => true,
             Keyword::Case(_) => true,
