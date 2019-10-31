@@ -30,6 +30,7 @@ const keywords = {
     "switch": "=> Some(RawToken::Keyword(RawKeyword::Switch))",
     "typeof": "=> Some(RawToken::Keyword(RawKeyword::TypeOf))",
     "export": "=> Some(RawToken::Keyword(RawKeyword::Export))",
+    "extends": "=> Some(RawToken::Keyword(RawKeyword::Extends))",
     "import": "=> Some(RawToken::Keyword(RawKeyword::Import))",
     "static": "=> Some(RawToken::Keyword(RawKeyword::Static))",
     "public": "=> Some(RawToken::Keyword(RawKeyword::Public))",

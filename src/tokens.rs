@@ -1075,6 +1075,7 @@ pub enum Keyword<T> {
     Else(T),
     Enum(T),
     Export(T),
+    Extends(T),
     Finally(T),
     For(T),
     Function(T),
@@ -1123,6 +1124,7 @@ impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
             | (Else(_), Else(_))
             | (Enum(_), Enum(_))
             | (Export(_), Export(_))
+            | (Extends(_), Extends(_))
             | (Finally(_), Finally(_))
             | (For(_), For(_))
             | (Function(_), Function(_))
@@ -1173,6 +1175,7 @@ impl Keyword<()> {
             Keyword::Else(_) => Keyword::Else(s),
             Keyword::Enum(_) => Keyword::Enum(s),
             Keyword::Export(_) => Keyword::Export(s),
+            Keyword::Extends(_) => Keyword::Extends(s),
             Keyword::Finally(_) => Keyword::Finally(s),
             Keyword::For(_) => Keyword::For(s),
             Keyword::Function(_) => Keyword::Function(s),
@@ -1204,57 +1207,6 @@ impl Keyword<()> {
         }
     }
 }
-
-// impl<T> Keyword<T> {
-//     /// convert a &str into a Keyword
-//     pub fn from(s: &str) -> Option<Self> {
-//         Some(match s {
-//             "await" => Keyword::Await,
-//             "break" => Keyword::Break,
-//             "case" => Keyword::Case,
-//             "catch" => Keyword::Catch,
-//             "class" => Keyword::Class,
-//             "const" => Keyword::Const,
-//             "continue" => Keyword::Continue,
-//             "debugger" => Keyword::Debugger,
-//             "default" => Keyword::Default,
-//             "delete" => Keyword::Delete,
-//             "do" => Keyword::Do,
-//             "else" => Keyword::Else,
-//             "finally" => Keyword::Finally,
-//             "for" => Keyword::For,
-//             "function" => Keyword::Function,
-//             "if" => Keyword::If,
-//             "instanceof" => Keyword::InstanceOf,
-//             "in" => Keyword::In,
-//             "new" => Keyword::New,
-//             "return" => Keyword::Return,
-//             "switch" => Keyword::Switch,
-//             "this" => Keyword::This,
-//             "throw" => Keyword::Throw,
-//             "try" => Keyword::Try,
-//             "typeof" => Keyword::TypeOf,
-//             "var" => Keyword::Var,
-//             "void" => Keyword::Void,
-//             "while" => Keyword::While,
-//             "with" => Keyword::With,
-//             "export" => Keyword::Export,
-//             "import" => Keyword::Import,
-//             "super" => Keyword::Super,
-//             "enum" => Keyword::Enum,
-//             "implements" => Keyword::Implements,
-//             "interface" => Keyword::Interface,
-//             "package" => Keyword::Package,
-//             "private" => Keyword::Private,
-//             "protected" => Keyword::Protected,
-//             "public" => Keyword::Public,
-//             "static" => Keyword::Static,
-//             "yield" => Keyword::Yield,
-//             "let" => Keyword::Let,
-//             _ => return None,
-//         })
-//     }
-// }
 
 impl<T> ::std::string::ToString for Keyword<T> {
     /// Convert a keyword into a string
@@ -1346,6 +1298,7 @@ impl<T> Keyword<T> {
             | Keyword::Do(_)
             | Keyword::Else(_)
             | Keyword::Export(_)
+            | Keyword::Extends(_)
             | Keyword::Finally(_)
             | Keyword::For(_)
             | Keyword::Function(_)
@@ -1386,6 +1339,7 @@ impl<T> Keyword<T> {
             Keyword::Else(_) => "else",
             Keyword::Enum(_) => "enum",
             Keyword::Export(_) => "export",
+            Keyword::Extends(_) => "extends",
             Keyword::Finally(_) => "finally",
             Keyword::For(_) => "for",
             Keyword::Function(_) => "function",
@@ -1433,6 +1387,7 @@ impl<T> Keyword<T> {
             Keyword::Else(_) => Keyword::Else(()),
             Keyword::Enum(_) => Keyword::Enum(()),
             Keyword::Export(_) => Keyword::Export(()),
+            Keyword::Extends(_) => Keyword::Extends(()),
             Keyword::Finally(_) => Keyword::Finally(()),
             Keyword::For(_) => Keyword::For(()),
             Keyword::Function(_) => Keyword::Function(()),
@@ -1482,6 +1437,7 @@ impl<'a> Keyword<&'a str> {
             Keyword::Else(s) => s,
             Keyword::Enum(s) => s,
             Keyword::Export(s) => s,
+            Keyword::Extends(s) => s,
             Keyword::Finally(s) => s,
             Keyword::For(s) => s,
             Keyword::Function(s) => s,

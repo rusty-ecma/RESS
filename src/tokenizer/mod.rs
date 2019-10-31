@@ -200,6 +200,7 @@ impl<'a> Tokenizer<'a> {
             6 if ident == b"static" => Some(RawToken::Keyword(RawKeyword::Static)),
             6 if ident == b"public" => Some(RawToken::Keyword(RawKeyword::Public)),
             7 if ident == b"default" => Some(RawToken::Keyword(RawKeyword::Default)),
+            7 if ident == b"extends" => Some(RawToken::Keyword(RawKeyword::Extends)),
             7 if ident == b"finally" => Some(RawToken::Keyword(RawKeyword::Finally)),
             7 if ident == b"package" => Some(RawToken::Keyword(RawKeyword::Package)),
             7 if ident == b"private" => Some(RawToken::Keyword(RawKeyword::Private)),

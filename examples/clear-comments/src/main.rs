@@ -69,7 +69,8 @@ fn main() {
         if last_token.matches_keyword(Keyword::For(())) {
             in_loop = true;
         }
-        if last_token.matches_keyword(Keyword::Case(())) || last_token.matches_keyword(Keyword::Default(()))
+        if last_token.matches_keyword(Keyword::Case(()))
+            || last_token.matches_keyword(Keyword::Default(()))
         {
             in_case = true;
         }
