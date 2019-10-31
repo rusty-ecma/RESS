@@ -1291,6 +1291,7 @@ impl<T> Keyword<T> {
             Keyword::Break(_)
             | Keyword::Case(_)
             | Keyword::Catch(_)
+            | Keyword::Class(_)
             | Keyword::Continue(_)
             | Keyword::Debugger(_)
             | Keyword::Default(_)
