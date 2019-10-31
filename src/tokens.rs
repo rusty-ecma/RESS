@@ -1345,6 +1345,7 @@ impl<T> Keyword<T> {
             Keyword::Delete(_) => true,
             Keyword::Do(_) => true,
             Keyword::Else(_) => true,
+            Keyword::Export(_) => true,
             Keyword::Finally(_) => true,
             Keyword::For(_) => true,
             Keyword::Function(_) => true,
