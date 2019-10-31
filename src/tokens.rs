@@ -1336,33 +1336,35 @@ impl<T> Keyword<T> {
     /// - with
     pub fn is_reserved(&self) -> bool {
         match self {
-            Keyword::Break(_) => true,
-            Keyword::Case(_) => true,
-            Keyword::Catch(_) => true,
-            Keyword::Continue(_) => true,
-            Keyword::Debugger(_) => true,
-            Keyword::Default(_) => true,
-            Keyword::Delete(_) => true,
-            Keyword::Do(_) => true,
-            Keyword::Else(_) => true,
-            Keyword::Export(_) => true,
-            Keyword::Finally(_) => true,
-            Keyword::For(_) => true,
-            Keyword::Function(_) => true,
-            Keyword::If(_) => true,
-            Keyword::InstanceOf(_) => true,
-            Keyword::In(_) => true,
-            Keyword::New(_) => true,
-            Keyword::Return(_) => true,
-            Keyword::Switch(_) => true,
-            Keyword::This(_) => true,
-            Keyword::Throw(_) => true,
-            Keyword::Try(_) => true,
-            Keyword::TypeOf(_) => true,
-            Keyword::Var(_) => true,
-            Keyword::Void(_) => true,
-            Keyword::While(_) => true,
-            Keyword::With(_) => true,
+            Keyword::Break(_)
+            | Keyword::Case(_)
+            | Keyword::Catch(_)
+            | Keyword::Continue(_)
+            | Keyword::Debugger(_)
+            | Keyword::Default(_)
+            | Keyword::Delete(_)
+            | Keyword::Do(_)
+            | Keyword::Else(_)
+            | Keyword::Export(_)
+            | Keyword::Finally(_)
+            | Keyword::For(_)
+            | Keyword::Function(_)
+            | Keyword::If(_)
+            | Keyword::Import(_)
+            | Keyword::In(_)
+            | Keyword::InstanceOf(_)
+            | Keyword::New(_)
+            | Keyword::Return(_)
+            | Keyword::Switch(_)
+            | Keyword::Super(_)
+            | Keyword::This(_)
+            | Keyword::Throw(_)
+            | Keyword::Try(_)
+            | Keyword::TypeOf(_)
+            | Keyword::Var(_)
+            | Keyword::Void(_)
+            | Keyword::While(_)
+            | Keyword::With(_) => true,
             _ => false,
         }
     }
