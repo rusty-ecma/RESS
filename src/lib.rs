@@ -413,14 +413,17 @@ impl<'b> Scanner<'b> {
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     self.before_last_open_paren = self.last_three.clone();
-                } else if let Punct::OpenBrace = p {
-                    self.before_curly_stack.push(self.last_three.clone());
-                } else if let Punct::CloseBrace = p {
-                    let _ = self.before_curly_stack.pop();
                 }
             }
             if !next.ty.is_comment() {
                 self.last_three.push(&next.ty, self.new_line_count as u32);
+            }
+            if let Token::Punct(ref p) = &ret.token {
+                if let Punct::OpenBrace = p {
+                    self.before_curly_stack.push(self.last_three.clone());
+                } else if let Punct::CloseBrace = p {
+                    let _ = self.before_curly_stack.pop();
+                }
             }
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
@@ -433,7 +436,7 @@ impl<'b> Scanner<'b> {
     ///
     /// [see this for more details](https://github.com/sweet-js/sweet-core/wiki/design)
     fn is_regex_start(&self) -> bool {
-        if let Some(ref last_token) = self.last_three.last() {
+        if let Some(ref last_token) = self.last_three.one() {
             match last_token {
                 MetaToken::Keyword(k, _) => match k {
                     RawKeyword::This => false,
@@ -442,7 +445,13 @@ impl<'b> Scanner<'b> {
                 MetaToken::Punct(p, _) => match p {
                     Punct::CloseBracket => false,
                     Punct::CloseParen => self.check_for_conditional(),
-                    Punct::CloseBrace => self.check_for_func(),
+                    Punct::CloseBrace => {
+                        if self.is_block(self.before_curly_stack.len().saturating_sub(1)) {
+                            panic!()
+                        } else {
+                            false
+                        }
+                    },
                     _ => true,
                 },
                 _ => false,
@@ -456,25 +465,22 @@ impl<'b> Scanner<'b> {
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_conditional(&self) -> bool {
-        if let Some(ref before) = self.before_last_open_paren.last() {
-            match before {
-                MetaToken::Keyword(k, _) => match k {
+        if let Some(MetaToken::Keyword(k, _)) = self.before_last_open_paren.one() {
+            match k {
                     RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                     _ => false,
-                },
-                _ => false,
             }
         } else {
-            true
+            false
         }
     }
     /// Check if we just passed a function expression
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
-        if let Some(ref before) = self.before_last_open_paren.last() {
+        if let Some(ref before) = self.before_last_open_paren.one() {
             if before == &MetaToken::Ident(0)  {// line number doesn't matter here
-                if let Some(ref three) = self.before_last_open_paren.three() {
+                if let Some(ref three) = self.before_last_open_paren.four() {
                     return Self::check_for_expression(*three);
                 }
             } else if before == &MetaToken::Keyword(RawKeyword::Function, 0) {
@@ -556,6 +562,107 @@ impl<'b> Scanner<'b> {
         }
     }
 
+    fn is_block(&self, current_idx: usize) -> bool {
+        if let Some(look_behind) = self.before_curly_stack.get(current_idx) {
+            if let Some(last) = look_behind.two() {
+                match last {
+                    MetaToken::Punct(Punct::OpenParen, _)
+                    | MetaToken::Punct(Punct::OpenBracket, _) => false,
+                    MetaToken::Punct(Punct::Colon, _) => {
+                        if current_idx == 0 {
+                            false
+                        } else {
+                            self.is_block(current_idx.saturating_sub(1))
+                        }
+                    }
+                    MetaToken::Punct(_, _) => !Self::is_op(&last),
+                    MetaToken::Keyword(RawKeyword::Return, line)
+                    | MetaToken::Keyword(RawKeyword::Yield, line) => {
+                        if let Some(last) = look_behind.one() {
+                            if last.line_number() != *line {
+                                true
+                            } else {
+                                false
+                            }
+                        } else {
+                            false
+                        }
+                    }
+                    MetaToken::Keyword(RawKeyword::Case, _) => {
+                        false
+                    }
+                    _ => true
+
+                }
+            } else {
+                true
+            }
+        } else {
+            false
+        }
+    }
+    fn is_op(tok: &MetaToken) -> bool {
+        match tok {
+            MetaToken::Punct(ref p, _) => {
+                match p {
+                    Punct::Equal
+                    | Punct::PlusEqual
+                    | Punct::DashEqual
+                    | Punct::AsteriskEqual
+                    | Punct::ForwardSlashEqual
+                    | Punct::PercentEqual
+                    | Punct::DoubleLessThanEqual
+                    | Punct::DoubleGreaterThanEqual
+                    | Punct::TripleGreaterThanEqual
+                    | Punct::AmpersandEqual
+                    | Punct::PipeEqual
+                    | Punct::CaretEqual
+                    | Punct::Comma
+                    | Punct::Plus
+                    | Punct::Dash
+                    | Punct::Asterisk
+                    | Punct::ForwardSlash
+                    | Punct::Percent
+                    | Punct::DoubleLessThan
+                    | Punct::DoubleGreaterThan
+                    | Punct::TripleGreaterThan
+                    | Punct::Ampersand
+                    | Punct::Pipe
+                    | Punct::Caret
+                    | Punct::DoubleAmpersand
+                    | Punct::DoublePipe
+                    | Punct::QuestionMark
+                    | Punct::Colon
+                    | Punct::TripleEqual
+                    | Punct::DoubleEqual
+                    | Punct::GreaterThanEqual
+                    | Punct::LessThanEqual
+                    | Punct::LessThan
+                    | Punct::GreaterThan
+                    | Punct::BangEqual
+                    | Punct::BangDoubleEqual 
+                    | Punct::DoublePlus
+                    | Punct::DoubleDash
+                    | Punct::Tilde
+                    | Punct::Bang => true,
+                    _ => false
+                }
+            },
+            MetaToken::Keyword(k, _) => {
+                match k {
+                    RawKeyword::InstanceOf
+                    | RawKeyword::In
+                    | RawKeyword::Delete
+                    | RawKeyword::Void
+                    | RawKeyword::TypeOf
+                    | RawKeyword::Throw
+                    | RawKeyword::New => true,
+                    _ => false
+                }
+            },
+            _ => false
+        }
+    }
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())
