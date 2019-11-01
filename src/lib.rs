@@ -413,6 +413,10 @@ impl<'b> Scanner<'b> {
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
                     self.before_last_open_paren = self.last_three.clone();
+                } else if let Punct::OpenBrace = p {
+                    self.before_curly_stack.push(self.last_three.clone());
+                } else if let Punct::CloseBrace = p {
+                    let _ = self.before_curly_stack.pop();
                 }
             }
             if !next.ty.is_comment() {
