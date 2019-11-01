@@ -38,7 +38,8 @@ fn walk(path: &Path) {
         .unwrap()
         .map(|e| e.unwrap().path())
         .collect();
-    files.iter().for_each(|path| {
+    files.iter().enumerate().for_each(|(i, path)| {
+
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
