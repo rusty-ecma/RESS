@@ -168,8 +168,9 @@ pub struct Scanner<'a> {
     errored: bool,
     new_line_count: usize,
     line_cursor: usize,
-    before_last_open: LookBehind,
+    before_last_open_paren: LookBehind,
     last_three: LookBehind,
+    before_curly_stack: Vec<LookBehind>,
 }
 
 impl<'a> Scanner<'a> {
@@ -186,8 +187,9 @@ impl<'a> Scanner<'a> {
             errored: false,
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
-            before_last_open: LookBehind::new(),
+            before_last_open_paren: LookBehind::new(),
             last_three: LookBehind::new(),
+            before_curly_stack: Vec::new(),
         }
     }
 }
@@ -233,7 +235,8 @@ impl<'b> Scanner<'b> {
             new_line_count: self.new_line_count,
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
-            paren_three: self.before_last_open.clone(),
+            paren_three: self.before_last_open_paren.clone(),
+            before_curly_stack: self.before_curly_stack.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
@@ -244,7 +247,8 @@ impl<'b> Scanner<'b> {
         self.new_line_count = state.new_line_count;
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
-        self.before_last_open = state.paren_three;
+        self.before_last_open_paren = state.paren_three;
+        self.before_curly_stack = state.before_curly_stack;
     }
     #[inline]
     /// The implementation of `Scanner::next` that includes
@@ -408,14 +412,11 @@ impl<'b> Scanner<'b> {
         } else {
             if let Token::Punct(ref p) = &ret.token {
                 if let Punct::OpenParen = p {
-                    ::std::mem::replace(
-                        &mut self.before_last_open,
-                        ::std::mem::replace(&mut self.last_three, LookBehind::new()),
-                    );
+                    self.before_last_open_paren = self.last_three.clone();
                 }
             }
             if !next.ty.is_comment() {
-                self.last_three.push(&next.ty);
+                self.last_three.push(&next.ty, self.new_line_count as u32);
             }
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
@@ -430,11 +431,11 @@ impl<'b> Scanner<'b> {
     fn is_regex_start(&self) -> bool {
         if let Some(ref last_token) = self.last_three.last() {
             match last_token {
-                MetaToken::Keyword(k) => match k {
+                MetaToken::Keyword(k, _) => match k {
                     RawKeyword::This => false,
                     _ => true,
                 },
-                MetaToken::Punct(p) => match p {
+                MetaToken::Punct(p, _) => match p {
                     Punct::CloseBracket => false,
                     Punct::CloseParen => self.check_for_conditional(),
                     Punct::CloseBrace => self.check_for_func(),
@@ -451,9 +452,9 @@ impl<'b> Scanner<'b> {
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_conditional(&self) -> bool {
-        if let Some(ref before) = self.before_last_open.last() {
+        if let Some(ref before) = self.before_last_open_paren.last() {
             match before {
-                MetaToken::Keyword(k) => match k {
+                MetaToken::Keyword(k, _) => match k {
                     RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                     _ => false,
                 },
@@ -467,13 +468,13 @@ impl<'b> Scanner<'b> {
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_func(&self) -> bool {
-        if let Some(ref before) = self.before_last_open.last() {
-            if before == &MetaToken::Ident {
-                if let Some(ref three) = self.before_last_open.three() {
+        if let Some(ref before) = self.before_last_open_paren.last() {
+            if before == &MetaToken::Ident(0)  {// line number doesn't matter here
+                if let Some(ref three) = self.before_last_open_paren.three() {
                     return Self::check_for_expression(*three);
                 }
-            } else if before == &MetaToken::Keyword(RawKeyword::Function) {
-                if let Some(ref two) = self.before_last_open.two() {
+            } else if before == &MetaToken::Keyword(RawKeyword::Function, 0) {
+                if let Some(ref two) = self.before_last_open_paren.two() {
                     return Self::check_for_expression(*two);
                 } else {
                     return false;
@@ -487,7 +488,7 @@ impl<'b> Scanner<'b> {
     /// > used in determining if we are at a regex or not
     fn check_for_expression(token: MetaToken) -> bool {
         match token {
-            MetaToken::Punct(p) => match p {
+            MetaToken::Punct(p, _) => match p {
                 Punct::OpenParen => true,
                 Punct::OpenBrace => true,
                 Punct::OpenBracket => true,
@@ -535,7 +536,7 @@ impl<'b> Scanner<'b> {
                 Punct::BangDoubleEqual => true,
                 _ => false,
             },
-            MetaToken::Keyword(k) => match k {
+            MetaToken::Keyword(k, _) => match k {
                 RawKeyword::In => true,
                 RawKeyword::TypeOf => true,
                 RawKeyword::InstanceOf => true,
@@ -637,6 +638,7 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub last_three: LookBehind,
     pub paren_three: LookBehind,
+    pub before_curly_stack: Vec<LookBehind>
 }
 
 #[cfg(test)]

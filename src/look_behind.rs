@@ -16,13 +16,13 @@ impl LookBehind {
         }
     }
     #[inline]
-    pub fn push(&mut self, tok: &RawToken) {
+    pub fn push(&mut self, tok: &RawToken, line: u32) {
         if self.pointer >= 2 {
             self.pointer = 0;
         } else {
             self.pointer += 1;
         }
-        self.list[self.pointer as usize] = Some(tok.into());
+        self.list[self.pointer as usize] = Some((tok, line).into());
     }
     #[inline]
     pub fn last(&self) -> &Option<MetaToken> {
@@ -45,22 +45,35 @@ impl LookBehind {
         }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[repr(u8)]
+/// Token classes needed for look behind
+/// this enum will carry it's line number
+#[derive(Debug, Clone, Copy)]
 pub enum MetaToken {
-    Keyword(RawKeyword),
-    Punct(Punct),
-    Ident,
-    Other,
+    Keyword(RawKeyword, u32),
+    Punct(Punct, u32),
+    Ident(u32),
+    Other(u32),
 }
 
-impl From<&RawToken> for MetaToken {
-    fn from(other: &RawToken) -> Self {
+impl PartialEq for MetaToken {
+    fn eq(&self, other: &MetaToken) -> bool {
+        match (self, other) {
+            (MetaToken::Keyword(lhs, _), MetaToken::Keyword(rhs, _)) => lhs == rhs,
+            (MetaToken::Punct(lhs, _), MetaToken::Punct(rhs, _)) => lhs == rhs,
+            (MetaToken::Ident(_), MetaToken::Ident(_)) 
+            | (MetaToken::Other(_), MetaToken::Other(_)) => true,
+            _ => false
+        }
+    }
+}
+
+impl From<(&RawToken, u32)> for MetaToken {
+    fn from((other, line): (&RawToken, u32)) -> Self {
         match other {
-            RawToken::Keyword(k) => MetaToken::Keyword(*k),
-            RawToken::Punct(p) => MetaToken::Punct(*p),
-            RawToken::Ident => MetaToken::Ident,
-            _ => MetaToken::Other,
+            RawToken::Keyword(k) => MetaToken::Keyword(*k, line),
+            RawToken::Punct(p) => MetaToken::Punct(*p, line),
+            RawToken::Ident => MetaToken::Ident(line),
+            _ => MetaToken::Other(line),
         }
     }
 }
@@ -79,37 +92,37 @@ mod test {
         let fifth = RawToken::Punct(Punct::Bang);
         let sixth = RawToken::Punct(Punct::Caret);
         let mut l = LookBehind::new();
-        l.push(&first);
-        test(&l, Some((&first).into()), None, None);
-        l.push(&second);
-        test(&l, Some((&second).into()), Some((&first).into()), None);
-        l.push(&third);
+        l.push(&first, 1);
+        test(&l, Some((&first, 1).into()), None, None);
+        l.push(&second, 1);
+        test(&l, Some((&second, 1).into()), Some((&first, 1).into()), None);
+        l.push(&third, 1);
         test(
             &l,
-            Some((&third).into()),
-            Some((&second).into()),
-            Some((&first).into()),
+            Some((&third, 1).into()),
+            Some((&second, 1).into()),
+            Some((&first, 1).into()),
         );
-        l.push(&fourth);
+        l.push(&fourth, 1);
         test(
             &l,
-            Some((&fourth).into()),
-            Some((&third).into()),
-            Some((&second).into()),
+            Some((&fourth, 1).into()),
+            Some((&third, 1).into()),
+            Some((&second, 1).into()),
         );
-        l.push(&fifth);
+        l.push(&fifth, 1);
         test(
             &l,
-            Some((&fifth).into()),
-            Some((&fourth).into()),
-            Some((&third).into()),
+            Some((&fifth, 1).into()),
+            Some((&fourth, 1).into()),
+            Some((&third, 1).into()),
         );
-        l.push(&sixth);
+        l.push(&sixth, 1);
         test(
             &l,
-            Some((&sixth).into()),
-            Some((&fifth).into()),
-            Some((&fourth).into()),
+            Some((&sixth, 1).into()),
+            Some((&fifth, 1).into()),
+            Some((&fourth, 1).into()),
         );
     }
 
