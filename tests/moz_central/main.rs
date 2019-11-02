@@ -38,14 +38,15 @@ fn walk(path: &Path) {
         .unwrap()
         .map(|e| e.unwrap().path())
         .collect();
-    files.iter().enumerate().for_each(|(i, path)| {
-
+    files.iter().enumerate().for_each(|(_i, path)| {
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
                     let result = ::std::panic::catch_unwind(|| {
                         let js = read_to_string(&path).unwrap();
-                        for _ in Scanner::new(js.as_str()) {}
+                        for item in Scanner::new(js.as_str()) {
+                            item.unwrap();
+                        }
                     });
                     if let Err(e) = result {
                         panic!("path: {:?}\n{:?}", path, e);

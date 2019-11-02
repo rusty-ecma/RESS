@@ -1,4 +1,4 @@
-use crate::tokenizer::{RawToken, RawKeyword};
+use crate::tokenizer::{RawKeyword, RawToken};
 use crate::tokens::Punct;
 
 #[derive(Clone, Debug)]
@@ -41,8 +41,7 @@ pub fn wrapping_sub(lhs: u8, rhs: u8, max: u8) -> u8 {
         lhs - rhs
     } else {
         let diff = rhs - lhs;
-        let maybe = (max + 1) - diff;
-        maybe
+        (max + 1) - diff
     }
 }
 #[inline]
@@ -50,7 +49,7 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
     let maybe = lhs + rhs;
     if maybe > max {
         let diff = maybe - max;
-        0 + (diff.saturating_sub(1))
+        diff.saturating_sub(1)
     } else {
         maybe
     }
@@ -76,7 +75,7 @@ impl MetaToken {
             | MetaToken::CloseParen(_, line)
             | MetaToken::CloseBrace(_, line)
             | MetaToken::Ident(line)
-            | MetaToken::Other(line) => *line
+            | MetaToken::Other(line) => *line,
         }
     }
 }
@@ -86,9 +85,9 @@ impl PartialEq for MetaToken {
         match (self, other) {
             (MetaToken::Keyword(lhs, _), MetaToken::Keyword(rhs, _)) => lhs == rhs,
             (MetaToken::Punct(lhs, _), MetaToken::Punct(rhs, _)) => lhs == rhs,
-            (MetaToken::Ident(_), MetaToken::Ident(_)) 
+            (MetaToken::Ident(_), MetaToken::Ident(_))
             | (MetaToken::Other(_), MetaToken::Other(_)) => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -125,48 +124,20 @@ mod test {
         l.push(&second, 1);
         test(&l, Some((&second, 1).into()), Some((&first, 1).into()));
         l.push(&third, 1);
-        test(
-            &l,
-            Some((&third, 1).into()),
-            Some((&second, 1).into()),
-        );
+        test(&l, Some((&third, 1).into()), Some((&second, 1).into()));
         l.push(&fourth, 1);
-        test(
-            &l,
-            Some((&fourth, 1).into()),
-            Some((&third, 1).into()),
-        );
+        test(&l, Some((&fourth, 1).into()), Some((&third, 1).into()));
         l.push(&fifth, 1);
-        test(
-            &l,
-            Some((&fifth, 1).into()),
-            Some((&fourth, 1).into()),
-        );
+        test(&l, Some((&fifth, 1).into()), Some((&fourth, 1).into()));
         l.push(&sixth, 1);
-        test(
-            &l,
-            Some((&sixth, 1).into()),
-            Some((&fifth, 1).into()),
-        );
+        test(&l, Some((&sixth, 1).into()), Some((&fifth, 1).into()));
         l.push(&seventh, 1);
-        test(
-            &l,
-            Some((&seventh, 1).into()),
-            Some((&sixth, 1).into()),
-        );
+        test(&l, Some((&seventh, 1).into()), Some((&sixth, 1).into()));
         l.push(&eighth, 1);
-        test(
-            &l,
-            Some((&eighth, 1).into()),
-            Some((&seventh, 1).into()),
-        );
+        test(&l, Some((&eighth, 1).into()), Some((&seventh, 1).into()));
     }
 
-    fn test(
-        l: &LookBehind,
-        first: Option<MetaToken>,
-        second: Option<MetaToken>,
-    ) {
+    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>) {
         println!("{:?}", l);
         assert_eq!(l.one(), &first, "one didn't match");
         assert_eq!(l.two(), &second, "two didn't match");
@@ -180,6 +151,5 @@ mod test {
         assert_eq!(wrapping_add(0, 1, 4), 1);
         assert_eq!(wrapping_add(4, 1, 4), 0);
         assert_eq!(wrapping_add(0, 6, 4), 1)
-        
     }
 }

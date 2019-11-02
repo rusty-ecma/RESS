@@ -1,4 +1,4 @@
-use super::tokens::{RawToken, RawKeyword};
+use super::tokens::{RawKeyword, RawToken};
 
 pub fn check_complicated_keyword(ident: &[u8]) -> Option<RawToken> {
     match ident.len() {
@@ -530,66 +530,230 @@ pub fn check_complicated_keyword(ident: &[u8]) -> Option<RawToken> {
         24 if ident == br"\u{74}\u{72}\u{75}\u{65}" => Some(RawToken::Boolean(true)),
         24 if ident == br"\u006e\u0075\u006c\u006c" => Some(RawToken::Null),
         24 if ident == br"\u{6e}\u{75}\u{6c}\u{6c}" => Some(RawToken::Null),
-        30 if ident == br"\u0061\u0077\u0061\u0069\u0074" => Some(RawToken::Keyword(RawKeyword::Await)),
-        30 if ident == br"\u{61}\u{77}\u{61}\u{69}\u{74}" => Some(RawToken::Keyword(RawKeyword::Await)),
-        30 if ident == br"\u0062\u0072\u0065\u0061\u006b" => Some(RawToken::Keyword(RawKeyword::Break)),
-        30 if ident == br"\u{62}\u{72}\u{65}\u{61}\u{6b}" => Some(RawToken::Keyword(RawKeyword::Break)),
-        30 if ident == br"\u0063\u0061\u0074\u0063\u0068" => Some(RawToken::Keyword(RawKeyword::Catch)),
-        30 if ident == br"\u{63}\u{61}\u{74}\u{63}\u{68}" => Some(RawToken::Keyword(RawKeyword::Catch)),
-        30 if ident == br"\u0063\u006c\u0061\u0073\u0073" => Some(RawToken::Keyword(RawKeyword::Class)),
-        30 if ident == br"\u{63}\u{6c}\u{61}\u{73}\u{73}" => Some(RawToken::Keyword(RawKeyword::Class)),
-        30 if ident == br"\u0063\u006f\u006e\u0073\u0074" => Some(RawToken::Keyword(RawKeyword::Const)),
-        30 if ident == br"\u{63}\u{6f}\u{6e}\u{73}\u{74}" => Some(RawToken::Keyword(RawKeyword::Const)),
-        30 if ident == br"\u0074\u0068\u0072\u006f\u0077" => Some(RawToken::Keyword(RawKeyword::Throw)),
-        30 if ident == br"\u{74}\u{68}\u{72}\u{6f}\u{77}" => Some(RawToken::Keyword(RawKeyword::Throw)),
-        30 if ident == br"\u0077\u0068\u0069\u006c\u0065" => Some(RawToken::Keyword(RawKeyword::While)),
-        30 if ident == br"\u{77}\u{68}\u{69}\u{6c}\u{65}" => Some(RawToken::Keyword(RawKeyword::While)),
-        30 if ident == br"\u0073\u0075\u0070\u0065\u0072" => Some(RawToken::Keyword(RawKeyword::Super)),
-        30 if ident == br"\u{73}\u{75}\u{70}\u{65}\u{72}" => Some(RawToken::Keyword(RawKeyword::Super)),
-        30 if ident == br"\u0079\u0069\u0065\u006c\u0064" => Some(RawToken::Keyword(RawKeyword::Yield)),
-        30 if ident == br"\u{79}\u{69}\u{65}\u{6c}\u{64}" => Some(RawToken::Keyword(RawKeyword::Yield)),
+        30 if ident == br"\u0061\u0077\u0061\u0069\u0074" => {
+            Some(RawToken::Keyword(RawKeyword::Await))
+        }
+        30 if ident == br"\u{61}\u{77}\u{61}\u{69}\u{74}" => {
+            Some(RawToken::Keyword(RawKeyword::Await))
+        }
+        30 if ident == br"\u0062\u0072\u0065\u0061\u006b" => {
+            Some(RawToken::Keyword(RawKeyword::Break))
+        }
+        30 if ident == br"\u{62}\u{72}\u{65}\u{61}\u{6b}" => {
+            Some(RawToken::Keyword(RawKeyword::Break))
+        }
+        30 if ident == br"\u0063\u0061\u0074\u0063\u0068" => {
+            Some(RawToken::Keyword(RawKeyword::Catch))
+        }
+        30 if ident == br"\u{63}\u{61}\u{74}\u{63}\u{68}" => {
+            Some(RawToken::Keyword(RawKeyword::Catch))
+        }
+        30 if ident == br"\u0063\u006c\u0061\u0073\u0073" => {
+            Some(RawToken::Keyword(RawKeyword::Class))
+        }
+        30 if ident == br"\u{63}\u{6c}\u{61}\u{73}\u{73}" => {
+            Some(RawToken::Keyword(RawKeyword::Class))
+        }
+        30 if ident == br"\u0063\u006f\u006e\u0073\u0074" => {
+            Some(RawToken::Keyword(RawKeyword::Const))
+        }
+        30 if ident == br"\u{63}\u{6f}\u{6e}\u{73}\u{74}" => {
+            Some(RawToken::Keyword(RawKeyword::Const))
+        }
+        30 if ident == br"\u0074\u0068\u0072\u006f\u0077" => {
+            Some(RawToken::Keyword(RawKeyword::Throw))
+        }
+        30 if ident == br"\u{74}\u{68}\u{72}\u{6f}\u{77}" => {
+            Some(RawToken::Keyword(RawKeyword::Throw))
+        }
+        30 if ident == br"\u0077\u0068\u0069\u006c\u0065" => {
+            Some(RawToken::Keyword(RawKeyword::While))
+        }
+        30 if ident == br"\u{77}\u{68}\u{69}\u{6c}\u{65}" => {
+            Some(RawToken::Keyword(RawKeyword::While))
+        }
+        30 if ident == br"\u0073\u0075\u0070\u0065\u0072" => {
+            Some(RawToken::Keyword(RawKeyword::Super))
+        }
+        30 if ident == br"\u{73}\u{75}\u{70}\u{65}\u{72}" => {
+            Some(RawToken::Keyword(RawKeyword::Super))
+        }
+        30 if ident == br"\u0079\u0069\u0065\u006c\u0064" => {
+            Some(RawToken::Keyword(RawKeyword::Yield))
+        }
+        30 if ident == br"\u{79}\u{69}\u{65}\u{6c}\u{64}" => {
+            Some(RawToken::Keyword(RawKeyword::Yield))
+        }
         30 if ident == br"\u0066\u0061\u006c\u0073\u0065" => Some(RawToken::Boolean(false)),
         30 if ident == br"\u{66}\u{61}\u{6c}\u{73}\u{65}" => Some(RawToken::Boolean(false)),
-        36 if &ident[0..32] == br"\u0064\u0065\u006c\u0065\u0074\u" && &ident[32..] == br"0065" => Some(RawToken::Keyword(RawKeyword::Delete)),
-        36 if &ident[0..32] == br"\u{64}\u{65}\u{6c}\u{65}\u{74}\u" && &ident[32..] == br"{65}" => Some(RawToken::Keyword(RawKeyword::Delete)),
-        36 if &ident[0..32] == br"\u0072\u0065\u0074\u0075\u0072\u" && &ident[32..] == br"006e" => Some(RawToken::Keyword(RawKeyword::Return)),
-        36 if &ident[0..32] == br"\u{72}\u{65}\u{74}\u{75}\u{72}\u" && &ident[32..] == br"{6e}" => Some(RawToken::Keyword(RawKeyword::Return)),
-        36 if &ident[0..32] == br"\u0073\u0077\u0069\u0074\u0063\u" && &ident[32..] == br"0068" => Some(RawToken::Keyword(RawKeyword::Switch)),
-        36 if &ident[0..32] == br"\u{73}\u{77}\u{69}\u{74}\u{63}\u" && &ident[32..] == br"{68}" => Some(RawToken::Keyword(RawKeyword::Switch)),
-        36 if &ident[0..32] == br"\u0074\u0079\u0070\u0065\u006f\u" && &ident[32..] == br"0066" => Some(RawToken::Keyword(RawKeyword::TypeOf)),
-        36 if &ident[0..32] == br"\u{74}\u{79}\u{70}\u{65}\u{6f}\u" && &ident[32..] == br"{66}" => Some(RawToken::Keyword(RawKeyword::TypeOf)),
-        36 if &ident[0..32] == br"\u0065\u0078\u0070\u006f\u0072\u" && &ident[32..] == br"0074" => Some(RawToken::Keyword(RawKeyword::Export)),
-        36 if &ident[0..32] == br"\u{65}\u{78}\u{70}\u{6f}\u{72}\u" && &ident[32..] == br"{74}" => Some(RawToken::Keyword(RawKeyword::Export)),
-        36 if &ident[0..32] == br"\u0069\u006d\u0070\u006f\u0072\u" && &ident[32..] == br"0074" => Some(RawToken::Keyword(RawKeyword::Import)),
-        36 if &ident[0..32] == br"\u{69}\u{6d}\u{70}\u{6f}\u{72}\u" && &ident[32..] == br"{74}" => Some(RawToken::Keyword(RawKeyword::Import)),
-        36 if &ident[0..32] == br"\u0073\u0074\u0061\u0074\u0069\u" && &ident[32..] == br"0063" => Some(RawToken::Keyword(RawKeyword::Static)),
-        36 if &ident[0..32] == br"\u{73}\u{74}\u{61}\u{74}\u{69}\u" && &ident[32..] == br"{63}" => Some(RawToken::Keyword(RawKeyword::Static)),
-        36 if &ident[0..32] == br"\u0070\u0075\u0062\u006c\u0069\u" && &ident[32..] == br"0063" => Some(RawToken::Keyword(RawKeyword::Public)),
-        36 if &ident[0..32] == br"\u{70}\u{75}\u{62}\u{6c}\u{69}\u" && &ident[32..] == br"{63}" => Some(RawToken::Keyword(RawKeyword::Public)),
-        42 if &ident[0..32] == br"\u0065\u0078\u0074\u0065\u006e\u" && &ident[32..] == br"0064\u0073" => Some(RawToken::Keyword(RawKeyword::Extends)),
-        42 if &ident[0..32] == br"\u{65}\u{78}\u{74}\u{65}\u{6e}\u" && &ident[32..] == br"{64}\u{73}" => Some(RawToken::Keyword(RawKeyword::Extends)),
-        42 if &ident[0..32] == br"\u0064\u0065\u0066\u0061\u0075\u" && &ident[32..] == br"006c\u0074" => Some(RawToken::Keyword(RawKeyword::Default)),
-        42 if &ident[0..32] == br"\u{64}\u{65}\u{66}\u{61}\u{75}\u" && &ident[32..] == br"{6c}\u{74}" => Some(RawToken::Keyword(RawKeyword::Default)),
-        42 if &ident[0..32] == br"\u0066\u0069\u006e\u0061\u006c\u" && &ident[32..] == br"006c\u0079" => Some(RawToken::Keyword(RawKeyword::Finally)),
-        42 if &ident[0..32] == br"\u{66}\u{69}\u{6e}\u{61}\u{6c}\u" && &ident[32..] == br"{6c}\u{79}" => Some(RawToken::Keyword(RawKeyword::Finally)),
-        42 if &ident[0..32] == br"\u0070\u0061\u0063\u006b\u0061\u" && &ident[32..] == br"0067\u0065" => Some(RawToken::Keyword(RawKeyword::Package)),
-        42 if &ident[0..32] == br"\u{70}\u{61}\u{63}\u{6b}\u{61}\u" && &ident[32..] == br"{67}\u{65}" => Some(RawToken::Keyword(RawKeyword::Package)),
-        42 if &ident[0..32] == br"\u0070\u0072\u0069\u0076\u0061\u" && &ident[32..] == br"0074\u0065" => Some(RawToken::Keyword(RawKeyword::Private)),
-        42 if &ident[0..32] == br"\u{70}\u{72}\u{69}\u{76}\u{61}\u" && &ident[32..] == br"{74}\u{65}" => Some(RawToken::Keyword(RawKeyword::Private)),
-        48 if &ident[0..32] == br"\u0063\u006f\u006e\u0074\u0069\u" && &ident[32..] == br"006e\u0075\u0065" => Some(RawToken::Keyword(RawKeyword::Continue)),
-        48 if &ident[0..32] == br"\u{63}\u{6f}\u{6e}\u{74}\u{69}\u" && &ident[32..] == br"{6e}\u{75}\u{65}" => Some(RawToken::Keyword(RawKeyword::Continue)),
-        48 if &ident[0..32] == br"\u0064\u0065\u0062\u0075\u0067\u" && &ident[32..] == br"0067\u0065\u0072" => Some(RawToken::Keyword(RawKeyword::Debugger)),
-        48 if &ident[0..32] == br"\u{64}\u{65}\u{62}\u{75}\u{67}\u" && &ident[32..] == br"{67}\u{65}\u{72}" => Some(RawToken::Keyword(RawKeyword::Debugger)),
-        48 if &ident[0..32] == br"\u0066\u0075\u006e\u0063\u0074\u" && &ident[32..] == br"0069\u006f\u006e" => Some(RawToken::Keyword(RawKeyword::Function)),
-        48 if &ident[0..32] == br"\u{66}\u{75}\u{6e}\u{63}\u{74}\u" && &ident[32..] == br"{69}\u{6f}\u{6e}" => Some(RawToken::Keyword(RawKeyword::Function)),
-        54 if &ident[0..32] == br"\u0069\u006e\u0074\u0065\u0072\u" && &ident[32..] == br"0066\u0061\u0063\u0065" => Some(RawToken::Keyword(RawKeyword::Interface)),
-        54 if &ident[0..32] == br"\u{69}\u{6e}\u{74}\u{65}\u{72}\u" && &ident[32..] == br"{66}\u{61}\u{63}\u{65}" => Some(RawToken::Keyword(RawKeyword::Interface)),
-        54 if &ident[0..32] == br"\u0070\u0072\u006f\u0074\u0065\u" && &ident[32..] == br"0063\u0074\u0065\u0064" => Some(RawToken::Keyword(RawKeyword::Protected)),
-        54 if &ident[0..32] == br"\u{70}\u{72}\u{6f}\u{74}\u{65}\u" && &ident[32..] == br"{63}\u{74}\u{65}\u{64}" => Some(RawToken::Keyword(RawKeyword::Protected)),
-        60 if &ident[0..32] == br"\u0069\u006e\u0073\u0074\u0061\u" && &ident[32..] == br"006e\u0063\u0065\u006f\u0066" => Some(RawToken::Keyword(RawKeyword::InstanceOf)),
-        60 if &ident[0..32] == br"\u{69}\u{6e}\u{73}\u{74}\u{61}\u" && &ident[32..] == br"{6e}\u{63}\u{65}\u{6f}\u{66}" => Some(RawToken::Keyword(RawKeyword::InstanceOf)),
-        60 if &ident[0..32] == br"\u0069\u006d\u0070\u006c\u0065\u" && &ident[32..] == br"006d\u0065\u006e\u0074\u0073" => Some(RawToken::Keyword(RawKeyword::Implements)),
-        60 if &ident[0..32] == br"\u{69}\u{6d}\u{70}\u{6c}\u{65}\u" && &ident[32..] == br"{6d}\u{65}\u{6e}\u{74}\u{73}" => Some(RawToken::Keyword(RawKeyword::Implements)),
+        36 if &ident[0..32] == br"\u0064\u0065\u006c\u0065\u0074\u" && &ident[32..] == br"0065" => {
+            Some(RawToken::Keyword(RawKeyword::Delete))
+        }
+        36 if &ident[0..32] == br"\u{64}\u{65}\u{6c}\u{65}\u{74}\u" && &ident[32..] == br"{65}" => {
+            Some(RawToken::Keyword(RawKeyword::Delete))
+        }
+        36 if &ident[0..32] == br"\u0072\u0065\u0074\u0075\u0072\u" && &ident[32..] == br"006e" => {
+            Some(RawToken::Keyword(RawKeyword::Return))
+        }
+        36 if &ident[0..32] == br"\u{72}\u{65}\u{74}\u{75}\u{72}\u" && &ident[32..] == br"{6e}" => {
+            Some(RawToken::Keyword(RawKeyword::Return))
+        }
+        36 if &ident[0..32] == br"\u0073\u0077\u0069\u0074\u0063\u" && &ident[32..] == br"0068" => {
+            Some(RawToken::Keyword(RawKeyword::Switch))
+        }
+        36 if &ident[0..32] == br"\u{73}\u{77}\u{69}\u{74}\u{63}\u" && &ident[32..] == br"{68}" => {
+            Some(RawToken::Keyword(RawKeyword::Switch))
+        }
+        36 if &ident[0..32] == br"\u0074\u0079\u0070\u0065\u006f\u" && &ident[32..] == br"0066" => {
+            Some(RawToken::Keyword(RawKeyword::TypeOf))
+        }
+        36 if &ident[0..32] == br"\u{74}\u{79}\u{70}\u{65}\u{6f}\u" && &ident[32..] == br"{66}" => {
+            Some(RawToken::Keyword(RawKeyword::TypeOf))
+        }
+        36 if &ident[0..32] == br"\u0065\u0078\u0070\u006f\u0072\u" && &ident[32..] == br"0074" => {
+            Some(RawToken::Keyword(RawKeyword::Export))
+        }
+        36 if &ident[0..32] == br"\u{65}\u{78}\u{70}\u{6f}\u{72}\u" && &ident[32..] == br"{74}" => {
+            Some(RawToken::Keyword(RawKeyword::Export))
+        }
+        36 if &ident[0..32] == br"\u0069\u006d\u0070\u006f\u0072\u" && &ident[32..] == br"0074" => {
+            Some(RawToken::Keyword(RawKeyword::Import))
+        }
+        36 if &ident[0..32] == br"\u{69}\u{6d}\u{70}\u{6f}\u{72}\u" && &ident[32..] == br"{74}" => {
+            Some(RawToken::Keyword(RawKeyword::Import))
+        }
+        36 if &ident[0..32] == br"\u0073\u0074\u0061\u0074\u0069\u" && &ident[32..] == br"0063" => {
+            Some(RawToken::Keyword(RawKeyword::Static))
+        }
+        36 if &ident[0..32] == br"\u{73}\u{74}\u{61}\u{74}\u{69}\u" && &ident[32..] == br"{63}" => {
+            Some(RawToken::Keyword(RawKeyword::Static))
+        }
+        36 if &ident[0..32] == br"\u0070\u0075\u0062\u006c\u0069\u" && &ident[32..] == br"0063" => {
+            Some(RawToken::Keyword(RawKeyword::Public))
+        }
+        36 if &ident[0..32] == br"\u{70}\u{75}\u{62}\u{6c}\u{69}\u" && &ident[32..] == br"{63}" => {
+            Some(RawToken::Keyword(RawKeyword::Public))
+        }
+        42 if &ident[0..32] == br"\u0065\u0078\u0074\u0065\u006e\u"
+            && &ident[32..] == br"0064\u0073" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Extends))
+        }
+        42 if &ident[0..32] == br"\u{65}\u{78}\u{74}\u{65}\u{6e}\u"
+            && &ident[32..] == br"{64}\u{73}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Extends))
+        }
+        42 if &ident[0..32] == br"\u0064\u0065\u0066\u0061\u0075\u"
+            && &ident[32..] == br"006c\u0074" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Default))
+        }
+        42 if &ident[0..32] == br"\u{64}\u{65}\u{66}\u{61}\u{75}\u"
+            && &ident[32..] == br"{6c}\u{74}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Default))
+        }
+        42 if &ident[0..32] == br"\u0066\u0069\u006e\u0061\u006c\u"
+            && &ident[32..] == br"006c\u0079" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Finally))
+        }
+        42 if &ident[0..32] == br"\u{66}\u{69}\u{6e}\u{61}\u{6c}\u"
+            && &ident[32..] == br"{6c}\u{79}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Finally))
+        }
+        42 if &ident[0..32] == br"\u0070\u0061\u0063\u006b\u0061\u"
+            && &ident[32..] == br"0067\u0065" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Package))
+        }
+        42 if &ident[0..32] == br"\u{70}\u{61}\u{63}\u{6b}\u{61}\u"
+            && &ident[32..] == br"{67}\u{65}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Package))
+        }
+        42 if &ident[0..32] == br"\u0070\u0072\u0069\u0076\u0061\u"
+            && &ident[32..] == br"0074\u0065" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Private))
+        }
+        42 if &ident[0..32] == br"\u{70}\u{72}\u{69}\u{76}\u{61}\u"
+            && &ident[32..] == br"{74}\u{65}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Private))
+        }
+        48 if &ident[0..32] == br"\u0063\u006f\u006e\u0074\u0069\u"
+            && &ident[32..] == br"006e\u0075\u0065" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Continue))
+        }
+        48 if &ident[0..32] == br"\u{63}\u{6f}\u{6e}\u{74}\u{69}\u"
+            && &ident[32..] == br"{6e}\u{75}\u{65}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Continue))
+        }
+        48 if &ident[0..32] == br"\u0064\u0065\u0062\u0075\u0067\u"
+            && &ident[32..] == br"0067\u0065\u0072" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Debugger))
+        }
+        48 if &ident[0..32] == br"\u{64}\u{65}\u{62}\u{75}\u{67}\u"
+            && &ident[32..] == br"{67}\u{65}\u{72}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Debugger))
+        }
+        48 if &ident[0..32] == br"\u0066\u0075\u006e\u0063\u0074\u"
+            && &ident[32..] == br"0069\u006f\u006e" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Function))
+        }
+        48 if &ident[0..32] == br"\u{66}\u{75}\u{6e}\u{63}\u{74}\u"
+            && &ident[32..] == br"{69}\u{6f}\u{6e}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Function))
+        }
+        54 if &ident[0..32] == br"\u0069\u006e\u0074\u0065\u0072\u"
+            && &ident[32..] == br"0066\u0061\u0063\u0065" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Interface))
+        }
+        54 if &ident[0..32] == br"\u{69}\u{6e}\u{74}\u{65}\u{72}\u"
+            && &ident[32..] == br"{66}\u{61}\u{63}\u{65}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Interface))
+        }
+        54 if &ident[0..32] == br"\u0070\u0072\u006f\u0074\u0065\u"
+            && &ident[32..] == br"0063\u0074\u0065\u0064" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Protected))
+        }
+        54 if &ident[0..32] == br"\u{70}\u{72}\u{6f}\u{74}\u{65}\u"
+            && &ident[32..] == br"{63}\u{74}\u{65}\u{64}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Protected))
+        }
+        60 if &ident[0..32] == br"\u0069\u006e\u0073\u0074\u0061\u"
+            && &ident[32..] == br"006e\u0063\u0065\u006f\u0066" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::InstanceOf))
+        }
+        60 if &ident[0..32] == br"\u{69}\u{6e}\u{73}\u{74}\u{61}\u"
+            && &ident[32..] == br"{6e}\u{63}\u{65}\u{6f}\u{66}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::InstanceOf))
+        }
+        60 if &ident[0..32] == br"\u0069\u006d\u0070\u006c\u0065\u"
+            && &ident[32..] == br"006d\u0065\u006e\u0074\u0073" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Implements))
+        }
+        60 if &ident[0..32] == br"\u{69}\u{6d}\u{70}\u{6c}\u{65}\u"
+            && &ident[32..] == br"{6d}\u{65}\u{6e}\u{74}\u{73}" =>
+        {
+            Some(RawToken::Keyword(RawKeyword::Implements))
+        }
         _ => None,
     }
 }
@@ -601,11 +765,23 @@ mod test {
     fn check_unicode_escaped_keyword() {
         let escaped_keywords = vec![
             (Some(RawToken::Keyword(RawKeyword::Yield)), r"\u0079ield"),
-            (Some(RawToken::Keyword(RawKeyword::Private)), r"privat\u0065"),
-            (Some(RawToken::Keyword(RawKeyword::Static)), r"\u0073\u0074\u0061\u0074\u0069\u0063"),
+            (
+                Some(RawToken::Keyword(RawKeyword::Private)),
+                r"privat\u0065",
+            ),
+            (
+                Some(RawToken::Keyword(RawKeyword::Static)),
+                r"\u0073\u0074\u0061\u0074\u0069\u0063",
+            ),
             (Some(RawToken::Keyword(RawKeyword::Yield)), r"\u{79}ield"),
-            (Some(RawToken::Keyword(RawKeyword::Private)), r"privat\u{65}"),
-            (Some(RawToken::Keyword(RawKeyword::Static)), r"\u{73}\u{74}\u{61}\u{74}\u{69}\u{63}"),
+            (
+                Some(RawToken::Keyword(RawKeyword::Private)),
+                r"privat\u{65}",
+            ),
+            (
+                Some(RawToken::Keyword(RawKeyword::Static)),
+                r"\u{73}\u{74}\u{61}\u{74}\u{69}\u{63}",
+            ),
             (None, r"yield"),
         ];
         for (target, test) in escaped_keywords {

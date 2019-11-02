@@ -146,7 +146,7 @@ impl<'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
-    
+
     /// check if current char is a valid
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {

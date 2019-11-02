@@ -35,7 +35,7 @@ pub mod prelude {
     pub use super::ScannerState;
     pub use super::SourceLocation;
 }
-use crate::tokenizer::{RawToken, RawKeyword};
+use crate::tokenizer::{RawKeyword, RawToken};
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
 
@@ -171,7 +171,6 @@ pub struct Scanner<'a> {
     before_last_open_paren: LookBehind,
     last_three: LookBehind,
     before_curly_stack: Vec<LookBehind>,
-    before_last_open_curly: LookBehind,
 }
 
 impl<'a> Scanner<'a> {
@@ -191,7 +190,6 @@ impl<'a> Scanner<'a> {
             before_last_open_paren: LookBehind::new(),
             last_three: LookBehind::new(),
             before_curly_stack: Vec::new(),
-            before_last_open_curly: LookBehind::new(),
         }
     }
 }
@@ -319,9 +317,9 @@ impl<'b> Scanner<'b> {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
-                        tokens::CommentKind::Multi => {
-                            Token::Comment(Comment::new_multi_line(s.trim_start_matches("/*").trim_end_matches("*/")))
-                        }
+                        tokens::CommentKind::Multi => Token::Comment(Comment::new_multi_line(
+                            s.trim_start_matches("/*").trim_end_matches("*/"),
+                        )),
                         tokens::CommentKind::Single => {
                             Token::Comment(Comment::new_single_line(s.trim_start_matches("//")))
                         }
@@ -411,36 +409,34 @@ impl<'b> Scanner<'b> {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
-        } else {
-            if let Token::Punct(ref p) = &ret.token {
-                match p {
-                    Punct::OpenParen => {
-                        self.before_last_open_paren = self.last_three.clone();
-                        self.last_three.push(&next.ty, self.new_line_count as u32);
-                    },
-                    Punct::OpenBrace => {
-                        self.before_curly_stack.push(self.last_three.clone());
-                        self.last_three.push(&next.ty, self.new_line_count as u32);
-                    },
-                    Punct::CloseParen => {
-                        self.last_three.push_close(
-                            MetaToken::CloseParen(Box::new(self.before_last_open_paren.clone()), self.new_line_count as u32)
-                        )
-                    },
-                    Punct::CloseBrace => {
-                        if let Some(last_three) = self.before_curly_stack.last() {
-                            self.last_three.push_close(
-                                MetaToken::CloseBrace(Box::new(last_three.clone()), self.new_line_count as u32)
-                            );
-                        } else {
-                            self.last_three.push(&next.ty, self.new_line_count as u32);
-                        }
-                    }
-                    _ => self.last_three.push(&next.ty, self.new_line_count as u32),
+        } else if let Token::Punct(ref p) = &ret.token {
+            match p {
+                Punct::OpenParen => {
+                    self.before_last_open_paren = self.last_three.clone();
+                    self.last_three.push(&next.ty, self.new_line_count as u32);
                 }
-            } else if !next.ty.is_comment() {
-                self.last_three.push(&next.ty, self.new_line_count as u32);
+                Punct::OpenBrace => {
+                    self.before_curly_stack.push(self.last_three.clone());
+                    self.last_three.push(&next.ty, self.new_line_count as u32);
+                }
+                Punct::CloseParen => self.last_three.push_close(MetaToken::CloseParen(
+                    Box::new(self.before_last_open_paren.clone()),
+                    self.new_line_count as u32,
+                )),
+                Punct::CloseBrace => {
+                    if let Some(last_three) = self.before_curly_stack.pop() {
+                        self.last_three.push_close(MetaToken::CloseBrace(
+                            Box::new(last_three),
+                            self.new_line_count as u32,
+                        ));
+                    } else {
+                        self.last_three.push(&next.ty, self.new_line_count as u32);
+                    }
+                }
+                _ => self.last_three.push(&next.ty, self.new_line_count as u32),
             }
+        } else if !next.ty.is_comment() {
+            self.last_three.push(&next.ty, self.new_line_count as u32);
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
@@ -459,15 +455,16 @@ impl<'b> Scanner<'b> {
                     _ => true,
                 },
                 MetaToken::Punct(p, _) => match p {
+                    Punct::CloseBracket => false,
                     _ => true,
                 },
-                MetaToken::CloseParen(_look_behind, _) => {
-                    self.check_for_conditional()
-                },
+                MetaToken::CloseParen(_look_behind, _) => self.check_for_conditional(),
                 MetaToken::CloseBrace(look_behind, _) => {
                     if self.is_block(self.before_curly_stack.len().saturating_sub(1)) {
                         if let Some(MetaToken::CloseParen(next_look, _)) = look_behind.one() {
-                            if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = next_look.one() {
+                            if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+                                next_look.one()
+                            {
                                 if let Some(two) = next_look.two() {
                                     !Self::check_for_expression(two)
                                 } else {
@@ -496,8 +493,8 @@ impl<'b> Scanner<'b> {
     fn check_for_conditional(&self) -> bool {
         if let Some(MetaToken::Keyword(k, _)) = self.before_last_open_paren.one() {
             match k {
-                    RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
-                    _ => false,
+                RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
+                _ => false,
             }
         } else {
             false
@@ -513,7 +510,7 @@ impl<'b> Scanner<'b> {
             match token {
                 MetaToken::Keyword(RawKeyword::Return, _)
                 | MetaToken::Keyword(RawKeyword::Case, _) => true,
-                _ => false
+                _ => false,
             }
         }
     }
@@ -544,11 +541,8 @@ impl<'b> Scanner<'b> {
                             false
                         }
                     }
-                    MetaToken::Keyword(RawKeyword::Case, _) => {
-                        false
-                    }
-                    _ => true
-
+                    MetaToken::Keyword(RawKeyword::Case, _) => false,
+                    _ => true,
                 }
             } else {
                 true
@@ -559,64 +553,60 @@ impl<'b> Scanner<'b> {
     }
     fn is_op(tok: &MetaToken) -> bool {
         match tok {
-            MetaToken::Punct(ref p, _) => {
-                match p {
-                    Punct::Equal
-                    | Punct::PlusEqual
-                    | Punct::DashEqual
-                    | Punct::AsteriskEqual
-                    | Punct::ForwardSlashEqual
-                    | Punct::PercentEqual
-                    | Punct::DoubleLessThanEqual
-                    | Punct::DoubleGreaterThanEqual
-                    | Punct::TripleGreaterThanEqual
-                    | Punct::AmpersandEqual
-                    | Punct::PipeEqual
-                    | Punct::CaretEqual
-                    | Punct::Comma
-                    | Punct::Plus
-                    | Punct::Dash
-                    | Punct::Asterisk
-                    | Punct::ForwardSlash
-                    | Punct::Percent
-                    | Punct::DoubleLessThan
-                    | Punct::DoubleGreaterThan
-                    | Punct::TripleGreaterThan
-                    | Punct::Ampersand
-                    | Punct::Pipe
-                    | Punct::Caret
-                    | Punct::DoubleAmpersand
-                    | Punct::DoublePipe
-                    | Punct::QuestionMark
-                    | Punct::Colon
-                    | Punct::TripleEqual
-                    | Punct::DoubleEqual
-                    | Punct::GreaterThanEqual
-                    | Punct::LessThanEqual
-                    | Punct::LessThan
-                    | Punct::GreaterThan
-                    | Punct::BangEqual
-                    | Punct::BangDoubleEqual 
-                    | Punct::DoublePlus
-                    | Punct::DoubleDash
-                    | Punct::Tilde
-                    | Punct::Bang => true,
-                    _ => false
-                }
+            MetaToken::Punct(ref p, _) => match p {
+                Punct::Equal
+                | Punct::PlusEqual
+                | Punct::DashEqual
+                | Punct::AsteriskEqual
+                | Punct::ForwardSlashEqual
+                | Punct::PercentEqual
+                | Punct::DoubleLessThanEqual
+                | Punct::DoubleGreaterThanEqual
+                | Punct::TripleGreaterThanEqual
+                | Punct::AmpersandEqual
+                | Punct::PipeEqual
+                | Punct::CaretEqual
+                | Punct::Comma
+                | Punct::Plus
+                | Punct::Dash
+                | Punct::Asterisk
+                | Punct::ForwardSlash
+                | Punct::Percent
+                | Punct::DoubleLessThan
+                | Punct::DoubleGreaterThan
+                | Punct::TripleGreaterThan
+                | Punct::Ampersand
+                | Punct::Pipe
+                | Punct::Caret
+                | Punct::DoubleAmpersand
+                | Punct::DoublePipe
+                | Punct::QuestionMark
+                | Punct::Colon
+                | Punct::TripleEqual
+                | Punct::DoubleEqual
+                | Punct::GreaterThanEqual
+                | Punct::LessThanEqual
+                | Punct::LessThan
+                | Punct::GreaterThan
+                | Punct::BangEqual
+                | Punct::BangDoubleEqual
+                | Punct::DoublePlus
+                | Punct::DoubleDash
+                | Punct::Tilde
+                | Punct::Bang => true,
+                _ => false,
             },
-            MetaToken::Keyword(k, _) => {
-                match k {
-                    RawKeyword::InstanceOf
-                    | RawKeyword::In
-                    | RawKeyword::Delete
-                    | RawKeyword::Void
-                    | RawKeyword::TypeOf
-                    | RawKeyword::Throw
-                    | RawKeyword::New => true,
-                    _ => false
-                }
+            MetaToken::Keyword(k, _) => match k {
+                RawKeyword::InstanceOf
+                | RawKeyword::In
+                | RawKeyword::Delete
+                | RawKeyword::Void
+                | RawKeyword::TypeOf
+                | RawKeyword::Throw
+                | RawKeyword::New => true,
+                _ => false,
             },
-            _ => false
+            _ => false,
         }
     }
     /// Get a string for any given span
@@ -705,7 +695,7 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub last_three: LookBehind,
     pub paren_three: LookBehind,
-    pub before_curly_stack: Vec<LookBehind>
+    pub before_curly_stack: Vec<LookBehind>,
 }
 
 #[cfg(test)]
