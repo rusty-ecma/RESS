@@ -30,7 +30,7 @@ fn main() {
 #[inline]
 fn parse_two(s: &str) {
     let mut t = Tokenizer::new(&s);
-    let _ = t.next().unwrap();;
+    let _ = t.next().unwrap();
     let d = t.next().unwrap();
     core::mem::forget(d);
 }
