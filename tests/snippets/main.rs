@@ -63,23 +63,44 @@ fn line_terminator_in_string_literal() {
 
 #[test]
 fn lots_of_arcs() {
-    let js = "({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
-({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
-({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
-({x:3}), ({x:3}), ({x:3})
-
-[{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},
- {x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},
- {x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3}]";
-    let s = Scanner::new(js);
+    let mut top = "".to_string();
+    let mut bottom = "[".to_string();
+    let ascii_start = 97;
+    for i in 0..26 {
+        let id = std::char::from_u32(ascii_start + i).unwrap();
+        let obj = format!("{{{}:{}}}", id, i);
+        top.push_str(&format!("({})", obj));
+        if i != 25 {
+            top.push_str(", ");
+        }
+        bottom.push_str(&format!("{},", obj));
+    }
+    bottom.push(']');
+    let js = format!("{}\n\n{}", top, bottom);
+    
+    let s = Scanner::new(&js);
     for item in s {
         println!("{:?}", item.unwrap());
     }
 }
 
-fn compare(js: &str, expectation: &[Token<&str>]) {
-    for (i, (item, tok)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
-        let item = item.unwrap();
-        assert_eq!((i, &item.token), (i, tok));
+#[test]
+fn div_over_regex() {
+    let js = "if (true) {
+  ({} / function(){return 1});
+}
+";
+    for tok in panicing_scanner(js) {
+        eprintln!("{:?}", tok)
     }
+}
+
+fn compare(js: &str, expectation: &[Token<&str>]) {
+    for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
+        assert_eq!((i, &par), (i, ex));
+    }
+}
+
+fn panicing_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
+    Scanner::new(js).map(|r| r.unwrap().token)
 }
