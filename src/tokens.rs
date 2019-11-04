@@ -1110,7 +1110,7 @@ impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
     fn eq(&self, other: &Keyword<T>) -> bool {
         use Keyword::*;
         match (self, other) {
-              (Await(_), Await(_))
+            (Await(_), Await(_))
             | (Break(_), Break(_))
             | (Case(_), Case(_))
             | (Catch(_), Catch(_))
@@ -1466,7 +1466,8 @@ impl<'a> Keyword<&'a str> {
             Keyword::While(s) => s,
             Keyword::With(s) => s,
             Keyword::Yield(s) => s,
-        }.contains("\\u")
+        }
+        .contains("\\u")
     }
 }
 

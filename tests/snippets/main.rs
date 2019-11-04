@@ -61,6 +61,22 @@ fn line_terminator_in_string_literal() {
     }
 }
 
+#[test]
+fn lots_of_arcs() {
+    let js = "({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
+({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
+({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}), ({x:3}),
+({x:3}), ({x:3}), ({x:3})
+
+[{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},
+ {x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3},
+ {x:3},{x:3},{x:3},{x:3},{x:3},{x:3},{x:3}]";
+    let s = Scanner::new(js);
+    for item in s {
+        println!("{:?}", item.unwrap());
+    }
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (item, tok)) in Scanner::new(js).zip(expectation.iter()).enumerate() {
         let item = item.unwrap();
