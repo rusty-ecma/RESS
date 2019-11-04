@@ -56,7 +56,7 @@ pub enum RawToken {
     },
 }
 
-impl Copy for Keyword<()> { }
+impl Copy for Keyword<()> {}
 
 impl RawToken {
     pub fn is_punct(&self) -> bool {
