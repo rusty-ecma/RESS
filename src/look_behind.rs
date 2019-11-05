@@ -1,9 +1,15 @@
 use crate::tokenizer::{RawKeyword, RawToken};
 use crate::tokens::Punct;
+use std::rc::Rc;
 
+/// A 2 element buffer of
+/// MetaTokens, this will use a 
+/// "ring buffer"-esque scheme
+/// for automatically overwriting
+/// any element after 2
 #[derive(Clone, Debug)]
 pub struct LookBehind {
-    list: [Option<MetaToken>; 2],
+    list: [Option<MetaToken>; 3],
     pointer: u8,
 }
 
@@ -11,8 +17,8 @@ impl LookBehind {
     #[inline]
     pub const fn new() -> Self {
         Self {
-            list: [None, None],
-            pointer: 1, // force the first pointer value to be 0
+            list: [None, None, None],
+            pointer: 2, // force the first pointer value to be 0
         }
     }
     #[inline]
@@ -21,8 +27,17 @@ impl LookBehind {
     }
     #[inline]
     pub fn push_close(&mut self, token: MetaToken) {
-        self.pointer = wrapping_add(self.pointer, 1, 1);
+        self.pointer = wrapping_add(self.pointer, 1, 2);
         self.list[self.pointer as usize] = Some(token)
+    }
+    #[inline]
+    pub fn push_open(&mut self, open: Rc<OpenBrace>, line: u32) {
+        self.push_close(
+            MetaToken::OpenBrace(
+                open,
+                line
+            )
+        );
     }
     #[inline]
     pub fn one(&self) -> &Option<MetaToken> {
@@ -30,7 +45,12 @@ impl LookBehind {
     }
     #[inline]
     pub fn two(&self) -> &Option<MetaToken> {
-        let idx = wrapping_sub(self.pointer, 1, 1) as usize;
+        let idx = wrapping_sub(self.pointer, 1, 2) as usize;
+        &self.list[idx]
+    }
+    #[inline]
+    pub fn three(&self) -> &Option<MetaToken> {
+        let idx = wrapping_sub(self.pointer, 2, 2) as usize;
         &self.list[idx]
     }
 }
@@ -56,13 +76,20 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
 }
 
 /// Token classes needed for look behind
-/// this enum will carry it's line number
+/// 
+/// All variants will carry their line number
+///
+/// special variants include:
+/// - OpenBrace, this will carry an optional parent open brace MetaToken
+/// - CloseParen, this will carry the LookBehind from its paired OpenParen
+/// - CloseBrace, this will carry the LookBehind from its paired OpenBrace
 #[derive(Debug, Clone)]
 pub enum MetaToken {
     Keyword(RawKeyword, u32),
     Punct(Punct, u32),
-    CloseParen(Box<LookBehind>, u32),
-    CloseBrace(Box<LookBehind>, u32),
+    CloseParen(Rc<CloseParen>, u32),
+    CloseBrace(Rc<CloseBrace>, u32),
+    OpenBrace(Rc<OpenBrace>, u32),
     Ident(u32),
     Other(u32),
 }
@@ -74,6 +101,7 @@ impl MetaToken {
             | MetaToken::Punct(_, line)
             | MetaToken::CloseParen(_, line)
             | MetaToken::CloseBrace(_, line)
+            | MetaToken::OpenBrace(_, line)
             | MetaToken::Ident(line)
             | MetaToken::Other(line) => *line,
         }
@@ -103,13 +131,65 @@ impl From<(&RawToken, u32)> for MetaToken {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct OpenBrace {
+    pub look_behind: LookBehind,
+    pub parent: Option<Rc<OpenBrace>>,
+}
+
+impl OpenBrace {
+    pub fn with_parent(look_behind: LookBehind, parent: Rc<OpenBrace>) -> Self {
+        Self {
+            look_behind: look_behind,
+            parent: Some(parent),
+        }
+    }
+    pub fn new(look_behind: LookBehind) -> Self {
+        Self {
+            look_behind: look_behind,
+            parent: None
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct CloseBrace {
+    pub look_behind: LookBehind,
+    pub open: Rc<OpenBrace>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CloseParen {
+    pub look_behind: LookBehind,
+    pub open: LookBehind,
+}
+
+impl std::ops::Deref for CloseParen {
+    type Target = LookBehind;
+    fn deref(&self) -> &Self::Target {
+        &self.look_behind
+    }
+}
+impl std::ops::Deref for CloseBrace {
+    type Target = LookBehind;
+    fn deref(&self) -> &Self::Target {
+        &self.look_behind
+    }
+}
+impl std::ops::Deref for OpenBrace {
+    type Target = LookBehind;
+    fn deref(&self) -> &Self::Target {
+        &self.look_behind
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::tokens::Punct;
 
     #[test]
-    fn six() {
+    fn wrapping_collection() {
         let first = RawToken::EoF;
         let second = RawToken::Ident;
         let third = RawToken::Keyword(RawKeyword::Function);
@@ -120,27 +200,28 @@ mod test {
         let eighth = RawToken::Punct(Punct::Tilde);
         let mut l = LookBehind::new();
         l.push(&first, 1);
-        test(&l, Some((&first, 1).into()), None);
+        test(&l, Some((&first, 1).into()), None, None);
         l.push(&second, 1);
-        test(&l, Some((&second, 1).into()), Some((&first, 1).into()));
+        test(&l, Some((&second, 1).into()), Some((&first, 1).into()), None);
         l.push(&third, 1);
-        test(&l, Some((&third, 1).into()), Some((&second, 1).into()));
+        test(&l, Some((&third, 1).into()), Some((&second, 1).into()), Some((&first, 1).into()));
         l.push(&fourth, 1);
-        test(&l, Some((&fourth, 1).into()), Some((&third, 1).into()));
+        test(&l, Some((&fourth, 1).into()), Some((&third, 1).into()), Some((&second, 1).into()));
         l.push(&fifth, 1);
-        test(&l, Some((&fifth, 1).into()), Some((&fourth, 1).into()));
+        test(&l, Some((&fifth, 1).into()), Some((&fourth, 1).into()), Some((&third, 1).into()));
         l.push(&sixth, 1);
-        test(&l, Some((&sixth, 1).into()), Some((&fifth, 1).into()));
+        test(&l, Some((&sixth, 1).into()), Some((&fifth, 1).into()), Some((&fourth, 1).into()));
         l.push(&seventh, 1);
-        test(&l, Some((&seventh, 1).into()), Some((&sixth, 1).into()));
+        test(&l, Some((&seventh, 1).into()), Some((&sixth, 1).into()), Some((&fifth, 1).into()));
         l.push(&eighth, 1);
-        test(&l, Some((&eighth, 1).into()), Some((&seventh, 1).into()));
+        test(&l, Some((&eighth, 1).into()), Some((&seventh, 1).into()), Some((&sixth, 1).into()));
     }
 
-    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>) {
+    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>, third: Option<MetaToken>) {
         println!("{:?}", l);
         assert_eq!(l.one(), &first, "one didn't match");
         assert_eq!(l.two(), &second, "two didn't match");
+        assert_eq!(l.three(), &third, "three didn't match");
     }
 
     #[test]

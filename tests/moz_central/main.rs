@@ -15,7 +15,10 @@ fn moz_central() {
     if !moz_central_path.exists() {
         get_moz_central_test_files(&moz_central_path);
     }
-    walk(&moz_central_path);
+    let failures = walk(&moz_central_path);
+    if !failures.is_empty() {
+        panic!("{} tests failed\n{}", failures.len(), failures.join("\n"));
+    }
 }
 
 fn get_moz_central_test_files(path: &Path) {
@@ -32,7 +35,8 @@ fn get_moz_central_test_files(path: &Path) {
     t.unpack(path).expect("Failed to unpack gz");
 }
 
-fn walk(path: &Path) {
+fn walk(path: &Path) -> Vec<String> {
+    let mut ret = vec![];
     let files: Vec<PathBuf> = path
         .read_dir()
         .unwrap()
@@ -42,19 +46,17 @@ fn walk(path: &Path) {
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
-                    let result = ::std::panic::catch_unwind(|| {
-                        let js = read_to_string(&path).unwrap();
-                        for item in Scanner::new(js.as_str()) {
-                            item.unwrap();
+                    let js = read_to_string(&path).unwrap();
+                    for item in Scanner::new(js.as_str()) {
+                        if let Err(e) = item {
+                            ret.push(format!("{}, path: {}", e, path.display()));
                         }
-                    });
-                    if let Err(e) = result {
-                        panic!("path: {:?}\n{:?}", path, e);
                     }
                 }
             }
         } else {
-            walk(&path)
+            ret.extend(walk(&path));
         }
     });
+    ret
 }
