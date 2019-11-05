@@ -94,6 +94,17 @@ fn div_over_regex() {
         eprintln!("{:?}", tok)
     }
 }
+#[test]
+fn regex_over_div() {
+    let js = "{}/\\d/g;;";
+    compare(js, &[
+        Token::Punct(Punct::OpenBrace),
+        Token::Punct(Punct::CloseBrace),
+        Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
+        Token::Punct(Punct::SemiColon),
+        Token::Punct(Punct::SemiColon),
+    ]);
+}
 
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {

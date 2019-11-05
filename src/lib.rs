@@ -566,7 +566,7 @@ impl<'b> Scanner<'b> {
                 _ => true,
             }
         } else {
-            false
+            true
         }
     }
     fn is_op(tok: &MetaToken) -> bool {
