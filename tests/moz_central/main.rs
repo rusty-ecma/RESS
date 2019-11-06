@@ -15,7 +15,8 @@ fn moz_central() {
     if !moz_central_path.exists() {
         get_moz_central_test_files(&moz_central_path);
     }
-    let failures = walk(&moz_central_path);
+    let (failures, total) = walk(&moz_central_path);
+    eprintln!("completed {} tests", total);
     if !failures.is_empty() {
         panic!("{} tests failed\n{}", failures.len(), failures.join("\n"));
     }
@@ -35,8 +36,9 @@ fn get_moz_central_test_files(path: &Path) {
     t.unpack(path).expect("Failed to unpack gz");
 }
 
-fn walk(path: &Path) -> Vec<String> {
+fn walk(path: &Path) -> (Vec<String>, usize) {
     let mut ret = vec![];
+    let mut ct = 0;
     let files: Vec<PathBuf> = path
         .read_dir()
         .unwrap()
@@ -46,6 +48,7 @@ fn walk(path: &Path) -> Vec<String> {
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
+                    ct += 1;
                     let js = read_to_string(&path).unwrap();
                     for item in Scanner::new(js.as_str()) {
                         if let Err(e) = item {
@@ -55,8 +58,10 @@ fn walk(path: &Path) -> Vec<String> {
                 }
             }
         } else {
-            ret.extend(walk(&path));
+            let (failures, to_add) = walk(&path);
+            ret.extend(failures);
+            ct += to_add;
         }
     });
-    ret
+    (ret, ct)
 }
