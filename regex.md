@@ -70,4 +70,8 @@ Using the same example, this is what special means:
 
 ![special punctuation](./assets/special_punct.svg)
 
-Every `)` or `}` needs to point to the tokens before it's paired `(` or `{` and every `{` needs to point to a parent `{` if one exists. In addition both the `(` and `{` need to point to the 3 tokens before them. If we stored all of this information in the `MetaToken` we would be able to evaluate all of the branches of the "almost one" lookbehind algorithm!
+Every `)` or `}` needs to point to the tokens before it's paired `(` or `{` and every `{` needs to point to a parent `{` if one exists. In addition both the `(` and `{` need to point to the 3 tokens before them, which might look something like this:
+
+![opens with lookbehind](./assets/arc_lookbehind.svg)
+
+First we encounter the red opening paren, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the close paren at 1, red open paren at 2 and `things` at 3. Finally we would encounter the blue open curly brace, this would hold the green curly brace at 1, the close paren at 2 and the red open paren at 3.
