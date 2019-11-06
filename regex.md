@@ -9,12 +9,13 @@ let y = function() {} / 100;
 {}/1/g //this is actually a regular expression!
 ```
 
-While most sane JS programmers wouldn't perform the above, it means that we need to look backwards to know if any forward slash might be a regular expression. Keeping a history of tokens is a bit problematic, depending on how long that history needs to be. In this case we may need to look back an arbitrary number of tokens to get the right answer, keeping all of the tokens around indefinitely is pretty expensive. Even if we were to pair down the data to an un-nested enum that would be 8 bytes per token, for the library jquery has a total of `46_863` tokens which would be `~360kb`. Add to the overall size the fact that we would need to scan backwards an unknown distance, touching each index makes this solution less than ideal. So how can we get to a solution? Well, let's take a look at the [sweet.js "read" algorythm](https://github.com/sweet-js/sweet-core/wiki/design).
+While most sane JS programmers wouldn't perform the above, it means that we need to look backwards to know if any forward slash might be a regular expression. Keeping a history of tokens is a bit problematic, depending on how long that history needs to be. In this case we may need to look back an arbitrary number of tokens to get the right answer, keeping all of the tokens around indefinitely is pretty expensive. Even if we were to pair down the data to an un-nested enum that would be 1 bytes per token, the library jquery has a total of `46_863` tokens which would be `~45kb`. Add to the overall size and number of allocations the fact that we would need to scan backwards an unknown distance, touching each index, makes this solution less than ideal. So how can we get to a solution? Well, let's take a look at the [sweet.js "read" algorithm](https://github.com/sweet-js/sweet-core/wiki/design).
 
-Initially reading their "almost-one lookbehind" description can be slightly confusing, [they published a paper](https://users.soe.ucsc.edu/~cormac/papers/dls14a.pdf) that goes into much greater detail but to give you the short version:
+Initially reading their "almost-one lookbehind" description can be slightly confusing, [they published a paper](https://users.soe.ucsc.edu/~cormac/papers/dls14a.pdf) that details a method for creating "token-trees", the paper goes into much greater detail about what a "token-tree" is but to give you the short version of how it relates to the linked psuedo-code:
+
 - `{}` and `()` are considered one token but represent the full stream between the open and close
 - `tok-#` is referring to these "token-trees" not tokens themselves
-  - so in `function() {} /`, `tok-2` is `)` and `tok-3` is `function`
+  - so in `function(n) {} /`, `tok-2` is `)` and `tok-3` is `function`
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
   - so in `{function() {}}` the function body start needs to be able to see the block start at the very beginning
 
