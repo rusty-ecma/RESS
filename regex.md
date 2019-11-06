@@ -47,6 +47,7 @@ Now let's rephrase the algorithm in plain english.
             - else, we found a regex
           - else, we found a regex
       - else, we found a regex
+  - else, we found a forward slash
 - if the previous token is any other punctuation, we found a regex
 - if the previous token is a keyword but not `this`, we found a regex
 - else, we found a forward slash
