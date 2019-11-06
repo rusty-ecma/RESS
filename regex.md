@@ -59,7 +59,9 @@ Now let's rephrase the algorithm in plain english.
 
 With that in mind, let's look at an example:
 
-![tokens](./assets/look_behind.svg)
+<div style="padding-top: 5px; background:white;">
+    <img src="./assets/look_behind.svg" alt="types of tokens" />
+</div>
 
 As you can see, each of the tokens has a type, the key describes how we think about tokens when checking for a regular expression. There are 4 types of token we care about the rest get lumped into `other`, we can refer to this set as `MetaToken`. Because of how the `isBlock` works, we need each of these to know what line it was on, so all of the `MetaToken`s will carry their line number. Looking through the above description of our algorithm, the furthest we need to look backwards from an `{` is 3 tokens, so our scanner should always keep track of the last 3 tokens we have seen.
 
@@ -67,11 +69,12 @@ As you can see, each of the tokens has a type, the key describes how we think ab
 ~The above button will animate our illustration to help visualize what the look behind would look like. Each arrow points to one of the tokens we need to keep track of.~ You may have noticed that one of the variants of `MetaToken` is "special punctuation", this is because we need to treat `(`, `)`, `{`, and `}` in a special way.
 
 Using the same example, this is what special means:
-
-![special punctuation](./assets/special_punct.svg)
-
+<div style="padding: 5px;background: white;">
+    <img alt="special punctuation" src="./assets/special_punct.svg" />
+</div>
 Every `)` or `}` needs to point to the tokens before it's paired `(` or `{` and every `{` needs to point to a parent `{` if one exists. In addition both the `(` and `{` need to point to the 3 tokens before them, which might look something like this:
 
-![opens with lookbehind](./assets/arc_lookbehind.svg)
-
+<div style="padding: 5px;background: white;">
+    <img alt="opens with lookbehind" src="./assets/arc_lookbehind.svg" />
+</div>
 First we encounter the red opening paren, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the close paren at 1, red open paren at 2 and `things` at 3. Finally we would encounter the blue open curly brace, this would hold the green curly brace at 1, the close paren at 2 and the red open paren at 3.
