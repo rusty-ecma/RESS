@@ -170,9 +170,9 @@ pub struct Scanner<'a> {
     errored: bool,
     new_line_count: usize,
     line_cursor: usize,
-    before_last_open_paren: LookBehind,
     last_three: LookBehind,
     before_curly_stack: Vec<Rc<OpenBrace>>,
+    before_paren_stack: Vec<LookBehind>,
 }
 
 impl<'a> Scanner<'a> {
@@ -189,9 +189,9 @@ impl<'a> Scanner<'a> {
             errored: false,
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
-            before_last_open_paren: LookBehind::new(),
             last_three: LookBehind::new(),
             before_curly_stack: Vec::new(),
+            before_paren_stack: Vec::new(),
         }
     }
 }
@@ -237,7 +237,7 @@ impl<'b> Scanner<'b> {
             new_line_count: self.new_line_count,
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
-            paren_three: self.before_last_open_paren.clone(),
+            paren_stack: self.before_paren_stack.clone(),
             before_curly_stack: self.before_curly_stack.clone(),
         }
     }
@@ -249,7 +249,7 @@ impl<'b> Scanner<'b> {
         self.new_line_count = state.new_line_count;
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
-        self.before_last_open_paren = state.paren_three;
+        self.before_paren_stack = state.paren_stack;
         self.before_curly_stack = state.before_curly_stack;
     }
     #[inline]
@@ -414,7 +414,7 @@ impl<'b> Scanner<'b> {
         } else if let Token::Punct(ref p) = &ret.token {
             match p {
                 Punct::OpenParen => {
-                    self.before_last_open_paren = self.last_three.clone();
+                    self.before_paren_stack.push(self.last_three.clone());
                     self.last_three.push(&next.ty, self.new_line_count as u32);
                 }
                 Punct::OpenBrace => {
@@ -427,19 +427,27 @@ impl<'b> Scanner<'b> {
                     self.before_curly_stack.push(open.clone());
                     self.last_three.push_open(open, self.new_line_count as u32);
                 }
-                Punct::CloseParen => self.last_three.push_close(MetaToken::CloseParen(
-                    Rc::new(CloseParen {
-                        open: self.before_last_open_paren.clone(),
-                        look_behind: self.last_three.clone(),
-                    }),
-                    self.new_line_count as u32,
-                )),
+                Punct::CloseParen => {
+                    let close = if let Some(open) = self.before_paren_stack.pop() {
+                        CloseParen {
+                            open,
+                        }
+                    } else {
+                        //probably an error...
+                        CloseParen {
+                            open: self.last_three.clone()
+                        }
+                    };
+                    self.last_three.push_close(MetaToken::CloseParen(
+                        Rc::new(close),
+                        self.new_line_count as u32,
+                    ))
+                },
                 Punct::CloseBrace => {
                     if let Some(before_open) = self.before_curly_stack.pop() {
                         let close = MetaToken::CloseBrace(
                             Rc::new(
                                 CloseBrace {
-                                    look_behind: self.last_three.clone(),
                                     open: before_open,
                                 }
                             ),
@@ -708,7 +716,7 @@ pub struct ScannerState {
     pub new_line_count: usize,
     pub line_cursor: usize,
     pub last_three: LookBehind,
-    pub paren_three: LookBehind,
+    pub paren_stack: Vec<LookBehind>,
     pub before_curly_stack: Vec<Rc<OpenBrace>>,
 }
 

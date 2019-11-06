@@ -154,28 +154,14 @@ impl OpenBrace {
 
 #[derive(Debug, Clone)]
 pub struct CloseBrace {
-    pub look_behind: LookBehind,
     pub open: Rc<OpenBrace>,
 }
 
 #[derive(Debug, Clone)]
 pub struct CloseParen {
-    pub look_behind: LookBehind,
     pub open: LookBehind,
 }
 
-impl std::ops::Deref for CloseParen {
-    type Target = LookBehind;
-    fn deref(&self) -> &Self::Target {
-        &self.look_behind
-    }
-}
-impl std::ops::Deref for CloseBrace {
-    type Target = LookBehind;
-    fn deref(&self) -> &Self::Target {
-        &self.look_behind
-    }
-}
 impl std::ops::Deref for OpenBrace {
     type Target = LookBehind;
     fn deref(&self) -> &Self::Target {
