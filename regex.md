@@ -64,7 +64,7 @@ With that in mind, let's look at an example:
 As you can see, each of the tokens has a type, the key describes how we think about tokens when checking for a regular expression. There are 4 types of token we care about the rest get lumped into `other`, we can refer to this set as `MetaToken`. Because of how the `isBlock` works, we need each of these to know what line it was on, so all of the `MetaToken`s will carry their line number. Looking through the above description of our algorithm, the furthest we need to look backwards from an `{` is 3 tokens, so our scanner should always keep track of the last 3 tokens we have seen.
 
 
-~The above button will animate our illustration to help visualize what the look behind would look like. Each arrow points to one of the tokens we need to keep track of.~ You may have noticed that one of the variants of `MetaToken` is "special punctuation", this is because we need to treat `)`, `{`, and `}` in a special way.
+~The above button will animate our illustration to help visualize what the look behind would look like. Each arrow points to one of the tokens we need to keep track of.~ You may have noticed that one of the variants of `MetaToken` is "special punctuation", this is because we need to treat `(`, `)`, `{`, and `}` in a special way.
 
 Using the same example, this is what special means:
 
