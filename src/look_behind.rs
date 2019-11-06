@@ -140,13 +140,13 @@ pub struct OpenBrace {
 impl OpenBrace {
     pub fn with_parent(look_behind: LookBehind, parent: Rc<OpenBrace>) -> Self {
         Self {
-            look_behind: look_behind,
+            look_behind,
             parent: Some(parent),
         }
     }
     pub fn new(look_behind: LookBehind) -> Self {
         Self {
-            look_behind: look_behind,
+            look_behind,
             parent: None
         }
     }

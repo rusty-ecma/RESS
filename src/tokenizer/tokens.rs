@@ -145,7 +145,7 @@ pub enum RawKeyword {
 }
 
 impl RawKeyword {
-    pub fn with_str<'a>(&self, s: &'a str) -> crate::tokens::Keyword<&'a str> {
+    pub fn with_str<'a>(self, s: &'a str) -> crate::tokens::Keyword<&'a str> {
         match self {
             RawKeyword::Await => Keyword::Await(s),
             RawKeyword::Break => Keyword::Break(s),

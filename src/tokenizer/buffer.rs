@@ -11,6 +11,7 @@ const CONT_MASK: u8 = 0b0011_1111;
 const TAG_CONT_U8: u8 = 0b1000_0000;
 impl<'a> JSBuffer<'a> {
     #[inline]
+    #[allow(clippy::all)]
     pub fn next_char(&mut self) -> Option<char> {
         if self.at_end() {
             return None;
@@ -44,6 +45,7 @@ impl<'a> JSBuffer<'a> {
         char::from_u32(ch)
     }
     #[inline]
+    #[allow(clippy::all)]
     pub fn prev_char(&mut self) -> Option<char> {
         // Decode UTF-8
         if self.idx == 0 {
@@ -92,10 +94,12 @@ impl<'a> JSBuffer<'a> {
         self.buffer[self.idx]
     }
     #[inline]
+    #[allow(clippy::all)]
     fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
         (ch << 6) | (byte & CONT_MASK) as u32
     }
     #[inline]
+    #[allow(clippy::all)]
     fn utf8_first_byte(byte: u8, width: u32) -> u32 {
         (byte & (0x7F >> width)) as u32
     }

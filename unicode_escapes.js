@@ -121,7 +121,8 @@ function main() {
         newTree += toFinalNewTest(fullEscape2, expr);
     }
     let sig = `use super::tokens::{RawToken, RawKeyword};
-
+#[inline]
+#[allow(clippy::cognitive_complexity)]
 pub fn check_complicated_keyword(ident: &[u8]) -> Option<RawToken> {
     match ident.len() {
         `;

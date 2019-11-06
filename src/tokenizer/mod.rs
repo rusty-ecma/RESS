@@ -30,7 +30,7 @@ impl<'a> Tokenizer<'a> {
             curly_stack: Vec::with_capacity(2),
         }
     }
-
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Res<RawItem> {
         self.current_start = self.stream.idx;
         let next_char = match self.stream.next_char() {

@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 #[inline]
 pub(crate) fn is_id_start(c: char) -> bool {
     if c < '\u{41}' {

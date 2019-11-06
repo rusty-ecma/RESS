@@ -553,11 +553,7 @@ impl<'b> Scanner<'b> {
                 MetaToken::Keyword(RawKeyword::Return, line)
                 | MetaToken::Keyword(RawKeyword::Yield, line) => {
                     if let Some(last) = open.look_behind.two() {
-                        if last.line_number() != *line {
-                            true
-                        } else {
-                            false
-                        }
+                        last.line_number() != *line
                     } else {
                         false
                     }

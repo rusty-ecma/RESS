@@ -289,9 +289,9 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
 impl CommentExt<String> for Comment<String> {
     fn from_parts(content: String, kind: CommentKind, tail_content: Option<String>) -> Self {
         Comment {
-            content: content,
+            content,
             kind,
-            tail_content: tail_content,
+            tail_content,
         }
     }
 
@@ -390,7 +390,7 @@ impl<'a> NumberExt for Number<&'a str> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
-        } else if self.0.ends_with("n") {
+        } else if self.0.ends_with('n') {
             NumberKind::BigInt
         } else {
             NumberKind::Dec
@@ -427,7 +427,7 @@ impl NumberExt for Number<String> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
-        } else if self.0.ends_with("n") {
+        } else if self.0.ends_with('n') {
             NumberKind::BigInt
         } else {
             NumberKind::Dec
@@ -1159,7 +1159,7 @@ impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
 }
 
 impl Keyword<()> {
-    pub fn with_str<'a>(&self, s: &'a str) -> Keyword<&'a str> {
+    pub fn with_str<'a>(self, s: &'a str) -> Keyword<&'a str> {
         match self {
             Keyword::Await(_) => Keyword::Await(s),
             Keyword::Break(_) => Keyword::Break(s),
