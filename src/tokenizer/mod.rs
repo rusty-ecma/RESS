@@ -255,13 +255,8 @@ impl<'a> Tokenizer<'a> {
         }
     }
     #[inline]
-    fn escaped_with_code_point(&mut self) -> Res<()> {
-        trace!(
-            "escaped_with_code_point ({}, {})",
-            self.current_start,
-            self.stream.idx
-        );
-        let mut code: u32 = 0;
+    pub(crate) fn escaped_with_code_point(&mut self) -> Res<u32> {
+        let mut code = String::new();
         let mut last_char: char = '{';
         while let Some(c) = self.stream.next_char() {
             last_char = c;
@@ -273,16 +268,17 @@ impl<'a> Tokenizer<'a> {
                     msg: "escaped unicode code point is not a hex digit".to_string(),
                     idx: self.stream.idx,
                 });
-            }
-
-            code += match u32::from_str_radix(c.encode_utf8(&mut [0; 4]), 16) {
-                Ok(n) => n,
-                Err(e) => return Err(RawError {
-                    msg: format!("escaped unicode code point could not be converted to a u32 with the error {}", e),
-                    idx: self.stream.idx,
-                })
+            } else {
+                code.push(c)
             }
         }
+        let code = match u32::from_str_radix(&code, 16) {
+            Ok(n) => n,
+            Err(e) => return Err(RawError {
+                msg: format!("escaped unicode code point could not be converted to a u32 with the error {}", e),
+                idx: self.stream.idx,
+            })
+        };
         if code > 0x10FFF {
             Err(RawError {
                 msg: "escaped unicode codepoint too large".to_string(),
@@ -294,16 +290,13 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             })
         } else {
-            Ok(())
+            Ok(code)
         }
     }
     #[inline]
-    fn escaped_with_hex4(&mut self, start: char) -> Res<()> {
-        trace!(
-            "escaped_with_hex4 ({}, {})",
-            self.current_start,
-            self.stream.idx
-        );
+    fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
+        let mut code: u32 = 0;
+
         if !start.is_digit(16) {
             return Err(RawError {
                 msg: "escaped unicode char code is not a hex digit".to_string(),
@@ -312,11 +305,12 @@ impl<'a> Tokenizer<'a> {
         }
         for _ in 0..3 {
             if let Some(c) = self.stream.next_char() {
-                if !c.is_digit(16) {
-                    return Err(RawError {
-                        msg: "escaped unicode char code is not a hex digit".to_string(),
+                code += match u32::from_str_radix(c.encode_utf8(&mut [0; 4]), 16) {
+                    Ok(n) => n,
+                    Err(e) => return Err(RawError {
+                        msg: format!("escaped unicode char code is not a hex digit {}", e),
                         idx: self.stream.idx,
-                    });
+                    })
                 }
             } else {
                 return Err(RawError {
@@ -325,7 +319,7 @@ impl<'a> Tokenizer<'a> {
                 });
             }
         }
-        Ok(())
+        Ok(code)
     }
 
     fn string(&mut self, quote: char) -> Res<RawItem> {
@@ -1388,39 +1382,39 @@ mod test {
     #[test]
     fn tokenizer_number() {
         static NUMBERS: &[&str] = &[
-            // "0",
-            // "00",
-            // "1234567890",
-            // "01234567",
-            // "0.",
-            // "0.00",
-            // "10.00",
-            // ".0",
-            // "1.",
-            // "0e0",
-            // "0E0",
-            // "0.e0",
-            // "0.00e+0",
-            // ".00e-0",
-            // "0x0",
-            // "0X0",
-            // "0x0123456789abcdefABCDEF",
-            // "0b0",
-            // "0b0100101",
-            // "0o0",
-            // "0o777",
-            // "2e308",
-            // "1e1",
-            // "0b1010_0001_1000_0101",
-            // "0xA0_B0_C0",
-            // "0o6_5",
-            // "2.0_00",
-            // "300_000",
-            // "4e56_789",
-            // "1n",
-            // "0x1n",
-            // "0o6n",
-            // "0b1n",
+            "0",
+            "00",
+            "1234567890",
+            "01234567",
+            "0.",
+            "0.00",
+            "10.00",
+            ".0",
+            "1.",
+            "0e0",
+            "0E0",
+            "0.e0",
+            "0.00e+0",
+            ".00e-0",
+            "0x0",
+            "0X0",
+            "0x0123456789abcdefABCDEF",
+            "0b0",
+            "0b0100101",
+            "0o0",
+            "0o777",
+            "2e308",
+            "1e1",
+            "0b1010_0001_1000_0101",
+            "0xA0_B0_C0",
+            "0o6_5",
+            "2.0_00",
+            "300_000",
+            "4e56_789",
+            "1n",
+            "0x1n",
+            "0o6n",
+            "0b1n",
             "2_141_192_192",
         ];
         for n in NUMBERS {
@@ -1676,5 +1670,13 @@ mod test {
         assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next();
         assert_eq!(t.skip_whitespace().0, 1); // paragraph separator
+    }
+
+    #[test]
+    #[should_panic = "escaped unicode codepoint too large"]
+    fn char_too_large() {
+        let js = r"asdf\u{FFFFF}";
+        let mut t = Tokenizer::new(js);
+        dbg!(t.next()).unwrap();
     }
 }
