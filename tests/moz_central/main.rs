@@ -15,7 +15,8 @@ fn moz_central() {
     if !moz_central_path.exists() {
         get_moz_central_test_files(&moz_central_path);
     }
-    let (failures, total) = walk(&moz_central_path);
+    let paths = get_paths(&moz_central_path);
+    let (failures, total) = walk(&paths);
     eprintln!("completed {:?} tests", total);
     if !failures.is_empty() {
         panic!("{:?} tests failed\n{:?}", failures.len(), failures.join("\n"));
@@ -36,34 +37,40 @@ fn get_moz_central_test_files(path: &Path) {
     t.unpack(path).expect("Failed to unpack gz");
 }
 
-fn walk(path: &Path) -> (Vec<String>, usize) {
-    let mut ret = Vec::new();
-    let mut ct = 0;
-    let files: Vec<PathBuf> = path
-        .read_dir()
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .collect();
-    // let mut last_remaining = None;
-    files.iter().enumerate().for_each(|(_i, path)| {
+fn get_paths(root: &Path) -> Vec<PathBuf> {
+    walkdir::WalkDir::new(root).min_depth(1).into_iter().filter_map(|e| {
+        let entry = e.expect("bad entry");
+        let path = entry.into_path();
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
-                    ct += 1;
-                    eprintln!("\n{} file-> {}", ct, path.display());
-                    let js = read_to_string(&path).unwrap();
-                    for item in Scanner::new(js.as_str()) {
-                        if let Err(e) = item {
-                            ret.push(format!("{:?}, path: {:?}", e, path.display()));
-                        }
-                    }
+                    Some(path)
+                } else {
+                    None
                 }
+            } else {
+                None
             }
         } else {
-            let (failures, to_add) = walk(&path);
-            ret.extend(failures);
-            ct += to_add;
+            None
         }
-    });
+    })
+    .collect()
+}
+
+fn walk(paths: &[PathBuf]) -> (Vec<String>, usize) {
+    let mut ret = Vec::new();
+    let mut ct = 0;
+    for path in paths {
+        ct += 1;
+        eprintln!("\n{} file-> {}", ct, path.display());
+        let js = read_to_string(&path).unwrap();
+        let s = Scanner::new(js.as_str());
+        for item in s {
+            if let Err(e) = item {
+                ret.push(format!("{:?}, path: {:?}", e, path.display()));
+            }
+        }
+    }
     (ret, ct)
 }

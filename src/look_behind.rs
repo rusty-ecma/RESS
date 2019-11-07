@@ -30,15 +30,15 @@ impl LookBehind {
         self.pointer = wrapping_add(self.pointer, 1, 2);
         self.list[self.pointer as usize] = Some(token)
     }
-    #[inline]
-    pub fn push_open(&mut self, open: Rc<OpenBrace>, line: u32) {
-        self.push_close(
-            MetaToken::OpenBrace(
-                open,
-                line
-            )
-        );
-    }
+    // #[inline]
+    // pub fn push_open(&mut self, open: Rc<OpenBrace>, line: u32) {
+    //     self.push_close(
+    //         MetaToken::OpenBrace(
+    //             open,
+    //             line
+    //         )
+    //     );
+    // }
     #[inline]
     pub fn one(&self) -> &Option<MetaToken> {
         &self.list[self.pointer as usize]
@@ -87,11 +87,22 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
 pub enum MetaToken {
     Keyword(RawKeyword, u32),
     Punct(Punct, u32),
-    CloseParen(Rc<CloseParen>, u32),
-    CloseBrace(Rc<CloseBrace>, u32),
-    OpenBrace(Rc<OpenBrace>, u32),
+    OpenParen(Paren, u32),
+    CloseParen(Paren, u32),
+    OpenBrace(Brace, u32),
+    CloseBrace(Brace, u32),
     Ident(u32),
     Other(u32),
+}
+#[derive(Debug, Clone, Copy)]
+pub struct Paren {
+    pub func_expr: bool,
+    pub conditional: bool,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct Brace {
+    pub is_block: bool,
+    pub paren: Option<Paren>,
 }
 
 impl MetaToken {
@@ -99,9 +110,10 @@ impl MetaToken {
         match self {
             MetaToken::Keyword(_, line)
             | MetaToken::Punct(_, line)
+            | MetaToken::OpenParen(_, line)
             | MetaToken::CloseParen(_, line)
-            | MetaToken::CloseBrace(_, line)
             | MetaToken::OpenBrace(_, line)
+            | MetaToken::CloseBrace(_, line)
             | MetaToken::Ident(line)
             | MetaToken::Other(line) => *line,
         }

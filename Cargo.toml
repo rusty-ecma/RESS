@@ -19,6 +19,7 @@ log = "0.4"
 flate2 = { version = "1", optional = true }
 reqwest = { version = "0.9", optional = true }
 tar = { version = "0.4", optional = true}
+walkdir = { version = "2", optional = true}
 
 [dev-dependencies]
 docopt = "1.0"
@@ -33,7 +34,7 @@ lazy_static = "1"
 
 [features]
 default = []
-moz_central = ["flate2", "reqwest", "tar"]
+moz_central = ["flate2", "reqwest", "tar", "walkdir"]
 
 [[example]]
 name = "major_libs"

@@ -42,7 +42,7 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
-use look_behind::{LookBehind, MetaToken, OpenBrace, CloseBrace, CloseParen};
+use look_behind::{LookBehind, MetaToken, OpenBrace, CloseBrace, Paren};
 
 use std::rc::Rc;
 
@@ -172,7 +172,8 @@ pub struct Scanner<'a> {
     line_cursor: usize,
     last_three: LookBehind,
     before_curly_stack: Vec<Rc<OpenBrace>>,
-    before_paren_stack: Vec<LookBehind>,
+    brace_stack: Vec<look_behind::Brace>,
+    paren_stack: Vec<Paren>,
 }
 
 impl<'a> Scanner<'a> {
@@ -191,7 +192,8 @@ impl<'a> Scanner<'a> {
             line_cursor: usize::max(line_cursor, 1),
             last_three: LookBehind::new(),
             before_curly_stack: Vec::new(),
-            before_paren_stack: Vec::new(),
+            paren_stack: Vec::new(),
+            brace_stack: Vec::new(),
         }
     }
 }
@@ -237,7 +239,7 @@ impl<'b> Scanner<'b> {
             new_line_count: self.new_line_count,
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
-            paren_stack: self.before_paren_stack.clone(),
+            paren_stack: self.paren_stack.clone(),
             before_curly_stack: self.before_curly_stack.clone(),
         }
     }
@@ -249,7 +251,7 @@ impl<'b> Scanner<'b> {
         self.new_line_count = state.new_line_count;
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
-        self.before_paren_stack = state.paren_stack;
+        self.paren_stack = state.paren_stack;
         self.before_curly_stack = state.before_curly_stack;
     }
     #[inline]
@@ -422,48 +424,98 @@ impl<'b> Scanner<'b> {
         } else if let Token::Punct(ref p) = &ret.token {
             match p {
                 Punct::OpenParen => {
-                    self.before_paren_stack.push(self.last_three.clone());
+                    let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.one() {
+                        if let Some(tok) = self.last_three.two() {
+                            !Self::check_for_expression(tok)
+                        } else {
+                            false
+                        }
+                    } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.two() {
+                        if let Some(tok) = self.last_three.three() {
+                            !Self::check_for_expression(tok)
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
+                    let conditional = if let Some(tok) = self.last_three.one() {
+                        Self::check_token_for_conditional(tok)
+                    } else {
+                        false
+                    };
+                    self.paren_stack.push(Paren {
+                        func_expr,
+                        conditional,
+                    });
                     self.last_three.push(&next.ty, self.new_line_count as u32);
                 }
                 Punct::OpenBrace => {
-                    let open = if let Some(parent) = self.before_curly_stack.last() {
-                        OpenBrace::with_parent(self.last_three.clone(), parent.clone())
+                    let is_block = if let Some(last) = self.last_three.one() {
+                        match last {
+                            MetaToken::Punct(Punct::OpenParen, _)
+                            | MetaToken::Punct(Punct::OpenBracket, _)
+                            | MetaToken::OpenParen(_,_)
+                            | MetaToken::OpenBrace(_,_) => false,
+                            MetaToken::Punct(Punct::Colon, _) => {
+                                if let Some(parent) = self.brace_stack.last() {
+                                    parent.is_block
+                                } else {
+                                    false
+                                }
+                            }
+                            MetaToken::Punct(_, _) => !Self::is_op(&last),
+                            MetaToken::Keyword(RawKeyword::Return, line)
+                            | MetaToken::Keyword(RawKeyword::Yield, line) => {
+                                if let Some(last) = self.last_three.two() {
+                                    last.line_number() != *line
+                                } else {
+                                    false
+                                }
+                            }
+                            MetaToken::Keyword(RawKeyword::Case, _) => false,
+                            MetaToken::Keyword(_, _) => !Self::is_op(&last),
+                            _ => true,
+                        }
                     } else {
-                        OpenBrace::new(self.last_three.clone())
+                        true
                     };
-                    let open = Rc::new(open);
-                    self.before_curly_stack.push(open.clone());
-                    self.last_three.push_open(open, self.new_line_count as u32);
+                    let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one() {
+                        Some(open.clone())
+                    } else {
+                        None
+                    };
+                    let brace = look_behind::Brace {
+                        is_block,
+                        paren
+                    };
+                    self.brace_stack.push(brace);
+                    self.last_three.push_close(MetaToken::OpenBrace(brace, self.new_line_count as u32));
                 }
                 Punct::CloseParen => {
-                    let close = if let Some(open) = self.before_paren_stack.pop() {
-                        CloseParen {
-                            open,
-                        }
+                    let paren = if let Some(paren) = self.paren_stack.pop() {
+                        paren
                     } else {
-                        //probably an error...
-                        CloseParen {
-                            open: self.last_three.clone()
-                        }
+                        self.errored = true;
+                        return Some(self.error(RawError {
+                            idx: ret.span.start,
+                            msg: "Unmatched open close paren".to_string()
+                        }));
                     };
-                    self.last_three.push_close(MetaToken::CloseParen(
-                        Rc::new(close),
-                        self.new_line_count as u32,
-                    ))
+                    self.last_three.push_close(MetaToken::CloseParen(paren, self.new_line_count as u32,))
                 },
                 Punct::CloseBrace => {
-                    if let Some(before_open) = self.before_curly_stack.pop() {
+                    if let Some(open) = self.brace_stack.pop() {
                         let close = MetaToken::CloseBrace(
-                            Rc::new(
-                                CloseBrace {
-                                    open: before_open,
-                                }
-                            ),
+                            open,
                             self.new_line_count as u32,
                         );
                         self.last_three.push_close(close);
                     } else {
-                        self.last_three.push(&next.ty, self.new_line_count as u32);
+                        return Some(self.error(RawError {
+                            idx: ret.span.start,
+                            msg: "unmatched close brace".to_string()
+                        }));
                     }
                 }
                 _ => self.last_three.push(&next.ty, self.new_line_count as u32),
@@ -491,25 +543,13 @@ impl<'b> Scanner<'b> {
                     Punct::CloseBracket => false,
                     _ => true,
                 },
-                MetaToken::CloseParen(close, _) => Self::check_for_conditional(close),
+                MetaToken::CloseParen(open, _) => {
+                    open.conditional
+                },
                 MetaToken::CloseBrace(close, _) => {
-                    if Self::is_block(&close.open) {
-                        if let Some(MetaToken::CloseParen(close_paren, _)) = close.open.look_behind.one() {
-                            if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = close_paren.open.one() {
-                                if let Some(before) = close_paren.open.two() {
-                                    Self::check_for_expression(before)
-                                } else {
-                                    true
-                                }
-                            } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = close_paren.open.two() {
-                                if let Some(before) = close_paren.open.three() {
-                                    Self::check_for_expression(before)
-                                } else {
-                                    true
-                                }
-                            } else {
-                                true
-                            }
+                    if close.is_block {
+                        if let Some(open) = &close.paren {
+                            !open.func_expr
                         } else {
                             true
                         }
@@ -517,7 +557,8 @@ impl<'b> Scanner<'b> {
                         false
                     }
                 },
-                MetaToken::OpenBrace(_,_) => true,
+                MetaToken::OpenParen(_,_)
+                | MetaToken::OpenBrace(_,_) => true,
                 _ => false,
             }
         } else {
@@ -525,11 +566,8 @@ impl<'b> Scanner<'b> {
         }
     }
 
-    /// Check if just passed a conditional expression
-    ///
-    /// > used in determining if we are at a regex or not
-    fn check_for_conditional(close_paren: &CloseParen) -> bool {
-        if let Some(MetaToken::Keyword(k, _)) = close_paren.open.one() {
+    fn check_token_for_conditional(tok: &MetaToken) -> bool {
+        if let MetaToken::Keyword(k, _) = tok {
             match k {
                 RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                 _ => false,
@@ -724,7 +762,7 @@ pub struct ScannerState {
     pub new_line_count: usize,
     pub line_cursor: usize,
     pub last_three: LookBehind,
-    pub paren_stack: Vec<LookBehind>,
+    pub paren_stack: Vec<Paren>,
     pub before_curly_stack: Vec<Rc<OpenBrace>>,
 }
 
