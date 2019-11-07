@@ -10,7 +10,6 @@ use std::path::{Path, PathBuf};
 
 #[test]
 fn moz_central() {
-    eprintln!("start: {:?}", stacker::remaining_stack());
     let _ = pretty_env_logger::try_init();
     let moz_central_path = Path::new("./moz-central");
     if !moz_central_path.exists() {
