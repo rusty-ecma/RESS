@@ -18,6 +18,7 @@ struct Opts {
 }
 
 fn main() {
+    let _ = pretty_env_logger::try_init();
     let opts: Opts = Docopt::new(USAGE)
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| {

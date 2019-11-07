@@ -10,15 +10,16 @@ use std::path::{Path, PathBuf};
 
 #[test]
 fn moz_central() {
+    eprintln!("start: {:?}", stacker::remaining_stack());
     let _ = pretty_env_logger::try_init();
     let moz_central_path = Path::new("./moz-central");
     if !moz_central_path.exists() {
         get_moz_central_test_files(&moz_central_path);
     }
     let (failures, total) = walk(&moz_central_path);
-    eprintln!("completed {} tests", total);
+    eprintln!("completed {:?} tests", total);
     if !failures.is_empty() {
-        panic!("{} tests failed\n{}", failures.len(), failures.join("\n"));
+        panic!("{:?} tests failed\n{:?}", failures.len(), failures.join("\n"));
     }
 }
 
@@ -37,22 +38,24 @@ fn get_moz_central_test_files(path: &Path) {
 }
 
 fn walk(path: &Path) -> (Vec<String>, usize) {
-    let mut ret = vec![];
+    let mut ret = Vec::new();
     let mut ct = 0;
     let files: Vec<PathBuf> = path
         .read_dir()
         .unwrap()
         .map(|e| e.unwrap().path())
         .collect();
+    // let mut last_remaining = None;
     files.iter().enumerate().for_each(|(_i, path)| {
         if path.is_file() {
             if let Some(ext) = path.extension() {
                 if ext == "js" {
                     ct += 1;
+                    eprintln!("\n{} file-> {}", ct, path.display());
                     let js = read_to_string(&path).unwrap();
                     for item in Scanner::new(js.as_str()) {
                         if let Err(e) = item {
-                            ret.push(format!("{}, path: {}", e, path.display()));
+                            ret.push(format!("{:?}, path: {:?}", e, path.display()));
                         }
                     }
                 }

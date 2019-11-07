@@ -347,7 +347,15 @@ impl<'b> Scanner<'b> {
                 }
                 RawToken::EoF => {
                     self.eof = true;
-                    Token::EoF
+                    return Some(Ok(Item::new_(
+                        Token::EoF,
+                        self.original.len(),
+                        self.original.len(),
+                        prev_lines.saturating_add(1),
+                        prev_line_cursor,
+                        self.new_line_count.saturating_add(1),
+                        self.line_cursor,
+                    )))
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
                 RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
