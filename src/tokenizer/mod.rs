@@ -136,7 +136,12 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn ident(&mut self, start: char) -> Res<RawItem> {
-        trace!("ident {} ({}, {})", start, self.current_start, self.stream.idx);
+        trace!(
+            "ident {} ({}, {})",
+            start,
+            self.current_start,
+            self.stream.idx
+        );
         let mut has_escaped = if start == '\\' {
             // TODO validate escaped ident start
             self.escaped_ident_part()?;
@@ -164,7 +169,12 @@ impl<'a> Tokenizer<'a> {
     /// Includes keywords, booleans & null
     #[allow(clippy::cognitive_complexity)]
     fn at_keyword(&self, has_escaped: bool) -> Option<RawToken> {
-        trace!("at_keyword {} ({}, {})", has_escaped, self.current_start, self.stream.idx);
+        trace!(
+            "at_keyword {} ({}, {})",
+            has_escaped,
+            self.current_start,
+            self.stream.idx
+        );
         let ident = &self.stream.buffer[self.current_start..self.stream.idx];
         if has_escaped {
             return keyword_escape::check_complicated_keyword(ident);
@@ -223,7 +233,11 @@ impl<'a> Tokenizer<'a> {
     /// picking up after the \
     #[inline]
     fn escaped_ident_part(&mut self) -> Res<()> {
-        trace!("escaped_ident_part ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "escaped_ident_part ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         if let Some('u') = self.stream.next_char() {
             if let Some(c) = self.stream.next_char() {
                 if c == '{' {
@@ -242,7 +256,11 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn escaped_with_code_point(&mut self) -> Res<()> {
-        trace!("escaped_with_code_point ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "escaped_with_code_point ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         let mut code: u32 = 0;
         let mut last_char: char = '{';
         while let Some(c) = self.stream.next_char() {
@@ -281,7 +299,11 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<()> {
-        trace!("escaped_with_hex4 ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "escaped_with_hex4 ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         if !start.is_digit(16) {
             return Err(RawError {
                 msg: "escaped unicode char code is not a hex digit".to_string(),
@@ -307,7 +329,12 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn string(&mut self, quote: char) -> Res<RawItem> {
-        trace!("string {} ({}, {})", quote, self.current_start, self.stream.idx);
+        trace!(
+            "string {} ({}, {})",
+            quote,
+            self.current_start,
+            self.stream.idx
+        );
         let mut escaped = false;
         let mut last_len = 1usize; // we already skipped the quote char
         let mut new_line_count = 0usize;
@@ -413,13 +440,23 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn open_curly(&mut self, curly: OpenCurlyKind, punct: Punct) -> Res<RawItem> {
-        trace!("open_curly {:?} ({}, {})", curly, self.current_start, self.stream.idx);
+        trace!(
+            "open_curly {:?} ({}, {})",
+            curly,
+            self.current_start,
+            self.stream.idx
+        );
         self.curly_stack.push(curly);
         self.gen_punct(punct)
     }
     #[inline]
     fn close_curly(&mut self, punct: Punct) -> Res<RawItem> {
-        trace!("close_curly {:?} ({}, {})", punct, self.current_start, self.stream.idx);
+        trace!(
+            "close_curly {:?} ({}, {})",
+            punct,
+            self.current_start,
+            self.stream.idx
+        );
         let _ = self.curly_stack.pop();
         self.gen_punct(punct)
     }
@@ -575,7 +612,11 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn forward_slash(&mut self) -> Res<RawItem> {
-        trace!("forward_slash ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "forward_slash ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::ForwardSlashEqual)
@@ -622,7 +663,12 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn number(&mut self, start: char) -> Res<RawItem> {
-        trace!("number {} ({}, {})", start, self.current_start, self.stream.idx);
+        trace!(
+            "number {} ({}, {})",
+            start,
+            self.current_start,
+            self.stream.idx
+        );
         if start != '.' {
             if let Some(next) = self.stream.next_char() {
                 if start == '0' {
@@ -658,7 +704,12 @@ impl<'a> Tokenizer<'a> {
         }
     }
     fn template(&mut self, start: char) -> Res<RawItem> {
-        trace!("template {} ({}, {})", start, self.current_start, self.stream.idx);
+        trace!(
+            "template {} ({}, {})",
+            start,
+            self.current_start,
+            self.stream.idx
+        );
         let mut line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the start char
         while let Some(c) = self.stream.next_char() {
@@ -728,7 +779,11 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn single_comment(&mut self) -> Res<RawItem> {
-        trace!("single_comment ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "single_comment ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         while !self.at_new_line() {
             if self.stream.next_char().is_none() {
                 break;
@@ -738,7 +793,11 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn multi_comment(&mut self) -> Res<RawItem> {
-        trace!("multi_comment ({}, {})", self.current_start, self.stream.idx);
+        trace!(
+            "multi_comment ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
         let mut new_line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the /
         while let Some(c) = self.stream.next_char() {
@@ -919,7 +978,13 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
-        trace!("consume_digits {}, {} ({}, {})", radix, prev_char, self.current_start, self.stream.idx);
+        trace!(
+            "consume_digits {}, {} ({}, {})",
+            radix,
+            prev_char,
+            self.current_start,
+            self.stream.idx
+        );
         while let Some(c) = self.stream.next_char() {
             self.check_repeating_underscore(prev_char, c)?;
             if !c.is_digit(radix) && c != '_' {
@@ -933,7 +998,12 @@ impl<'a> Tokenizer<'a> {
 
     #[inline]
     fn check_trailing_underscore(&self, prev_char: char) -> Res<()> {
-        trace!("check_trailing_underscore {} ({}, {})", prev_char, self.current_start, self.stream.idx);
+        trace!(
+            "check_trailing_underscore {} ({}, {})",
+            prev_char,
+            self.current_start,
+            self.stream.idx
+        );
         if prev_char == '_' {
             Err(RawError {
                 msg: "Invalid decimal. Numbers cannot end with an underscore".to_string(),
@@ -946,7 +1016,13 @@ impl<'a> Tokenizer<'a> {
 
     #[inline]
     fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
-        trace!("check_repeating_underscore {} {} ({}, {})", char_1, char_2, self.current_start, self.stream.idx);
+        trace!(
+            "check_repeating_underscore {} {} ({}, {})",
+            char_1,
+            char_2,
+            self.current_start,
+            self.stream.idx
+        );
         if char_1 == '_' && char_2 == '_' {
             Err(RawError {
                 msg: "double numeric seperator".to_string(),
@@ -959,7 +1035,12 @@ impl<'a> Tokenizer<'a> {
 
     #[inline]
     fn bigint_guard(&mut self, number_kind: NumberKind) -> NumberKind {
-        trace!("bigint_guard {:?} ({}, {})", number_kind, self.current_start, self.stream.idx);
+        trace!(
+            "bigint_guard {:?} ({}, {})",
+            number_kind,
+            self.current_start,
+            self.stream.idx
+        );
         if self.look_ahead_byte_matches('n') {
             let _ = self.stream.next_char();
             NumberKind::BigInt
@@ -991,22 +1072,42 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn look_ahead_byte_matches(&self, c: char) -> bool {
-        trace!("look_ahead_byte_matches {} ({}, {})", c, self.current_start, self.stream.idx);
+        trace!(
+            "look_ahead_byte_matches {} ({}, {})",
+            c,
+            self.current_start,
+            self.stream.idx
+        );
         self.stream.look_ahead_byte_matches(c as u8)
     }
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
-        trace!("look_ahead_matches {} ({}, {})", s, self.current_start, self.stream.idx);
+        trace!(
+            "look_ahead_matches {} ({}, {})",
+            s,
+            self.current_start,
+            self.stream.idx
+        );
         self.stream.look_ahead_matches(s.as_bytes())
     }
     #[inline]
     fn gen_punct(&self, p: Punct) -> Res<RawItem> {
-        trace!("gen_punct {:?} ({}, {})", p, self.current_start, self.stream.idx);
+        trace!(
+            "gen_punct {:?} ({}, {})",
+            p,
+            self.current_start,
+            self.stream.idx
+        );
         self.gen_token(RawToken::Punct(p))
     }
     #[inline]
     fn gen_number(&self, n: NumberKind) -> Res<RawItem> {
-        trace!("gen_number {:?} ({}, {})", n, self.current_start, self.stream.idx);
+        trace!(
+            "gen_number {:?} ({}, {})",
+            n,
+            self.current_start,
+            self.stream.idx
+        );
         self.gen_token(RawToken::Number(n))
     }
     #[inline]
@@ -1016,7 +1117,14 @@ impl<'a> Tokenizer<'a> {
         new_line_count: usize,
         last_len: usize,
     ) -> Res<RawItem> {
-        trace!("gen_template {:?}, {}, {} ({}, {})", kind, new_line_count, last_len, self.current_start, self.stream.idx);
+        trace!(
+            "gen_template {:?}, {}, {} ({}, {})",
+            kind,
+            new_line_count,
+            last_len,
+            self.current_start,
+            self.stream.idx
+        );
         self.gen_token(RawToken::Template {
             kind,
             new_line_count,
@@ -1025,7 +1133,13 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn gen_regex(&self, start_len: usize, body_idx: usize) -> Res<RawItem> {
-        trace!("gen_regex {}, {} ({}, {})", start_len, body_idx, self.current_start, self.stream.idx);
+        trace!(
+            "gen_regex {}, {} ({}, {})",
+            start_len,
+            body_idx,
+            self.current_start,
+            self.stream.idx
+        );
         Ok(RawItem {
             start: self.current_start.saturating_sub(start_len),
             end: self.stream.idx,
@@ -1039,7 +1153,14 @@ impl<'a> Tokenizer<'a> {
         new_line_count: usize,
         last_len: usize,
     ) -> Res<RawItem> {
-        trace!("gen_comment {:?} {}, {} ({}, {})", kind, new_line_count, last_len, self.current_start, self.stream.idx);
+        trace!(
+            "gen_comment {:?} {}, {} ({}, {})",
+            kind,
+            new_line_count,
+            last_len,
+            self.current_start,
+            self.stream.idx
+        );
         self.gen_token(RawToken::Comment {
             kind,
             new_line_count,
@@ -1048,7 +1169,12 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn gen_token(&self, ty: RawToken) -> Res<RawItem> {
-        trace!("gen_token {:?} ({}, {})", ty, self.current_start, self.stream.idx);
+        trace!(
+            "gen_token {:?} ({}, {})",
+            ty,
+            self.current_start,
+            self.stream.idx
+        );
         Ok(RawItem {
             start: self.current_start,
             end: self.stream.idx,
@@ -1057,7 +1183,12 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     pub fn skip_whitespace(&mut self) -> (usize, usize) {
-        trace!("skip_whitespace {}, {} {}", self.current_start, self.stream.idx, self.stream.len);
+        trace!(
+            "skip_whitespace {}, {} {}",
+            self.current_start,
+            self.stream.idx,
+            self.stream.len
+        );
         let mut ct = 0usize;
         let mut leading_whitespace = 0usize;
         while self.stream.at_whitespace() {

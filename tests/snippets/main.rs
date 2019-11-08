@@ -77,7 +77,7 @@ fn lots_of_arcs() {
     }
     bottom.push(']');
     let js = format!("{}\n\n{}", top, bottom);
-    
+
     let s = Scanner::new(&js);
     for item in s {
         println!("{:?}", item.unwrap());
@@ -97,27 +97,33 @@ fn div_over_regex() {
 #[test]
 fn regex_over_div() {
     let js = "{}/\\d/g;;";
-    compare(js, &[
-        Token::Punct(Punct::OpenBrace),
-        Token::Punct(Punct::CloseBrace),
-        Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
-        Token::Punct(Punct::SemiColon),
-        Token::Punct(Punct::SemiColon),
-    ]);
+    compare(
+        js,
+        &[
+            Token::Punct(Punct::OpenBrace),
+            Token::Punct(Punct::CloseBrace),
+            Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
+            Token::Punct(Punct::SemiColon),
+            Token::Punct(Punct::SemiColon),
+        ],
+    );
 }
 #[test]
 fn regex_over_div2() {
     let js = "function(){}/\\d/g;;";
-    compare(js, &[
-        Token::Keyword(Keyword::Function("function")),
-        Token::Punct(Punct::OpenParen),
-        Token::Punct(Punct::CloseParen),
-        Token::Punct(Punct::OpenBrace),
-        Token::Punct(Punct::CloseBrace),
-        Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
-        Token::Punct(Punct::SemiColon),
-        Token::Punct(Punct::SemiColon),
-    ]);
+    compare(
+        js,
+        &[
+            Token::Keyword(Keyword::Function("function")),
+            Token::Punct(Punct::OpenParen),
+            Token::Punct(Punct::CloseParen),
+            Token::Punct(Punct::OpenBrace),
+            Token::Punct(Punct::CloseBrace),
+            Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
+            Token::Punct(Punct::SemiColon),
+            Token::Punct(Punct::SemiColon),
+        ],
+    );
 }
 
 fn compare(js: &str, expectation: &[Token<&str>]) {

@@ -19,7 +19,11 @@ fn moz_central() {
     let (failures, total) = walk(&paths);
     eprintln!("completed {:?} tests", total);
     if !failures.is_empty() {
-        panic!("{:?} tests failed\n{:?}", failures.len(), failures.join("\n"));
+        panic!(
+            "{:?} tests failed\n{:?}",
+            failures.len(),
+            failures.join("\n")
+        );
     }
 }
 
@@ -38,24 +42,27 @@ fn get_moz_central_test_files(path: &Path) {
 }
 
 fn get_paths(root: &Path) -> Vec<PathBuf> {
-    walkdir::WalkDir::new(root).min_depth(1).into_iter().filter_map(|e| {
-        let entry = e.expect("bad entry");
-        let path = entry.into_path();
-        if path.is_file() {
-            if let Some(ext) = path.extension() {
-                if ext == "js" {
-                    Some(path)
+    walkdir::WalkDir::new(root)
+        .min_depth(1)
+        .into_iter()
+        .filter_map(|e| {
+            let entry = e.expect("bad entry");
+            let path = entry.into_path();
+            if path.is_file() {
+                if let Some(ext) = path.extension() {
+                    if ext == "js" {
+                        Some(path)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
             } else {
                 None
             }
-        } else {
-            None
-        }
-    })
-    .collect()
+        })
+        .collect()
 }
 
 fn walk(paths: &[PathBuf]) -> (Vec<String>, usize) {

@@ -3,7 +3,7 @@ use crate::tokens::Punct;
 use std::rc::Rc;
 
 /// A 2 element buffer of
-/// MetaTokens, this will use a 
+/// MetaTokens, this will use a
 /// "ring buffer"-esque scheme
 /// for automatically overwriting
 /// any element after 2
@@ -76,7 +76,7 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
 }
 
 /// Token classes needed for look behind
-/// 
+///
 /// All variants will carry their line number
 ///
 /// special variants include:
@@ -159,7 +159,7 @@ impl OpenBrace {
     pub fn new(look_behind: LookBehind) -> Self {
         Self {
             look_behind,
-            parent: None
+            parent: None,
         }
     }
 }
@@ -200,22 +200,62 @@ mod test {
         l.push(&first, 1);
         test(&l, Some((&first, 1).into()), None, None);
         l.push(&second, 1);
-        test(&l, Some((&second, 1).into()), Some((&first, 1).into()), None);
+        test(
+            &l,
+            Some((&second, 1).into()),
+            Some((&first, 1).into()),
+            None,
+        );
         l.push(&third, 1);
-        test(&l, Some((&third, 1).into()), Some((&second, 1).into()), Some((&first, 1).into()));
+        test(
+            &l,
+            Some((&third, 1).into()),
+            Some((&second, 1).into()),
+            Some((&first, 1).into()),
+        );
         l.push(&fourth, 1);
-        test(&l, Some((&fourth, 1).into()), Some((&third, 1).into()), Some((&second, 1).into()));
+        test(
+            &l,
+            Some((&fourth, 1).into()),
+            Some((&third, 1).into()),
+            Some((&second, 1).into()),
+        );
         l.push(&fifth, 1);
-        test(&l, Some((&fifth, 1).into()), Some((&fourth, 1).into()), Some((&third, 1).into()));
+        test(
+            &l,
+            Some((&fifth, 1).into()),
+            Some((&fourth, 1).into()),
+            Some((&third, 1).into()),
+        );
         l.push(&sixth, 1);
-        test(&l, Some((&sixth, 1).into()), Some((&fifth, 1).into()), Some((&fourth, 1).into()));
+        test(
+            &l,
+            Some((&sixth, 1).into()),
+            Some((&fifth, 1).into()),
+            Some((&fourth, 1).into()),
+        );
         l.push(&seventh, 1);
-        test(&l, Some((&seventh, 1).into()), Some((&sixth, 1).into()), Some((&fifth, 1).into()));
+        test(
+            &l,
+            Some((&seventh, 1).into()),
+            Some((&sixth, 1).into()),
+            Some((&fifth, 1).into()),
+        );
         l.push(&eighth, 1);
-        test(&l, Some((&eighth, 1).into()), Some((&seventh, 1).into()), Some((&sixth, 1).into()));
+        test(
+            &l,
+            Some((&eighth, 1).into()),
+            Some((&seventh, 1).into()),
+            Some((&sixth, 1).into()),
+        );
     }
 
-    fn test(l: &LookBehind, first: Option<MetaToken>, second: Option<MetaToken>, third: Option<MetaToken>) {
+    fn test(
+        l: &LookBehind,
+        first: Option<MetaToken>,
+        second: Option<MetaToken>,
+        third: Option<MetaToken>,
+    ) {
         println!("{:?}", l);
         assert_eq!(l.one(), &first, "one didn't match");
         assert_eq!(l.two(), &second, "two didn't match");

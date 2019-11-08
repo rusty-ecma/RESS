@@ -42,7 +42,7 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
-use look_behind::{LookBehind, MetaToken, OpenBrace, CloseBrace, Paren};
+use look_behind::{LookBehind, MetaToken, OpenBrace, Paren};
 
 use std::rc::Rc;
 
@@ -357,7 +357,7 @@ impl<'b> Scanner<'b> {
                         prev_line_cursor,
                         self.new_line_count.saturating_add(1),
                         self.line_cursor,
-                    )))
+                    )));
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
                 RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
@@ -424,13 +424,17 @@ impl<'b> Scanner<'b> {
         } else if let Token::Punct(ref p) = &ret.token {
             match p {
                 Punct::OpenParen => {
-                    let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.one() {
+                    let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+                        self.last_three.one()
+                    {
                         if let Some(tok) = self.last_three.two() {
                             !Self::check_for_expression(tok)
                         } else {
                             false
                         }
-                    } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.two() {
+                    } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+                        self.last_three.two()
+                    {
                         if let Some(tok) = self.last_three.three() {
                             !Self::check_for_expression(tok)
                         } else {
@@ -455,8 +459,8 @@ impl<'b> Scanner<'b> {
                         match last {
                             MetaToken::Punct(Punct::OpenParen, _)
                             | MetaToken::Punct(Punct::OpenBracket, _)
-                            | MetaToken::OpenParen(_,_)
-                            | MetaToken::OpenBrace(_,_) => false,
+                            | MetaToken::OpenParen(_, _)
+                            | MetaToken::OpenBrace(_, _) => false,
                             MetaToken::Punct(Punct::Colon, _) => {
                                 if let Some(parent) = self.brace_stack.last() {
                                     parent.is_block
@@ -480,17 +484,16 @@ impl<'b> Scanner<'b> {
                     } else {
                         true
                     };
-                    let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one() {
-                        Some(open.clone())
+                    let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one()
+                    {
+                        Some(*open)
                     } else {
                         None
                     };
-                    let brace = look_behind::Brace {
-                        is_block,
-                        paren
-                    };
+                    let brace = look_behind::Brace { is_block, paren };
                     self.brace_stack.push(brace);
-                    self.last_three.push_close(MetaToken::OpenBrace(brace, self.new_line_count as u32));
+                    self.last_three
+                        .push_close(MetaToken::OpenBrace(brace, self.new_line_count as u32));
                 }
                 Punct::CloseParen => {
                     let paren = if let Some(paren) = self.paren_stack.pop() {
@@ -499,22 +502,20 @@ impl<'b> Scanner<'b> {
                         self.errored = true;
                         return Some(self.error(RawError {
                             idx: ret.span.start,
-                            msg: "Unmatched open close paren".to_string()
+                            msg: "Unmatched open close paren".to_string(),
                         }));
                     };
-                    self.last_three.push_close(MetaToken::CloseParen(paren, self.new_line_count as u32,))
-                },
+                    self.last_three
+                        .push_close(MetaToken::CloseParen(paren, self.new_line_count as u32))
+                }
                 Punct::CloseBrace => {
                     if let Some(open) = self.brace_stack.pop() {
-                        let close = MetaToken::CloseBrace(
-                            open,
-                            self.new_line_count as u32,
-                        );
+                        let close = MetaToken::CloseBrace(open, self.new_line_count as u32);
                         self.last_three.push_close(close);
                     } else {
                         return Some(self.error(RawError {
                             idx: ret.span.start,
-                            msg: "unmatched close brace".to_string()
+                            msg: "unmatched close brace".to_string(),
                         }));
                     }
                 }
@@ -543,9 +544,7 @@ impl<'b> Scanner<'b> {
                     Punct::CloseBracket => false,
                     _ => true,
                 },
-                MetaToken::CloseParen(open, _) => {
-                    open.conditional
-                },
+                MetaToken::CloseParen(open, _) => open.conditional,
                 MetaToken::CloseBrace(close, _) => {
                     if close.is_block {
                         if let Some(open) = &close.paren {
@@ -556,16 +555,17 @@ impl<'b> Scanner<'b> {
                     } else {
                         false
                     }
-                },
-                MetaToken::OpenParen(_,_)
-                | MetaToken::OpenBrace(_,_) => true,
+                }
+                MetaToken::OpenParen(_, _) | MetaToken::OpenBrace(_, _) => true,
                 _ => false,
             }
         } else {
             true
         }
     }
-
+    /// Check a token for the conditional keywords
+    /// 
+    /// > used in determining if we are at a regex or not
     fn check_token_for_conditional(tok: &MetaToken) -> bool {
         if let MetaToken::Keyword(k, _) = tok {
             match k {
@@ -576,7 +576,8 @@ impl<'b> Scanner<'b> {
             false
         }
     }
-    /// Check if a token is the beginning of an expression
+    /// Check if a token indicates beginning of a
+    /// function expression
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_expression(token: &MetaToken) -> bool {
@@ -590,35 +591,10 @@ impl<'b> Scanner<'b> {
             }
         }
     }
-
-    fn is_block(open: &OpenBrace) -> bool {
-        if let Some(last) = open.look_behind.one() {
-            match last {
-                MetaToken::Punct(Punct::OpenParen, _)
-                | MetaToken::Punct(Punct::OpenBracket, _) => false,
-                MetaToken::Punct(Punct::Colon, _) => {
-                    if let Some(parent) = &open.parent {
-                        Self::is_block(parent)
-                    } else {
-                        false
-                    }
-                }
-                MetaToken::Punct(_, _) => !Self::is_op(&last),
-                MetaToken::Keyword(RawKeyword::Return, line)
-                | MetaToken::Keyword(RawKeyword::Yield, line) => {
-                    if let Some(last) = open.look_behind.two() {
-                        last.line_number() != *line
-                    } else {
-                        false
-                    }
-                }
-                MetaToken::Keyword(RawKeyword::Case, _) => false,
-                _ => true,
-            }
-        } else {
-            true
-        }
-    }
+    /// Determine if a token is a punctuation or keyword
+    /// that indicates an operation
+    /// 
+    /// > used in determining if we are at a regex or not
     fn is_op(tok: &MetaToken) -> bool {
         match tok {
             MetaToken::Punct(ref p, _) => match p {
