@@ -143,6 +143,27 @@ fn regex_over_div3() {
         ],
     );
 }
+#[test]
+fn regex_over_div4() {
+    let _ = pretty_env_logger::try_init();
+    let js = "'use strict';function name(){}/\\d/g;;";
+    compare(
+        js,
+        &[
+            Token::String(StringLit::Single("use strict")),
+            Token::Punct(Punct::SemiColon),
+            Token::Keyword(Keyword::Function("function")),
+            Token::Ident("name".into()),
+            Token::Punct(Punct::OpenParen),
+            Token::Punct(Punct::CloseParen),
+            Token::Punct(Punct::OpenBrace),
+            Token::Punct(Punct::CloseBrace),
+            Token::RegEx(RegEx::from_parts("\\d", Some("g"))),
+            Token::Punct(Punct::SemiColon),
+            Token::Punct(Punct::SemiColon),
+        ],
+    );
+}
 
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {

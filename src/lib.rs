@@ -255,6 +255,7 @@ impl<'b> Scanner<'b> {
         self.before_curly_stack = state.before_curly_stack;
     }
     #[inline]
+    #[allow(clippy::cognitive_complexity)]
     /// The implementation of `Scanner::next` that includes
     /// the flag for advancing, meaning the `look_ahead` method
     /// can also use this implementation
@@ -422,6 +423,7 @@ impl<'b> Scanner<'b> {
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
         } else if let Token::Punct(ref p) = &ret.token {
+            debug!("last_three before open paren: {:?}", self.last_three);
             match p {
                 Punct::OpenParen => {
                     let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
@@ -436,7 +438,7 @@ impl<'b> Scanner<'b> {
                         self.last_three.two()
                     {
                         if let Some(tok) = self.last_three.three() {
-                            !Self::check_for_expression(tok)
+                            Self::check_for_expression(tok)
                         } else {
                             false
                         }
