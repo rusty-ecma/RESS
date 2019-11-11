@@ -1,0 +1,97 @@
+#index-0 {
+    animation-name: show;
+    animation-duration: 6s;
+    animation-delay: 0s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  
+  #index-1 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 2s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
+  #index-2 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 4s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-3 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 6s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-4 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 8s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-5 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 10s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-6 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 12s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-7 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 14s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-8 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 16s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-9 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 18s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  #index-10 {
+    animation-name: show;
+    animation-duration: 6s, 20s;
+    animation-delay: 20s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  
+  @keyframes show {
+    0% {
+      fill: black;
+    }
+    100% {
+        fill: none;
+    }
+  }
+  
+  /* @keyframes hide {
+    0% {
+        fill: none;
+      }
+    to {
+          fill: black;
+      }
+  } */

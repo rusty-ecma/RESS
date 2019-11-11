@@ -22,10 +22,10 @@ Initially reading their "almost-one lookbehind" description can be slightly conf
 Now let's rephrase the algorithm in plain english.
 - if the current token is a `/`, look back one token
 - if the previous token is `)`
-  - if the token before it's opening paren is `if`, `while`, `for`, or `with`, we found a regex
+  - if the token before it's `(` is `if`, `while`, `for`, or `with`, we found a regex
   - else, we found a forward slash
 - if the previous token is `}`
-  - we check if it is a block by looking 1 before it's opening
+  - we check if it is a block by looking 1 before it's `{`
     - if that is `(` or `[` it is not a block
     - if that is `:` we look to the opening's parent
       - if no parent, it is a block
@@ -75,7 +75,7 @@ Every `)` or `}` needs to point to the tokens before it's paired `(` or `{` and 
 <div style="padding: 5px;background: white;">
     <img alt="opens with lookbehind" src="./assets/arc_lookbehind.svg" />
 </div>
-First we encounter the red opening paren, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the close paren at 1, red open paren at 2 and `things` at 3. Finally we would encounter the blue open curly brace, this would hold the green curly brace at 1, the close paren at 2 and the red open paren at 3. 
+First we encounter the red `(`, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the `)` at 1, red `(` at 2 and `things` at 3. Finally we would encounter the blue `{`, this would hold the green `{` at 1, the `)` at 2 and the red `(` at 3. 
 
 This means our scanner needs to keep 3 book keeping lists, the first is the last 3 tokens when scanning the next token. This essentially needs to act like a queue with  a fixed size where the `enqueue` action would `dequeue` when full. The next two are going to be stacks of both opening parentheses and opening curly braces. They are stacks because once we find a close, we don't need that open any more. With these three book keeping constructs we can build our chain of parentheses and curly brace pairs. When we encounter an open paren, we push that into both the last three queue and the parentheses stack. When we find a close paren we link that to our open paren and pop it from the parentheses stack. When we find an open curly brace if the last token we have seen is a close paren, we get the open from it and link that to our open brace, we also need to check if the curly brace stack has anything in it, if it does we need to link the _parent_ open curly to this open curly, with all that done we can push this into both the open curly stack and the last three queue. Now will all of that when we find a close brace we can pop the open curly off it's stack and link it to the close, with the open and close connected we can push the close curly onto the last three queue.
 
@@ -83,4 +83,6 @@ With all the book keeping and linking complete, when we find any `/` we can look
 
 This is all well and good but we have essentially created an linked list, which means that each time we move 3 past a `}`, we might have a lot of things to drop and by default rust does that in a recursive manner ([which can get expensive](https://rust-unofficial.github.io/too-many-lists/first-drop.html)). If we look at our example from above, there are a total of 9 tokens, and when we reach the end of this block, 8 of them are still hanging around in memory. We could try and use some of Rust's smart pointers to make sure we don't have any clones lying around come drop time but picking apart when things can be `Rc`'d and when they cannot be is a pretty challenging problem. Another solution would be to re-write the drop implementation but that just seems like it would get messy fast. A third option is to try and move our regex tests to slightly earlier in the process.
 
-If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, does the token before it indicate a conditional expression? Do the three tokens before it have the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always linking back to it? Then when we pop the `(` off the paren stack, we can attach the same two booleans to the `)`. Now when we find an `{` we can see if it is a block, we can also attach the close/open paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have to keep as much data just lying around. 
+If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, is the token before it `if`, `while`, `for` or `with`or is the token 1 or 2 before it the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always linking back to it? Then when we pop the `(` off the paren stack, we can attach the same two booleans to the `)`. Now when we find an `{` we can see if it is a block, we can also attach the close/open paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. 
+
+We still need to keep around our 3 book keeping lists, though they will be a list of copy types. Paren = 2 bytes, Brace = 3 bytes
