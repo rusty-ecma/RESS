@@ -2,6 +2,7 @@
 extern crate flate2;
 extern crate ress;
 extern crate tar;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use flate2::read::GzDecoder;
 use ress::*;
@@ -68,8 +69,15 @@ fn get_paths(root: &Path) -> Vec<PathBuf> {
 fn walk(paths: &[PathBuf]) -> (Vec<String>, usize) {
     let mut ret = Vec::new();
     let mut ct = 0;
-    for path in paths {
+    let pb = ProgressBar::new(paths.len() as u64);
+    let sty = ProgressStyle::default_bar()
+        .template("{bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+        .progress_chars("█▓▒░  ");
+    pb.set_style(sty.clone());
+    for path in paths.iter() {
         ct += 1;
+        pb.println(&format!("{}", path.display()));
+        pb.inc(1);
         eprintln!("\n{} file-> {}", ct, path.display());
         let js = read_to_string(&path).unwrap();
         let s = Scanner::new(js.as_str());
