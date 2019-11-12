@@ -74,7 +74,7 @@ fn walk(paths: &[PathBuf]) -> (Vec<String>, usize) {
         .template("{bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
         .progress_chars("█▓▒░  ");
     pb.set_style(sty.clone());
-    for path in paths.iter() {
+    for path in paths {
         ct += 1;
         pb.println(&format!("{}", path.display()));
         pb.inc(1);
