@@ -42,7 +42,11 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
+<<<<<<< HEAD
 use look_behind::{LookBehind, MetaToken, OpenBrace, Paren};
+=======
+use look_behind::{CloseBrace, CloseParen, LookBehind, MetaToken, OpenBrace};
+>>>>>>> Validate unicode escapes in identifiers
 
 use std::rc::Rc;
 

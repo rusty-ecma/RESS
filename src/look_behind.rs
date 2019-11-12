@@ -30,15 +30,6 @@ impl LookBehind {
         self.pointer = wrapping_add(self.pointer, 1, 2);
         self.list[self.pointer as usize] = Some(token)
     }
-    // #[inline]
-    // pub fn push_open(&mut self, open: Rc<OpenBrace>, line: u32) {
-    //     self.push_close(
-    //         MetaToken::OpenBrace(
-    //             open,
-    //             line
-    //         )
-    //     );
-    // }
     #[inline]
     pub fn one(&self) -> &Option<MetaToken> {
         &self.list[self.pointer as usize]

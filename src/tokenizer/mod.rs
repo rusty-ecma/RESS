@@ -144,14 +144,26 @@ impl<'a> Tokenizer<'a> {
         );
         let mut has_escaped = if start == '\\' {
             // TODO validate escaped ident start
-            self.escaped_ident_part()?;
+            let c = self.escaped_ident_part()?;
+            if !Self::is_id_start(c) {
+                return Err(RawError {
+                    msg: "invalid escaped identifier start".to_string(),
+                    idx: self.current_start,
+                });
+            }
             true
         } else {
             false
         };
         while let Some(c) = self.stream.next_char() {
             if c == '\\' {
-                self.escaped_ident_part()?;
+                let c = self.escaped_ident_part()?;
+                if !Self::is_id_continue(c) {
+                    return Err(RawError {
+                        msg: "invalid escaped identifier character".to_string(),
+                        idx: self.current_start,
+                    });
+                }
                 has_escaped = true;
             }
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
@@ -232,21 +244,28 @@ impl<'a> Tokenizer<'a> {
 
     /// picking up after the \
     #[inline]
-    fn escaped_ident_part(&mut self) -> Res<()> {
-        trace!(
-            "escaped_ident_part ({}, {})",
-            self.current_start,
-            self.stream.idx
-        );
+    fn escaped_ident_part(&mut self) -> Res<char> {
         if let Some('u') = self.stream.next_char() {
-            if let Some(c) = self.stream.next_char() {
+            let x = if let Some(c) = self.stream.next_char() {
                 if c == '{' {
-                    self.escaped_with_code_point()?;
+                    self.escaped_with_code_point()?
                 } else {
-                    self.escaped_with_hex4(c)?;
+                    self.escaped_with_hex4(c)?
                 }
+            } else {
+                return Err(RawError {
+                    msg: "invalid unicode escape sequence in identifier".to_string(),
+                    idx: self.current_start,
+                });
+            };
+            if let Some(c) = std::char::from_u32(x) {
+                Ok(c)
+            } else {
+                Err(RawError {
+                    msg: "invalid unicode escape sequence in identifier".to_string(),
+                    idx: self.current_start,
+                })
             }
-            Ok(())
         } else {
             Err(RawError {
                 msg: "invalid unicode escape sequence in identifier".to_string(),
@@ -275,9 +294,12 @@ impl<'a> Tokenizer<'a> {
         let code = match u32::from_str_radix(&code, 16) {
             Ok(n) => n,
             Err(e) => return Err(RawError {
-                msg: format!("escaped unicode code point could not be converted to a u32 with the error {}", e),
+                msg: format!(
+                    "escaped unicode code point could not be converted to a u32 with the error {}",
+                    e
+                ),
                 idx: self.stream.idx,
-            })
+            }),
         };
         if code > 0x10FFF {
             Err(RawError {
@@ -307,10 +329,12 @@ impl<'a> Tokenizer<'a> {
             if let Some(c) = self.stream.next_char() {
                 code += match u32::from_str_radix(c.encode_utf8(&mut [0; 4]), 16) {
                     Ok(n) => n,
-                    Err(e) => return Err(RawError {
-                        msg: format!("escaped unicode char code is not a hex digit {}", e),
-                        idx: self.stream.idx,
-                    })
+                    Err(e) => {
+                        return Err(RawError {
+                            msg: format!("escaped unicode char code is not a hex digit {}", e),
+                            idx: self.stream.idx,
+                        })
+                    }
                 }
             } else {
                 return Err(RawError {
@@ -1678,5 +1702,25 @@ mod test {
         let js = r"asdf\u{FFFFF}";
         let mut t = Tokenizer::new(js);
         dbg!(t.next()).unwrap();
+    }
+
+    #[test]
+    fn char_not_start() {
+        let tests = [r"\u{30}", r"\u0030"];
+
+        for i in &tests {
+            let mut t = Tokenizer::new(i);
+            assert!(t.next().is_err());
+        }
+    }
+
+    #[test]
+    fn char_not_continue() {
+        let tests = [r"abcd\u{8a}", r"abcd\u008a"];
+
+        for i in &tests {
+            let mut t = Tokenizer::new(i);
+            assert!(t.next().is_err());
+        }
     }
 }
