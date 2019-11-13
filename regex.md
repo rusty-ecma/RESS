@@ -64,7 +64,7 @@ With that in mind, let's look at an example:
 As you can see, each of the tokens has a type, the key describes how we think about tokens when checking for a regular expression. There are 4 types of token we care about the rest get lumped into `other`, we can refer to this set as `MetaToken`. Because of how the `isBlock` works, we need each of these to know what line it was on, so all of the `MetaToken`s will carry their line number. Looking through the above description of our algorithm, the furthest we need to look backwards from an `{` is 3 tokens, so our scanner should always keep track of the last 3 tokens we have seen.
 
 
-~The above button will animate our illustration to help visualize what the look behind would look like. Each arrow points to one of the tokens we need to keep track of.~ You may have noticed that one of the variants of `MetaToken` is "special punctuation", this is because we need to treat `(`, `)`, `{`, and `}` in a special way.
+You may have noticed that one of the variants of `MetaToken` is "special punctuation", this is because we need to treat `(`, `)`, `{`, and `}` in a special way.
 
 Using the same example, this is what special means:
 <div style="padding: 5px;background: white;">
@@ -75,14 +75,119 @@ Every `)` or `}` needs to point to the tokens before it's paired `(` or `{` and 
 <div style="padding: 5px;background: white;">
     <img alt="opens with lookbehind" src="./assets/arc_lookbehind.svg" />
 </div>
-First we encounter the red `(`, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the `)` at 1, red `(` at 2 and `things` at 3. Finally we would encounter the blue `{`, this would hold the green `{` at 1, the `)` at 2 and the red `(` at 3. 
+First we encounter the red `(`, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the green open curly brace, this would hold the `)` at 1, red `(` at 2 and `things` at 3. Finally we would encounter the blue `{`, this would hold the green `{` at 1, the `)` at 2 and the red `(` at 3.
 
 This means our scanner needs to keep 3 book keeping lists, the first is the last 3 tokens when scanning the next token. This essentially needs to act like a queue with  a fixed size where the `enqueue` action would `dequeue` when full. The next two are going to be stacks of both opening parentheses and opening curly braces. They are stacks because once we find a close, we don't need that open any more. With these three book keeping constructs we can build our chain of parentheses and curly brace pairs. When we encounter an open paren, we push that into both the last three queue and the parentheses stack. When we find a close paren we link that to our open paren and pop it from the parentheses stack. When we find an open curly brace if the last token we have seen is a close paren, we get the open from it and link that to our open brace, we also need to check if the curly brace stack has anything in it, if it does we need to link the _parent_ open curly to this open curly, with all that done we can push this into both the open curly stack and the last three queue. Now will all of that when we find a close brace we can pop the open curly off it's stack and link it to the close, with the open and close connected we can push the close curly onto the last three queue.
 
 With all the book keeping and linking complete, when we find any `/` we can look back at our last three elements. If it is a closed paren, we can use the link to the open, which is holding the three tokens before, if the first token before is one of our keywords, we know this is the start of a regular expression. If it is a close brace, we first check to see if that is the end of a _block_ by following the link to its open and checking one token before that, it that token is a `:` we recursively check the _parent_ opening curly brace, otherwise we look for our special keywords or punctuation. In the event that it _is_ a block, we look one before the opening curly brace, if that is a close parentheses, we check if that is part of a function signature by following the link to the open parentheses and then looking for a function keyword at 1 and 2 before that, if there is a function keyword there, we look one before it to determine if that is a function expression or declaration. WHEW!
 
-This is all well and good but we have essentially created an linked list, which means that each time we move 3 past a `}`, we might have a lot of things to drop and by default rust does that in a recursive manner ([which can get expensive](https://rust-unofficial.github.io/too-many-lists/first-drop.html)). If we look at our example from above, there are a total of 9 tokens, and when we reach the end of this block, 8 of them are still hanging around in memory. We could try and use some of Rust's smart pointers to make sure we don't have any clones lying around come drop time but picking apart when things can be `Rc`'d and when they cannot be is a pretty challenging problem. Another solution would be to re-write the drop implementation but that just seems like it would get messy fast. A third option is to try and move our regex tests to slightly earlier in the process.
+Let's take a look at what the last 3 tokens look like when we reach the `/` on line 3.
+
+```rust
+
+[
+  MetaToken::CloseParen(
+    MetaToken::OpenParen([
+      None,
+      MetaToken::Keyword(Keyword::Function),
+      MetaToken::Ident
+    ])
+  ),
+  MetaToken::OpenBrace {
+    look_behind: [
+      MetaToken::Ident,
+      MetaToken::OpenParen([
+        None,
+        MetaToken::Keyword(Keyword::Function),
+        MetaToken::Ident
+      ]),
+      MetaToken::CloseParen(
+        MetaToken::OpenParen([
+            None, 
+            MetaToken::Keyword(Keyword::Function),
+            MetaToken::Ident
+        ])
+      ),
+    ],
+    parent: None
+  },
+  MetaToken::OpenBrace {
+    look_behind: [
+      MetaToken::OpenParen([
+        None,
+        MetaToken::Keyword(Keyword::Function),
+        MetaToken::Ident
+      ]),
+      MetaToken::CloseParen(
+        MetaToken::OpenParen([
+            None, 
+            MetaToken::Keyword(Keyword::Function),
+            MetaToken::Ident
+        ])
+      ),
+      MetaToken::OpenBrace {
+        look_behind: [
+          MetaToken::Ident,
+          MetaToken::OpenParen([
+            None,
+            MetaToken::Keyword(Keyword::Function),
+            MetaToken::Ident
+          ]),
+          MetaToken::CloseParen(
+            MetaToken::OpenParen([
+                None, 
+                MetaToken::Keyword(Keyword::Function),
+                MetaToken::Ident
+            ])
+          ),
+        ],
+        parent: None
+      }
+    ],
+    parent: Some(MetaToken::OpenBrace {
+      look_behind: [
+        MetaToken::Ident,
+        MetaToken::OpenParen([
+          None,
+          MetaToken::Keyword(Keyword::Function),
+          MetaToken::Ident
+        ]),
+        MetaToken::CloseParen(
+          MetaToken::OpenParen([
+              None, 
+              MetaToken::Keyword(Keyword::Function),
+              MetaToken::Ident
+          ])
+        ),
+      ],
+      parent: None
+    })
+  }
+]
+```
+
+We have essentially created an linked list and a big one to boot! This means that each time we move 3 past a `}`, we might have a lot of things to `drop` and by default rust does that in a recursive manner ([which can get expensive](https://rust-unofficial.github.io/too-many-lists/first-drop.html)). If we look at our example from above, there are a total of 9 tokens, and when we reach the end of this block, 8 of them are still hanging around in memory. We could try and use some of Rust's smart pointers to make sure we don't have any clones lying around come drop time but picking apart when things can be `Rc`'d and when they cannot be is a pretty challenging problem. Another solution would be to re-write the drop implementation but that just seems like it would get messy fast. A third option is to try and move our regex tests to slightly earlier in the process.
 
 If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, is the token before it `if`, `while`, `for` or `with`or is the token 1 or 2 before it the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always linking back to it? Then when we pop the `(` off the paren stack, we can attach the same two booleans to the `)`. Now when we find an `{` we can see if it is a block, we can also attach the close/open paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. 
 
-We still need to keep around our 3 book keeping lists, though they will be a list of copy types. Paren = 2 bytes, Brace = 3 bytes
+With these changes, the last three tokens when we reach the `/` on line 3 would look like this:
+
+```rust
+[
+  MetaToken::CloseParen {
+    is_conditional: false,
+    is_func_expr: false,
+  },
+  MetaToken::OpenBrace {
+    is_block: true,
+    paren_is_conditional: false,
+    paren_is_func_expr: false,
+  },
+  MetaToken::OpneBrace {
+    is_block: true,
+    paren_is_conditional: false,
+    paren_is_func_expr: false,
+  }
+]
+```
+That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types!
