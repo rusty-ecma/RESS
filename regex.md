@@ -18,26 +18,43 @@ Initially reading their "almost-one lookbehind" description can be slightly conf
   - so in `function(n) {} /`, `tok-2` is `)` and `tok-3` is `function`
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
   - so in `{function() {}}` the function body start needs to be able to see the block start at the very beginning
-
+<style>
+#is-a-block,
+#is-a-function-expression-body {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+</style>
 Now let's rephrase the algorithm in plain english.
+
+When we find a forward slash, the first thing we need to do is look backwards 1 token. If the token 1 before the `/` is a punctuation but not `}` or `)` or a keyword but not `this`, we found a regular expression. `}` and `)` are special cases we will get into next but all other previous tokens would mean it is not a regular expression. Now we have just two cases left, first is `)`. If the token before the `/` is a `)`, we need to jump backwards to the token before the `(` that would be paired with it, if that is `if`, `while`, `for`, or `with`, we found a regex otherwise not. If the token one before the `/` is `}`, we need to determine if the pair of `{` and `}` is a "block" ([see below](#is-a-block)). If the `}` isn't part of a "block", it is not a regular expression, if it is a block we need to check if that block is the body of a function expression ([see below](#is-a-function-expression-body)). If the block is the body of a function expression it is not a regular expression otherwise it is a regular expression.
+
+#### Is a Block
+To determine if a pair of curly braces is a block we first look 1 before the `{`, if it is a `(`, `[`, a punctuation or keyword that represents an operation ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` it is not a block. If the token 1 before the `{` is the keyword `return` or `yield`, we need to compare the line number of the keyword and the `{`, if they match then it is not a block otherwise it is a block. if the token 1 before the `{` is a `:`, we need to look at the possible parent `{`, if there is a parent we run the same test on that `{`, if that is a block, this `{` is also a block, otherwise it is not a block. If the token 1 before the `{` is anything else, it is a block.  
+
+#### Is a Function Expression Body
+if the token 1 before the `{` is `)`, we need to look at the two tokens before the paired `(`, if either of them are the keyword `function`, we need to look 1 token that. If the token one before `function` is `(`, `[`, a punctuation or keyword that represents an operation ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return` the block is the body of a function expression, in all other cases it is not.
+
 - if the current token is a `/`, look back one token
 - if the previous token is `)`
-  - if the token before it's `(` is `if`, `while`, `for`, or `with`, we found a regex
-  - else, we found a forward slash
+  - check the token before it's `(`
+    - if that is `if`, `while`, `for`, or `with`, we found a regex
+    - else, we found a forward slash
 - if the previous token is `}`
-  - we check if it is a block by looking 1 before it's `{`
-    - if that is `(` or `[` it is not a block
-    - if that is `:` we look to the opening's parent
-      - if no parent, it is a block
-      - else if the parent is a block, it is a block
-      - else, it is not a block
-    - if that is a punctuation or keyword that represents an operation (see below), it is not a block
-    - if that is the keyword `return` or `yield`
-      - check the line number of the open brace and one token before the open brace
-        - if they match, it is not a block
-        - else, it is a block
-    - if that is the keyword `case`, it is not a block
-    - else, it is a block
+  - we check if it is a block
+    - look 1 before it's `{`
+      - if that is `(` or `[` it is not a block
+      - if that is `:` we look to the `{`'s parent
+        - if no parent, it is a block
+        - else if the parent is a block, it is a block
+        - else, it is not a block
+      - if that is a punctuation or keyword that represents an operation (see below), it is not a block
+      - if that is the keyword `return` or `yield`
+        - check the line number of the open brace and one token before the open brace
+          - if they match, it is not a block
+          - else, it is a block
+      - if that is the keyword `case`, it is not a block
+      - else, it is a block
   - if it is a block
     - we look to the token behind the `{`
       - if that is a `)`
@@ -50,8 +67,7 @@ Now let's rephrase the algorithm in plain english.
 - if the previous token is a keyword but not `this`, we found a regex
 - else, we found a forward slash
 
-> punctuation or keyword that represents an operation:
->
+### Punctuation or Keyword Represents Operation
 > `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `>>>=`, `&=`, `|=`, `^=`, `,`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `>>>`, `&`, `|`, `^`, `&&`, `||`, `?`, `:`, 
 `instanceof`, `in`, `===`, `==`, `>=`, `<=`, `<`, `>`, `!=`, `!==`, `++`, `--`, `~`, `!`, `delete`, `void`, `typeof`, `throw`, `new`
 
