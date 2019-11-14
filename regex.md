@@ -19,13 +19,6 @@ Initially reading their "almost-one lookbehind" description can be slightly conf
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
   - so in `{function() {}}` the function body start needs to be able to see the block start at the very beginning
 
-<style>
-h4 {
-  margin-bottom: 0;
-  padding-bottom: 0;
-}
-</style>
-
 Now let's rephrase the algorithm in plain english.
 
 When we find a forward slash, the first thing we need to do is look backwards 1 token. If the token 1 before the `/` is a punctuation but not `}` or `)` or a keyword but not `this`, we found a regular expression. `}` and `)` are special cases we will get into next but all other previous tokens would mean it is not a regular expression. Now we have just two cases left, first is `)`. If the token before the `/` is a `)`, we need to jump backwards to the token before the `(` that would be paired with it, if that is `if`, `while`, `for`, or `with`, we found a regex otherwise not. If the token one before the `/` is `}`, we need to determine if the pair of `{` and `}` is a "block" ([see below](#is-a-block)). If the `}` isn't part of a "block", it is not a regular expression, if it is a block we need to check if that block is the body of a function expression ([see below](#is-a-function-expression-body)). If the block is the body of a function expression it is not a regular expression otherwise it is a regular expression.
