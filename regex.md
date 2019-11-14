@@ -19,8 +19,7 @@ Initially reading their "almost-one lookbehind" description can be slightly conf
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
   - so in `{function() {}}` the function body start needs to be able to see the block start at the very beginning
 <style>
-#is-a-block,
-#is-a-function-expression-body {
+h4 {
   margin-bottom: 0;
   padding-bottom: 0;
 }
