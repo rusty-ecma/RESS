@@ -29,43 +29,48 @@ To determine if a pair of curly braces is a block we first look 1 before the `{`
 #### Is a Function Expression Body
 if the token 1 before the `{` is `)`, we need to look at the two tokens before the paired `(`, if either of them are the keyword `function`, we need to look 1 token that. If the token one before `function` is `(`, `[`, a punctuation or keyword that represents an operation ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return` the block is the body of a function expression, in all other cases it is not.
 
+<details>
+<summary>As a Bulleted List</summary>
+
 - if the current token is a `/`, look back one token
-- if the previous token is `)`
-  - check the token before it's `(`
-    - if that is `if`, `while`, `for`, or `with`, we found a regex
+  - if the previous token is `)`
+    - check the token before it's `(`
+      - if that is `if`, `while`, `for`, or `with`, we found a regex
+      - else, we found a forward slash
+  - if the previous token is `}`
+    - we check if it is a block
+      - look 1 before it's `{`
+        - if that is `(` or `[` it is not a block
+        - if that is `:` we look to the `{`'s parent
+          - if no parent, it is a block
+          - else if the parent is a block, it is a block
+          - else, it is not a block
+        - if that is a punctuation or keyword that represents an operation (see below), it is not a block
+        - if that is the keyword `return` or `yield`
+          - check the line number of the open brace and one token before the open brace
+            - if they match, it is not a block
+            - else, it is a block
+        - if that is the keyword `case`, it is not a block
+        - else, it is a block
+    - if it is a block
+      - we look to the token behind the `{`
+        - if that is a `)`
+          - we check if the token 1 or 2 before the `(` is the keyword `function`, we need to check if that is an expression
+            - if the token before `function` is `(`, `[`, punctuation or keyword that represents an operation (see below), or the keyword `case` or `return`, we found a forward slash
+            - else, we found a regex
+        - else, we found a regex
     - else, we found a forward slash
-- if the previous token is `}`
-  - we check if it is a block
-    - look 1 before it's `{`
-      - if that is `(` or `[` it is not a block
-      - if that is `:` we look to the `{`'s parent
-        - if no parent, it is a block
-        - else if the parent is a block, it is a block
-        - else, it is not a block
-      - if that is a punctuation or keyword that represents an operation (see below), it is not a block
-      - if that is the keyword `return` or `yield`
-        - check the line number of the open brace and one token before the open brace
-          - if they match, it is not a block
-          - else, it is a block
-      - if that is the keyword `case`, it is not a block
-      - else, it is a block
-  - if it is a block
-    - we look to the token behind the `{`
-      - if that is a `)`
-        - we check if the token 1 or 2 before the `(` is the keyword `function`, we need to check if that is an expression
-          - if the token before `function` is `(`, `[`, punctuation or keyword that represents an operation (see below), or the keyword `case` or `return`, we found a forward slash
-          - else, we found a regex
-      - else, we found a regex
+  - if the previous token is any other punctuation, we found a regex
+  - if the previous token is a keyword but not `this`, we found a regex
   - else, we found a forward slash
-- if the previous token is any other punctuation, we found a regex
-- if the previous token is a keyword but not `this`, we found a regex
-- else, we found a forward slash
+
+</details>
 
 ### Punctuation or Keyword Represents Operation
 > `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `>>>=`, `&=`, `|=`, `^=`, `,`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `>>>`, `&`, `|`, `^`, `&&`, `||`, `?`, `:`, 
 `instanceof`, `in`, `===`, `==`, `>=`, `<=`, `<`, `>`, `!=`, `!==`, `++`, `--`, `~`, `!`, `delete`, `void`, `typeof`, `throw`, `new`
 
-With that in mind, let's look at an example:
+With all of that in mind, let's look at an example:
 
 <div style="padding-top: 5px; background:white;">
     <img src="./assets/look_behind.svg" alt="types of tokens" />
