@@ -9,7 +9,7 @@ let y = function() {} / 100;
 {}/1/g //this is actually a regular expression!
 ```
 
-While most sane JS programmers wouldn't perform the above, it means that we need to look backwards to know if any forward slash might be a regular expression. Keeping a history of tokens is a bit problematic, depending on how long that history needs to be. In this case we may need to look back an arbitrary number of tokens to get the right answer, keeping all of the tokens around indefinitely is pretty expensive. Even if we were to pair down the data to an un-nested enum that would be 1 bytes per token, the library jquery has a total of `46_863` tokens which would be `~45kb`. Add to the overall size and number of allocations the fact that we would need to scan backwards an unknown distance, touching each index, makes this solution less than ideal. So how can we get to a solution? Well, let's take a look at the [sweet.js "read" algorithm](https://github.com/sweet-js/sweet-core/wiki/design).
+While most sane JS programmers wouldn't perform the above, the fact that it is valid means that we need to look backwards to know if any forward slash might be a regular expression. Keeping a history of tokens is a bit problematic, depending on how long that history needs to be. In this case we may need to look back an arbitrary number of tokens to get the right answer, keeping all of the tokens around indefinitely is pretty expensive. Even if we were to pair down the data to an un-nested enum that would be 1 bytes per token, the library jquery has a total of `46_863` tokens which would be `~45kb`. Add to the overall size and number of allocations the fact that we would need to scan backwards an unknown distance, touching each index, makes this solution less than ideal. So how could we get the same information more efficiently? Well, let's take a look at the [sweet.js "read" algorithm](https://github.com/sweet-js/sweet-core/wiki/design).
 
 Initially reading their "almost-one lookbehind" description can be slightly confusing, [they published a paper](https://users.soe.ucsc.edu/~cormac/papers/dls14a.pdf) that details a method for creating "token-trees", the paper goes into much greater detail about what a "token-tree" is but to give you the short version of how it relates to the linked psuedo-code:
 
@@ -19,15 +19,15 @@ Initially reading their "almost-one lookbehind" description can be slightly conf
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
   - so in `{function() {}}` the function body start needs to be able to see the block start at the very beginning
 
-Now let's rephrase the algorithm in plain english.
+With that, let's try and walk through the pseudo-code in more plain language.
 
-When we find a forward slash, the first thing we need to do is look backwards 1 token. If the token 1 before the `/` is a punctuation but not `}` or `)` or a keyword but not `this`, we found a regular expression. `}` and `)` are special cases we will get into next but all other previous tokens would mean it is not a regular expression. Now we have just two cases left, first is `)`. If the token before the `/` is a `)`, we need to jump backwards to the token before the `(` that would be paired with it, if that is `if`, `while`, `for`, or `with`, we found a regex otherwise not. If the token one before the `/` is `}`, we need to determine if the pair of `{` and `}` is a "block" ([see below](#is-a-block)). If the `}` isn't part of a "block", it is not a regular expression, if it is a block we need to check if that block is the body of a function expression ([see below](#is-a-function-expression-body)). If the block is the body of a function expression it is not a regular expression otherwise it is a regular expression.
+When we find a forward slash, the first thing we need to do is look backwards 1 token. If the token 1 before the `/` is a punctuation but not `}` or `)` or a keyword but not `this`, we found a regular expression. `}` and `)` are special cases we will get into next but all other previous tokens would mean it is not a regular expression. Now we have just two cases left, first is `)`. If the token before the `/` is a `)`, we need to jump backwards to the token before the `(` that would be paired with this `)`, if that is `if`, `while`, `for`, or `with`, we found a regex otherwise not. If the token one before the `/` is `}`, we need to determine if the pair of `{` and `}` is a "block" ([see below](#is-a-block)). If the `}` isn't part of a "block", we are not at a regex, if it is a block we need to check if that block is the body of a function expression ([see below](#is-a-function-expression-body)). If the block is the body of a function expression it is not a regular expression otherwise it is a regular expression.
 
 #### Is a Block
-To determine if a pair of curly braces is a block we first look 1 before the `{`, if it is a `(`, `[`, a punctuation or keyword that represents an operation ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` it is not a block. If the token 1 before the `{` is the keyword `return` or `yield`, we need to compare the line number of the keyword and the `{`, if they match then it is not a block otherwise it is a block. if the token 1 before the `{` is a `:`, we need to look at the possible parent `{`, if there is a parent we run the same test on that `{`, if that is a block, this `{` is also a block, otherwise it is not a block. If the token 1 before the `{` is anything else, it is a block.  
+To determine if a pair of curly braces is a block we first look 1 before the `{`, if it is a `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` it is not a block. If the token 1 before the `{` is the keyword `return` or `yield`, we need to compare the line number of the keyword and the `{`, if they match then it is not a block otherwise it is a block. if the token 1 before the `{` is a `:`, we need to look at the possible parent `{`, if there is a parent we run the same test on that `{`, if that is a block, this `{` is also a block, otherwise it is not a block. If the token 1 before the `{` is anything else, it is a block.  
 
 #### Is a Function Expression Body
-if the token 1 before the `{` is `)`, we need to look at the two tokens before the paired `(`, if either of them are the keyword `function`, we need to look 1 token that. If the token one before `function` is `(`, `[`, a punctuation or keyword that represents an operation ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return` the block is the body of a function expression, in all other cases it is not.
+if the token 1 before the `{` is `)`, we need to look at the two tokens before the paired `(`, if either of them are the keyword `function`, we need to look 1 token before _that_. If the token one before `function` is `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return` the block is the body of a function expression, in all other cases it is not.
 
 <details>
 <summary>As a Bulleted List</summary>
@@ -45,7 +45,7 @@ if the token 1 before the `{` is `)`, we need to look at the two tokens before t
           - if no parent, it is a block
           - else if the parent is a block, it is a block
           - else, it is not a block
-        - if that is a punctuation or keyword that represents an operation (see below), it is not a block
+        - if that is an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), it is not a block
         - if that is the keyword `return` or `yield`
           - check the line number of the open brace and one token before the open brace
             - if they match, it is not a block
@@ -56,7 +56,7 @@ if the token 1 before the `{` is `)`, we need to look at the two tokens before t
       - we look to the token behind the `{`
         - if that is a `)`
           - we check if the token 1 or 2 before the `(` is the keyword `function`, we need to check if that is an expression
-            - if the token before `function` is `(`, `[`, punctuation or keyword that represents an operation (see below), or the keyword `case` or `return`, we found a forward slash
+            - if the token before `function` is `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return`, we found a forward slash
             - else, we found a regex
         - else, we found a regex
     - else, we found a forward slash
@@ -66,7 +66,7 @@ if the token 1 before the `{` is `)`, we need to look at the two tokens before t
 
 </details>
 
-### Punctuation or Keyword Represents Operation
+### _Operators_
 > `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `>>>=`, `&=`, `|=`, `^=`, `,`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `>>>`, `&`, `|`, `^`, `&&`, `||`, `?`, `:`, 
 `instanceof`, `in`, `===`, `==`, `>=`, `<=`, `<`, `>`, `!=`, `!==`, `++`, `--`, `~`, `!`, `delete`, `void`, `typeof`, `throw`, `new`
 
@@ -93,18 +93,18 @@ Every `)` or `}` needs to point to their paired `(` or `{` and every `{` needs t
 
 First we encounter the red `(`, it would need to hold the `things` ident at position 1 and `function` keyword at position 2, position 3 would be empty. Next we would encounter the orange `{`, this would hold the `)` at 1, `(` at 2 and `things` at 3. Finally we would encounter the blue `{`, this would hold the orange `{` at 1, the `)` at 2 and the red `(` at 3, it also hold the orange `{` as its _parent_.
 
-This means our scanner needs to keep 3 book keeping lists. As covered above, the first is the last 3 tokens when scanning the next token. This essentially needs to act like a queue with a fixed size where the `enqueue` action would `dequeue` when full. Here is an example of how this would look for the first 4 tokens in our example.
+This means our scanner needs to keep 3 book keeping lists. The first is the last 3 tokens when scanning the next token, as covered above. This essentially needs to act like a queue with a fixed size where the `enqueue` action would `dequeue` when full. Here is an example of how this would look for the first 4 tokens in our example.
 
 ```rust
-//   3
-// step 3 .     2          1
-[ . None,     None,    "function"]
+//   3          2          1
+// step 3
+[   None,     None,    "function"]
 // step 2
-[ . None,  "function",  "thing"]
+[   None,  "function",  "thing"]
 // step 3
 ["function", "thing",     "("]
 // step 4
-[ ."thing",    "(",       ")"]
+[  "thing",    "(",       ")"]
 ```
 
 The next two are going to be stacks of both opening parentheses and opening curly braces. They are stacks because once we find a close, we don't need that open any more. With these three book keeping constructs we can build our chain of parentheses and curly brace pairs. When we encounter an `(`, we attach the last three tokens to it and push that into both the last three queue and the parentheses stack. When we find a `)`, we pop the last `(` and attach them together. When we find an `{` we attach the last 3 tokens we have seen and if the curly brace stack is not empty we attach the top of that stack to this `{` as the _parent_. With all that done we can push this into both the open curly stack and the last three queue. Now when we find a `}` we can pop the open curly off it's stack and link it to the close, with the open and close connected we can push the close curly onto the last three queue.
@@ -226,4 +226,4 @@ With these changes, the last three tokens when we reach the `/` on line 3 would 
   }
 ]
 ```
-That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types! The `MetaToken` is now 4 bytes, and we only even need to keep 3 of those around. The inside of the `*Brace` variant is 3 bytes and the `*Paren` variant is 2 bytes! 
+That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types! The `MetaToken` is now 4 bytes, and we only even need to keep 3 of those around. The inside of the `OpenBrace` and `CloseBrace` variants are 3 bytes and the `OpenParen` and `CloseParen` variants are 2 bytes! 
