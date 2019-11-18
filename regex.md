@@ -209,21 +209,35 @@ if the token before is a `)`, we can also attach the paren flags into our `{`, f
 With these changes, the last three tokens when we reach the `/` on line 3 would look like this:
 
 ```rust
+struct Paren {
+  is_conditiona: bool,
+  is_func_expr: bool,
+}
+
+struct Brace {
+  is_block: bool,
+  paren: Option<Paren>,
+}
+
 [
-  MetaToken::CloseParen {
+  MetaToken::CloseParen(Paren {
     is_conditional: false,
     is_func_expr: false,
-  },
-  MetaToken::OpenBrace {
+  }),
+  MetaToken::OpenBrace(Brace {
     is_block: true,
-    paren_is_conditional: false,
-    paren_is_func_expr: false,
-  },
-  MetaToken::OpenBrace {
+    paren: Some(Paren {
+      is_conditional: false,
+      is_func_expr: false,
+    })
+  }),
+  MetaToken::OpenBrace(Brace {
     is_block: true,
-    paren_is_conditional: false,
-    paren_is_func_expr: false,
-  }
+    paren: Some(Paren {
+      is_conditional: false,
+      is_func_expr: false,
+    })
+  })
 ]
 ```
 That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types! The `MetaToken` is now 4 bytes, the inside of the `OpenBrace` and `CloseBrace` variants are 3 bytes and the `OpenParen` and `CloseParen` variants are 2 bytes! 
