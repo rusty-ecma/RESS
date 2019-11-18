@@ -114,88 +114,77 @@ With all the book keeping and linking complete, when we find any `/` we can look
 Let's take a look at what the last 3 tokens look like when we reach the `/` on line 3 in our example.
 
 ```rust
-
 [
-  // 3
-  MetaToken::CloseParen(
-    MetaToken::OpenParen([
-      None,
-      MetaToken::Keyword(Keyword::Function),
-      MetaToken::Ident
-    ])
-  ),
-  // 2
-  MetaToken::OpenBrace {
-    look_behind: [
-      MetaToken::Ident,
-      MetaToken::OpenParen([
+    // 3
+    MetaToken::CloseParen(MetaToken::OpenParen([
         None,
         MetaToken::Keyword(Keyword::Function),
-        MetaToken::Ident
-      ]),
-      MetaToken::CloseParen(
-        MetaToken::OpenParen([
-            None, 
-            MetaToken::Keyword(Keyword::Function),
-            MetaToken::Ident
-        ])
-      ),
-    ],
-    parent: None
-  },
-  // 1
-  MetaToken::OpenBrace {
-    look_behind: [
-      MetaToken::OpenParen([
-        None,
-        MetaToken::Keyword(Keyword::Function),
-        MetaToken::Ident
-      ]),
-      MetaToken::CloseParen(
-        MetaToken::OpenParen([
-            None, 
-            MetaToken::Keyword(Keyword::Function),
-            MetaToken::Ident
-        ])
-      ),
-      MetaToken::OpenBrace {
-        look_behind: [
-          MetaToken::Ident,
-          MetaToken::OpenParen([
-            None,
-            MetaToken::Keyword(Keyword::Function),
-            MetaToken::Ident
-          ]),
-          MetaToken::CloseParen(
-            MetaToken::OpenParen([
-                None, 
-                MetaToken::Keyword(Keyword::Function),
-                MetaToken::Ident
-            ])
-          ),
-        ],
-        parent: None
-      }
-    ],
-    parent: Some(MetaToken::OpenBrace {
-      look_behind: [
         MetaToken::Ident,
-        MetaToken::OpenParen([
-          None,
-          MetaToken::Keyword(Keyword::Function),
-          MetaToken::Ident
-        ]),
-        MetaToken::CloseParen(
-          MetaToken::OpenParen([
-              None, 
-              MetaToken::Keyword(Keyword::Function),
-              MetaToken::Ident
-          ])
-        ),
-      ],
-      parent: None
-    })
-  }
+    ])),
+    // 2
+    MetaToken::OpenBrace {
+        look_behind: [
+            MetaToken::Ident,
+            MetaToken::OpenParen([
+                None,
+                MetaToken::Keyword(Keyword::Function),
+                MetaToken::Ident,
+            ]),
+            MetaToken::CloseParen(MetaToken::OpenParen([
+                None,
+                MetaToken::Keyword(Keyword::Function),
+                MetaToken::Ident,
+            ])),
+        ],
+        parent: None,
+    },
+    // 1
+    MetaToken::OpenBrace {
+        look_behind: [
+            MetaToken::OpenParen([
+                None,
+                MetaToken::Keyword(Keyword::Function),
+                MetaToken::Ident,
+            ]),
+            MetaToken::CloseParen(MetaToken::OpenParen([
+                None,
+                MetaToken::Keyword(Keyword::Function),
+                MetaToken::Ident,
+            ])),
+            MetaToken::OpenBrace {
+                look_behind: [
+                    MetaToken::Ident,
+                    MetaToken::OpenParen([
+                        None,
+                        MetaToken::Keyword(Keyword::Function),
+                        MetaToken::Ident,
+                    ]),
+                    MetaToken::CloseParen(MetaToken::OpenParen([
+                        None,
+                        MetaToken::Keyword(Keyword::Function),
+                        MetaToken::Ident,
+                    ])),
+                ],
+                parent: None,
+            },
+        ],
+        parent: Some(MetaToken::OpenBrace {
+            look_behind: [
+                MetaToken::Ident,
+                MetaToken::OpenParen([
+                    None,
+                    MetaToken::Keyword(Keyword::Function),
+                    MetaToken::Ident,
+                ]),
+                MetaToken::CloseParen(MetaToken::OpenParen([
+                    None,
+                    MetaToken::Keyword(Keyword::Function),
+                    MetaToken::Ident,
+                ])),
+            ],
+            parent: None,
+        }),
+    },
 ]
 ```
 
@@ -204,9 +193,7 @@ We have essentially created a couple of linked lists and they can get pretty big
 If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, is the token before it `if`, `while`, `for` or `with` or is the token 1 or 2 before it the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always linking back to it? Then when we pop the `(` off its stack, we can attach the same two booleans to the `)`. 
 
 Now when we find an `{` we can see if it is a block,
-if the token before is a `)`, we can also attach the paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. 
-
-With these changes, the last three tokens when we reach the `/` on line 3 would look like this:
+if the token before is a `)`, we can also attach the paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. We could capture all of the information we need a in couple of `struct`s that might look like this:
 
 ```rust
 struct Paren {
@@ -218,26 +205,30 @@ struct Brace {
   is_block: bool,
   paren: Option<Paren>,
 }
+```
 
+With these `struct`s, the last three tokens when we reach the `/` on line 3 would look like this:
+
+```rust
 [
-  MetaToken::CloseParen(Paren {
-    is_conditional: false,
-    is_func_expr: false,
-  }),
-  MetaToken::OpenBrace(Brace {
-    is_block: true,
-    paren: Some(Paren {
-      is_conditional: false,
-      is_func_expr: false,
-    })
-  }),
-  MetaToken::OpenBrace(Brace {
-    is_block: true,
-    paren: Some(Paren {
-      is_conditional: false,
-      is_func_expr: false,
-    })
-  })
+    MetaToken::CloseParen(Paren {
+        is_conditional: false,
+        is_func_expr: false,
+    }),
+    MetaToken::OpenBrace(Brace {
+        is_block: true,
+        paren: Some(Paren {
+            is_conditional: false,
+            is_func_expr: false,
+        }),
+    }),
+    MetaToken::OpenBrace(Brace {
+        is_block: true,
+        paren: Some(Paren {
+            is_conditional: false,
+            is_func_expr: false,
+        }),
+    }),
 ]
 ```
-That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types! The `MetaToken` is now 4 bytes, the inside of the `OpenBrace` and `CloseBrace` variants are 3 bytes and the `OpenParen` and `CloseParen` variants are 2 bytes! 
+That is much easier to follow, keeps a lot less information around, and solves our possible recursive `drop` problem. We still need to keep around our 3 book keeping lists, though they will be a list of copy types! The `MetaToken` is now just 4 bytes!
