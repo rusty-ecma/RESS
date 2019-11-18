@@ -42,9 +42,7 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
-use look_behind::{LookBehind, MetaToken, OpenBrace, Paren};
-
-use std::rc::Rc;
+use look_behind::{LookBehind, MetaToken, Brace, Paren};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -171,8 +169,7 @@ pub struct Scanner<'a> {
     new_line_count: usize,
     line_cursor: usize,
     last_three: LookBehind,
-    before_curly_stack: Vec<Rc<OpenBrace>>,
-    brace_stack: Vec<look_behind::Brace>,
+    brace_stack: Vec<Brace>,
     paren_stack: Vec<Paren>,
 }
 
@@ -191,7 +188,6 @@ impl<'a> Scanner<'a> {
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
             last_three: LookBehind::new(),
-            before_curly_stack: Vec::new(),
             paren_stack: Vec::new(),
             brace_stack: Vec::new(),
         }
@@ -240,7 +236,6 @@ impl<'b> Scanner<'b> {
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
             paren_stack: self.paren_stack.clone(),
-            before_curly_stack: self.before_curly_stack.clone(),
         }
     }
     /// Set the scanner's current state to the state provided
@@ -252,10 +247,8 @@ impl<'b> Scanner<'b> {
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
         self.paren_stack = state.paren_stack;
-        self.before_curly_stack = state.before_curly_stack;
     }
     #[inline]
-    #[allow(clippy::cognitive_complexity)]
     /// The implementation of `Scanner::next` that includes
     /// the flag for advancing, meaning the `look_ahead` method
     /// can also use this implementation
@@ -422,114 +415,143 @@ impl<'b> Scanner<'b> {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
-        } else if let Token::Punct(ref p) = &ret.token {
-            debug!("last_three before open paren: {:?}", self.last_three);
-            match p {
-                Punct::OpenParen => {
-                    let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
-                        self.last_three.one()
-                    {
-                        if let Some(tok) = self.last_three.two() {
-                            !Self::check_for_expression(tok)
-                        } else {
-                            false
-                        }
-                    } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
-                        self.last_three.two()
-                    {
-                        if let Some(tok) = self.last_three.three() {
-                            Self::check_for_expression(tok)
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    };
-                    let conditional = if let Some(tok) = self.last_three.one() {
-                        Self::check_token_for_conditional(tok)
-                    } else {
-                        false
-                    };
-                    self.paren_stack.push(Paren {
-                        func_expr,
-                        conditional,
-                    });
-                    self.last_three.push(&next.ty, self.new_line_count as u32);
-                }
-                Punct::OpenBrace => {
-                    let is_block = if let Some(last) = self.last_three.one() {
-                        match last {
-                            MetaToken::Punct(Punct::OpenParen, _)
-                            | MetaToken::Punct(Punct::OpenBracket, _)
-                            | MetaToken::OpenParen(_, _)
-                            | MetaToken::OpenBrace(_, _) => false,
-                            MetaToken::Punct(Punct::Colon, _) => {
-                                if let Some(parent) = self.brace_stack.last() {
-                                    parent.is_block
-                                } else {
-                                    false
-                                }
-                            }
-                            MetaToken::Punct(_, _) => !Self::is_op(&last),
-                            MetaToken::Keyword(RawKeyword::Return, line)
-                            | MetaToken::Keyword(RawKeyword::Yield, line) => {
-                                if let Some(last) = self.last_three.two() {
-                                    last.line_number() != *line
-                                } else {
-                                    false
-                                }
-                            }
-                            MetaToken::Keyword(RawKeyword::Case, _) => false,
-                            MetaToken::Keyword(_, _) => !Self::is_op(&last),
-                            _ => true,
-                        }
-                    } else {
-                        true
-                    };
-                    let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one()
-                    {
-                        Some(*open)
-                    } else {
-                        None
-                    };
-                    let brace = look_behind::Brace { is_block, paren };
-                    self.brace_stack.push(brace);
-                    self.last_three
-                        .push_close(MetaToken::OpenBrace(brace, self.new_line_count as u32));
-                }
-                Punct::CloseParen => {
-                    let paren = if let Some(paren) = self.paren_stack.pop() {
-                        paren
-                    } else {
-                        self.errored = true;
-                        return Some(self.error(RawError {
-                            idx: ret.span.start,
-                            msg: "Unmatched open close paren".to_string(),
-                        }));
-                    };
-                    self.last_three
-                        .push_close(MetaToken::CloseParen(paren, self.new_line_count as u32))
-                }
-                Punct::CloseBrace => {
-                    if let Some(open) = self.brace_stack.pop() {
-                        let close = MetaToken::CloseBrace(open, self.new_line_count as u32);
-                        self.last_three.push_close(close);
-                    } else {
-                        return Some(self.error(RawError {
-                            idx: ret.span.start,
-                            msg: "unmatched close brace".to_string(),
-                        }));
-                    }
-                }
-                _ => self.last_three.push(&next.ty, self.new_line_count as u32),
+        } else  {
+            if let Err(e) = self.keep_books(&ret) {
+                return Some(Err(e));
             }
-        } else if !next.ty.is_comment() {
-            self.last_three.push(&next.ty, self.new_line_count as u32);
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
         self.pending_new_line = new_line_count > 0;
         Some(Ok(ret))
+    }
+    #[inline]
+    /// Evaluate the token for possible regex
+    /// start and handle updating the 
+    /// `self.last_three`, `self.paren_stack` and `self.brace_stack`
+    fn keep_books(&mut self, item: &Item<Token<&'b str>>) -> Res<()> {
+        if let Token::Punct(ref p) = &item.token {
+            match p {
+                Punct::OpenParen => self.handle_open_paren_books(),
+                Punct::OpenBrace => self.handle_open_brace_books(),
+                Punct::CloseParen => self.handle_close_paren_books(item.span.start)?,
+                Punct::CloseBrace => self.handle_close_brace_books(item.span.start)?,
+                _ => self.last_three.push((&item.token, self.new_line_count as u32).into()),
+            }
+        } else if !item.token.is_comment() {
+            self.last_three.push((&item.token, self.new_line_count as u32).into());
+        }
+        Ok(())
+    }
+    #[inline]
+    /// Handle the book keeping when we find
+    /// an `(`
+    fn handle_open_paren_books(&mut self) {
+        let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+            self.last_three.one()
+        {
+            if let Some(tok) = self.last_three.two() {
+                !Self::check_for_expression(tok)
+            } else {
+                false
+            }
+        } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+            self.last_three.two()
+        {
+            if let Some(tok) = self.last_three.three() {
+                Self::check_for_expression(tok)
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        let conditional = if let Some(tok) = self.last_three.one() {
+            Self::check_token_for_conditional(tok)
+        } else {
+            false
+        };
+        let paren = Paren {
+            func_expr,
+            conditional,
+        };
+        let meta = MetaToken::OpenParen(paren, self.new_line_count as u32);
+        self.paren_stack.push(paren);
+        self.last_three.push(meta);
+    }
+    #[inline]
+    /// Handle the book keeping when we find
+    /// and `{`
+    fn handle_open_brace_books(&mut self) {
+        let is_block = if let Some(last) = self.last_three.one() {
+            match last {
+                MetaToken::Punct(Punct::OpenParen, _)
+                | MetaToken::Punct(Punct::OpenBracket, _)
+                | MetaToken::OpenParen(_, _)
+                | MetaToken::OpenBrace(_, _) => false,
+                MetaToken::Punct(Punct::Colon, _) => {
+                    if let Some(parent) = self.brace_stack.last() {
+                        parent.is_block
+                    } else {
+                        false
+                    }
+                }
+                MetaToken::Punct(_, _) => !Self::is_op(&last),
+                MetaToken::Keyword(RawKeyword::Return, line)
+                | MetaToken::Keyword(RawKeyword::Yield, line) => {
+                    if let Some(last) = self.last_three.two() {
+                        last.line_number() != *line
+                    } else {
+                        false
+                    }
+                }
+                MetaToken::Keyword(RawKeyword::Case, _) => false,
+                MetaToken::Keyword(_, _) => !Self::is_op(&last),
+                _ => true,
+            }
+        } else {
+            true
+        };
+        let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one()
+        {
+            Some(*open)
+        } else {
+            None
+        };
+        let brace = look_behind::Brace { is_block, paren };
+        self.brace_stack.push(brace);
+        self.last_three
+            .push(MetaToken::OpenBrace(brace, self.new_line_count as u32));
+    }
+    #[inline]
+    /// Handle the book keeping when we find a `(`
+    fn handle_close_paren_books(&mut self, start: usize) -> Res<()> {
+        let paren = if let Some(paren) = self.paren_stack.pop() {
+            paren
+        } else {
+            self.errored = true;
+            return self.error(RawError {
+                idx: start,
+                msg: "Unmatched open close paren".to_string(),
+            });
+        };
+        self.last_three
+            .push(MetaToken::CloseParen(paren, self.new_line_count as u32));
+        Ok(())
+    }
+    #[inline]
+    /// Handle the book keeping when we find a `{`
+    fn handle_close_brace_books(&mut self, start: usize) -> Res<()> {
+        if let Some(open) = self.brace_stack.pop() {
+            let close = MetaToken::CloseBrace(open, self.new_line_count as u32);
+            self.last_three.push(close);
+            Ok(())
+        } else {
+            self.error(RawError {
+                idx: start,
+                msg: "unmatched close brace".to_string(),
+            })
+        }
     }
     /// Detect if the `/` is the beginning of
     /// a regex or is division
@@ -741,7 +763,6 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub last_three: LookBehind,
     pub paren_stack: Vec<Paren>,
-    pub before_curly_stack: Vec<Rc<OpenBrace>>,
 }
 
 #[cfg(test)]

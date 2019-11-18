@@ -1,4 +1,4 @@
-use crate::tokenizer::{RawKeyword, RawToken};
+use crate::tokenizer::RawKeyword;
 use crate::tokens::Punct;
 use std::rc::Rc;
 
@@ -22,11 +22,7 @@ impl LookBehind {
         }
     }
     #[inline]
-    pub fn push(&mut self, tok: &RawToken, line: u32) {
-        self.push_close((tok, line).into());
-    }
-    #[inline]
-    pub fn push_close(&mut self, token: MetaToken) {
+    pub fn push(&mut self, token: MetaToken) {
         self.pointer = wrapping_add(self.pointer, 1, 2);
         self.list[self.pointer as usize] = Some(token)
     }
@@ -74,7 +70,7 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
 /// - OpenBrace, this will carry an optional parent open brace MetaToken
 /// - CloseParen, this will carry the LookBehind from its paired OpenParen
 /// - CloseBrace, this will carry the LookBehind from its paired OpenBrace
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum MetaToken {
     Keyword(RawKeyword, u32),
     Punct(Punct, u32),
@@ -123,12 +119,12 @@ impl PartialEq for MetaToken {
     }
 }
 
-impl From<(&RawToken, u32)> for MetaToken {
-    fn from((other, line): (&RawToken, u32)) -> Self {
+impl<T> From<(&crate::Token<T>, u32)> for MetaToken {
+    fn from((other, line): (&crate::Token<T>, u32)) -> Self {
         match other {
-            RawToken::Keyword(k) => MetaToken::Keyword(*k, line),
-            RawToken::Punct(p) => MetaToken::Punct(*p, line),
-            RawToken::Ident => MetaToken::Ident(line),
+            crate::Token::Keyword(k) => MetaToken::Keyword(k.into(), line),
+            crate::Token::Punct(p) => MetaToken::Punct(*p, line),
+            crate::Token::Ident(_) => MetaToken::Ident(line),
             _ => MetaToken::Other(line),
         }
     }
@@ -138,21 +134,6 @@ impl From<(&RawToken, u32)> for MetaToken {
 pub struct OpenBrace {
     pub look_behind: LookBehind,
     pub parent: Option<Rc<OpenBrace>>,
-}
-
-impl OpenBrace {
-    pub fn with_parent(look_behind: LookBehind, parent: Rc<OpenBrace>) -> Self {
-        Self {
-            look_behind,
-            parent: Some(parent),
-        }
-    }
-    pub fn new(look_behind: LookBehind) -> Self {
-        Self {
-            look_behind,
-            parent: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -179,65 +160,65 @@ mod test {
 
     #[test]
     fn wrapping_collection() {
-        let first = RawToken::EoF;
-        let second = RawToken::Ident;
-        let third = RawToken::Keyword(RawKeyword::Function);
-        let fourth = RawToken::Punct(Punct::Ampersand);
-        let fifth = RawToken::Punct(Punct::Bang);
-        let sixth = RawToken::Punct(Punct::Caret);
-        let seventh = RawToken::Punct(Punct::Pipe);
-        let eighth = RawToken::Punct(Punct::Tilde);
+        let first = MetaToken::Other(1);
+        let second = MetaToken::Ident(1);
+        let third = MetaToken::Keyword(RawKeyword::Function, 1);
+        let fourth = MetaToken::Punct(Punct::Ampersand, 1);
+        let fifth = MetaToken::Punct(Punct::Bang, 1);
+        let sixth = MetaToken::Punct(Punct::Caret, 1);
+        let seventh = MetaToken::Punct(Punct::Pipe, 1);
+        let eighth = MetaToken::Punct(Punct::Tilde, 1);
         let mut l = LookBehind::new();
-        l.push(&first, 1);
-        test(&l, Some((&first, 1).into()), None, None);
-        l.push(&second, 1);
+        l.push(first);
+        test(&l, Some(first), None, None);
+        l.push(second);
         test(
             &l,
-            Some((&second, 1).into()),
-            Some((&first, 1).into()),
+            Some(second),
+            Some(first),
             None,
         );
-        l.push(&third, 1);
+        l.push(third);
         test(
             &l,
-            Some((&third, 1).into()),
-            Some((&second, 1).into()),
-            Some((&first, 1).into()),
+            Some(third),
+            Some(second),
+            Some(first),
         );
-        l.push(&fourth, 1);
+        l.push(fourth);
         test(
             &l,
-            Some((&fourth, 1).into()),
-            Some((&third, 1).into()),
-            Some((&second, 1).into()),
+            Some(fourth),
+            Some(third),
+            Some(second),
         );
-        l.push(&fifth, 1);
+        l.push(fifth);
         test(
             &l,
-            Some((&fifth, 1).into()),
-            Some((&fourth, 1).into()),
-            Some((&third, 1).into()),
+            Some(fifth),
+            Some(fourth),
+            Some(third),
         );
-        l.push(&sixth, 1);
+        l.push(sixth);
         test(
             &l,
-            Some((&sixth, 1).into()),
-            Some((&fifth, 1).into()),
-            Some((&fourth, 1).into()),
+            Some(sixth),
+            Some(fifth),
+            Some(fourth),
         );
-        l.push(&seventh, 1);
+        l.push(seventh);
         test(
             &l,
-            Some((&seventh, 1).into()),
-            Some((&sixth, 1).into()),
-            Some((&fifth, 1).into()),
+            Some(seventh),
+            Some(sixth),
+            Some(fifth),
         );
-        l.push(&eighth, 1);
+        l.push(eighth);
         test(
             &l,
-            Some((&eighth, 1).into()),
-            Some((&seventh, 1).into()),
-            Some((&sixth, 1).into()),
+            Some(eighth),
+            Some(seventh),
+            Some(sixth),
         );
     }
 

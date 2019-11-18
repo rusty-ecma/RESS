@@ -193,3 +193,53 @@ impl RawKeyword {
         }
     }
 }
+
+impl<T> From<&Keyword<T>> for RawKeyword {
+    fn from(k: &Keyword<T>) -> Self {
+        match k {
+            Keyword::Await(_) => RawKeyword::Await,
+            Keyword::Break(_) => RawKeyword::Break,
+            Keyword::Case(_) => RawKeyword::Case,
+            Keyword::Catch(_) => RawKeyword::Catch,
+            Keyword::Class(_) => RawKeyword::Class,
+            Keyword::Const(_) => RawKeyword::Const,
+            Keyword::Continue(_) => RawKeyword::Continue,
+            Keyword::Debugger(_) => RawKeyword::Debugger,
+            Keyword::Default(_) => RawKeyword::Default,
+            Keyword::Delete(_) => RawKeyword::Delete,
+            Keyword::Do(_) => RawKeyword::Do,
+            Keyword::Else(_) => RawKeyword::Else,
+            Keyword::Enum(_) => RawKeyword::Enum,
+            Keyword::Export(_) => RawKeyword::Export,
+            Keyword::Extends(_) => RawKeyword::Extends,
+            Keyword::Finally(_) => RawKeyword::Finally,
+            Keyword::For(_) => RawKeyword::For,
+            Keyword::Function(_) => RawKeyword::Function,
+            Keyword::If(_) => RawKeyword::If,
+            Keyword::Implements(_) => RawKeyword::Implements,
+            Keyword::Import(_) => RawKeyword::Import,
+            Keyword::In(_) => RawKeyword::In,
+            Keyword::InstanceOf(_) => RawKeyword::InstanceOf,
+            Keyword::Interface(_) => RawKeyword::Interface,
+            Keyword::Let(_) => RawKeyword::Let,
+            Keyword::New(_) => RawKeyword::New,
+            Keyword::Package(_) => RawKeyword::Package,
+            Keyword::Private(_) => RawKeyword::Private,
+            Keyword::Protected(_) => RawKeyword::Protected,
+            Keyword::Public(_) => RawKeyword::Public,
+            Keyword::Return(_) => RawKeyword::Return,
+            Keyword::Static(_) => RawKeyword::Static,
+            Keyword::Super(_) => RawKeyword::Super,
+            Keyword::Switch(_) => RawKeyword::Switch,
+            Keyword::This(_) => RawKeyword::This,
+            Keyword::Throw(_) => RawKeyword::Throw,
+            Keyword::Try(_) => RawKeyword::Try,
+            Keyword::TypeOf(_) => RawKeyword::TypeOf,
+            Keyword::Var(_) => RawKeyword::Var,
+            Keyword::Void(_) => RawKeyword::Void,
+            Keyword::While(_) => RawKeyword::While,
+            Keyword::With(_) => RawKeyword::With,
+            Keyword::Yield(_) => RawKeyword::Yield,
+        }
+    }
+}
