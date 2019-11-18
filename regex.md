@@ -13,7 +13,7 @@ While most sane JS programmers wouldn't perform the above, the fact that it is v
 
 Initially reading their "almost-one lookbehind" description can be slightly confusing, [they published a paper](https://users.soe.ucsc.edu/~cormac/papers/dls14a.pdf) that details a method for creating "token-trees", the paper goes into much greater detail about what a "token-tree" is but to give you the short version of how it relates to the linked psuedo-code:
 
-- `{}` and `()` are considered one token but represent the full stream between the open and close
+- `{}` and `()` are considered one token but represent all of the tokens between the open and close
 - `tok-#` is referring to these "token-trees" not tokens themselves
   - so in `function(n) {} /`, `tok-2` is `)` and `tok-3` is `function`
 - The `isBlock` helper function also requires that any `{}` can access a possible parent `{}`
@@ -24,7 +24,7 @@ With that, let's try and walk through the pseudo-code in more plain language.
 When we find a forward slash, the first thing we need to do is look backwards 1 token. If the token 1 before the `/` is a punctuation but not `}` or `)` or a keyword but not `this`, we found a regular expression. `}` and `)` are special cases we will get into next but all other previous tokens would mean it is not a regular expression. Now we have just two cases left, first is `)`. If the token before the `/` is a `)`, we need to jump backwards to the token before the `(` that would be paired with this `)`, if that is `if`, `while`, `for`, or `with`, we found a regex otherwise not. If the token one before the `/` is `}`, we need to determine if the pair of `{` and `}` is a "block" ([see below](#is-a-block)). If the `}` isn't part of a "block", we are not at a regex, if it is a block we need to check if that block is the body of a function expression ([see below](#is-a-function-expression-body)). If the block is the body of a function expression it is not a regular expression otherwise it is a regular expression.
 
 #### Is a Block
-To determine if a pair of curly braces is a block we first look 1 before the `{`, if it is a `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` it is not a block. If the token 1 before the `{` is the keyword `return` or `yield`, we need to compare the line number of the keyword and the `{`, if they match then it is not a block otherwise it is a block. if the token 1 before the `{` is a `:`, we need to look at the possible parent `{`, if there is a parent we run the same test on that `{`, if that is a block, this `{` is also a block, otherwise it is not a block. If the token 1 before the `{` is anything else, it is a block.  
+To determine if a pair of curly braces is a block we first look 1 before the `{`, if it is a `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` it is not a block. If the token 1 before the `{` is the keyword `return` or `yield`, we need to compare the line number of the keyword and the `{`, if they match then it is not a block otherwise it is a block. if the token 1 before the `{` is a `:`, we need to look at the possible parent `{`. If there is a parent we run the same test on that `{`, if that is a block, this `{` is also a block, otherwise it is not a block. If the token 1 before the `{` is anything else, it is a block.  
 
 #### Is a Function Expression Body
 if the token 1 before the `{` is `)`, we need to look at the two tokens before the paired `(`, if either of them are the keyword `function`, we need to look 1 token before _that_. If the token one before `function` is `(`, `[`, an _operator_ ([see below](#punctuation-or-keyword-represents-operation)), or the keyword `case` or `return` the block is the body of a function expression, in all other cases it is not.
@@ -66,7 +66,7 @@ if the token 1 before the `{` is `)`, we need to look at the two tokens before t
 
 </details>
 
-### _Operators_
+#### _Operators_
 > `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `>>>=`, `&=`, `|=`, `^=`, `,`, `+`, `-`, `*`, `/`, `%`, `<<`, `>>`, `>>>`, `&`, `|`, `^`, `&&`, `||`, `?`, `:`, `instanceof`, `in`, `===`, `==`, `>=`, `<=`, `<`, `>`, `!=`, `!==`, `++`, `--`, `~`, `!`, `delete`, `void`, `typeof`, `throw`, `new`
 
 With all of that in mind, let's look at an example:
@@ -96,7 +96,7 @@ This means our scanner needs to keep 3 book keeping lists. The first is the last
 
 ```rust
 //   3          2          1
-// step 3
+// step 1
 [   None,     None,    "function"]
 // step 2
 [   None,  "function",  "thing"]
@@ -106,9 +106,13 @@ This means our scanner needs to keep 3 book keeping lists. The first is the last
 [  "thing",    "(",       ")"]
 ```
 
-The next two are going to be stacks of both opening parentheses and opening curly braces. They are stacks because once we find a close, we don't need that open any more. With these three book keeping constructs we can build our chain of parentheses and curly brace pairs. When we encounter an `(`, we attach the last three tokens to it and push that into both the last three queue and the parentheses stack. When we find a `)`, we pop the last `(` and attach them together. When we find an `{` we attach the last 3 tokens we have seen and if the curly brace stack is not empty we attach the top of that stack to this `{` as the _parent_. With all that done we can push this into both the open curly stack and the last three queue. Now when we find a `}` we can pop the open curly off it's stack and link it to the close, with the open and close connected we can push the close curly onto the last three queue.
+The next two are going to be one stack for opening parentheses and one for opening curly braces. They are stacks because once we find a close, we don't need that open any more. With these three book keeping constructs we can build our chain of parentheses and curly brace pairs. 
 
-With all the book keeping and linking complete, when we find any `/` we can look back at our last three elements. If it is a `)`, we can use the link to the open, which is holding the three tokens before it, if the first token before is one of our keywords, we know this is the start of a regular expression. If it is a close brace, we first check to see if that is the end of a _block_ by following the link to its open and checking one token before that, it that token is a `:` we recursively check the _parent_ opening curly brace, otherwise we look for our special keywords or punctuation. In the event that it is a _block_, we look one before the opening curly brace, if that is `)`, we check if that is part of a function signature by following the link to the `(` and then looking for a function keyword at 1 and 2 before that, if there is a function keyword there, we look one before it to determine if that is a function expression or declaration. WHEW!
+When we encounter an `(`, we attach the last three tokens to it and push that into both the last three queue and the parentheses stack. When we find a `)`, we pop the last `(` and attach it to the `)` and then push the `)` into the last three queue. When we find an `{` we attach the last 3 tokens we have seen and if the curly brace stack is not empty we attach the top of that stack to this `{` as the _parent_. With all that done we can push the `{` into both the open curly stack and the last three queue. Now when we find a `}` we can pop the open curly off it's stack and link it to the `}`, with the `{` and `}` connected we can push the `}` onto the last three queue.
+
+With all the book keeping and linking complete, when we find any `/` we can look back at our last three elements. If the first one is a `)`, we can use the link to the open, which is holding the three tokens before it, if the first token before the `(` is one of our keywords, we know this is the start of a regular expression. 
+
+If one before the `/` is a `}`, we first check to see if that is the end of a _block_ by following the link to its open and checking one token before that, if that token is a `:` we recursively check the _parent_ opening curly brace, otherwise we look for our special keywords or punctuation. In the event that it is a _block_, we look one before the opening curly brace, if that is `)`, we check if that is part of a function signature by following the link to the `(` and then looking for a function keyword at 1 and 2 before that, if there is a function keyword there, we look one before it to determine if that is a function expression or declaration. WHEW!
 
 Let's take a look at what the last 3 tokens look like when we reach the `/` on line 3 in our example.
 
@@ -187,12 +191,11 @@ Let's take a look at what the last 3 tokens look like when we reach the `/` on l
 ]
 ```
 
-We have essentially created a couple of linked lists and they can get pretty big too! This means that each time we move 3 past a `}`, we might have a lot of things to `drop` and by default rust does that in a recursive manner ([which can get expensive](https://rust-unofficial.github.io/too-many-lists/first-drop.html)). If we look at our example JS from above, there are a total of 9 tokens, and when we reach the end of this block, 8 of them are still hanging around in memory. We could try and use some of Rust's smart pointers to make sure we don't have any clones lying around come drop time but picking apart when things can be `Rc`'d and when they cannot be is a pretty challenging problem. Another solution would be to re-write the drop implementation but that just seems like it might get messy. A third option is to try and find a way to capture this information with a `Copy` type.
+We have essentially created a list of linked lists and they can get pretty big too! This means that each time we move 3 past a `}`, we might have a lot of things to `drop` and by default rust does that in a recursive manner ([which can get expensive](https://rust-unofficial.github.io/too-many-lists/first-drop.html)). If we look at our example JS from above, there are a total of 9 tokens, and when we reach the end of this block, 8 of them are still hanging around in memory. We could try and use some of Rust's smart pointers to make sure we don't have any clones lying around come drop time but picking apart when things should be `Rc`'d and when they cannot be is a pretty challenging problem. Another solution would be to re-write the drop implementation but that just seems like it might get messy. A third option is to try and find a way to capture this information with a `Copy` type.
 
-If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, is the token before it `if`, `while`, `for` or `with` or is the token 1 or 2 before it the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always linking back to it? Then when we pop the `(` off its stack, we can attach the same two booleans to the `)`. 
+If we look over the logic tree above, we can gather most of the information we need when we encounter any `(`, is the token before it `if`, `while`, `for` or `with` or is the token 1 or 2 before it the keyword `function` and is that an expression? Those are really the two key pieces of information we need. What if we just attached those two booleans to the `(` instead of always attaching the last 3 tokens to it? Then when we pop the `(` off its stack, we can transfer the same two booleans to the `)`.
 
-Now when we find an `{` we can see if it is a block,
-if the token before is a `)`, we can also attach the paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. We could capture all of the information we need a in couple of `struct`s that might look like this:
+Now when we find an `{` we can see if it is a block, if the token before is a `)`, we can also attach the paren flags into our `{`, finally we can copy that information over to the `}` when we pop the open off the curly brace stack. While this means we need to do the computation eagerly, it also means we don't have as much to clean up when we move past a `}`. We could capture all of the information we need a in couple of `struct`s that might look like this:
 
 ```rust
 struct Paren {
