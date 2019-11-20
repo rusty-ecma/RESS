@@ -475,7 +475,7 @@ impl<'b> Scanner<'b> {
             func_expr,
             conditional,
         };
-        let meta = MetaToken::OpenParen(paren, self.new_line_count as u32);
+        let meta = MetaToken::OpenParen(paren);
         self.paren_stack.push(paren);
         self.last_three.push(meta);
     }
@@ -485,18 +485,18 @@ impl<'b> Scanner<'b> {
     fn handle_open_brace_books(&mut self) {
         let is_block = if let Some(last) = self.last_three.one() {
             match last {
-                MetaToken::Punct(Punct::OpenParen, _)
-                | MetaToken::Punct(Punct::OpenBracket, _)
-                | MetaToken::OpenParen(_, _)
+                MetaToken::Punct(Punct::OpenParen)
+                | MetaToken::Punct(Punct::OpenBracket)
+                | MetaToken::OpenParen(_)
                 | MetaToken::OpenBrace(_, _) => false,
-                MetaToken::Punct(Punct::Colon, _) => {
+                MetaToken::Punct(Punct::Colon) => {
                     if let Some(parent) = self.brace_stack.last() {
                         parent.is_block
                     } else {
                         false
                     }
                 }
-                MetaToken::Punct(_, _) => !Self::is_op(&last),
+                MetaToken::Punct(_) => !Self::is_op(&last),
                 MetaToken::Keyword(RawKeyword::Return, line)
                 | MetaToken::Keyword(RawKeyword::Yield, line) => {
                     if let Some(last) = self.last_three.two() {
@@ -512,7 +512,7 @@ impl<'b> Scanner<'b> {
         } else {
             true
         };
-        let paren = if let Some(MetaToken::CloseParen(open, _)) = self.last_three.one()
+        let paren = if let Some(MetaToken::CloseParen(open)) = self.last_three.one()
         {
             Some(*open)
         } else {
@@ -536,14 +536,14 @@ impl<'b> Scanner<'b> {
             });
         };
         self.last_three
-            .push(MetaToken::CloseParen(paren, self.new_line_count as u32));
+            .push(MetaToken::CloseParen(paren));
         Ok(())
     }
     #[inline]
     /// Handle the book keeping when we find a `{`
     fn handle_close_brace_books(&mut self, start: usize) -> Res<()> {
         if let Some(open) = self.brace_stack.pop() {
-            let close = MetaToken::CloseBrace(open, self.new_line_count as u32);
+            let close = MetaToken::CloseBrace(open);
             self.last_three.push(close);
             Ok(())
         } else {
@@ -564,12 +564,12 @@ impl<'b> Scanner<'b> {
                     RawKeyword::This => false,
                     _ => true,
                 },
-                MetaToken::Punct(p, _) => match p {
+                MetaToken::Punct(p) => match p {
                     Punct::CloseBracket => false,
                     _ => true,
                 },
-                MetaToken::CloseParen(open, _) => open.conditional,
-                MetaToken::CloseBrace(close, _) => {
+                MetaToken::CloseParen(open) => open.conditional,
+                MetaToken::CloseBrace(close) => {
                     if close.is_block {
                         if let Some(open) = &close.paren {
                             !open.func_expr
@@ -580,7 +580,7 @@ impl<'b> Scanner<'b> {
                         false
                     }
                 }
-                MetaToken::OpenParen(_, _) | MetaToken::OpenBrace(_, _) => true,
+                MetaToken::OpenParen(_) | MetaToken::OpenBrace(_, _) => true,
                 _ => false,
             }
         } else {
@@ -621,7 +621,7 @@ impl<'b> Scanner<'b> {
     /// > used in determining if we are at a regex or not
     fn is_op(tok: &MetaToken) -> bool {
         match tok {
-            MetaToken::Punct(ref p, _) => match p {
+            MetaToken::Punct(ref p) => match p {
                 Punct::Equal
                 | Punct::PlusEqual
                 | Punct::DashEqual

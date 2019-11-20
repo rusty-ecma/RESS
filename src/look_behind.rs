@@ -66,20 +66,16 @@ pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
 ///
 /// All variants will carry their line number
 ///
-/// special variants include:
-/// - OpenBrace, this will carry an optional parent open brace MetaToken
-/// - CloseParen, this will carry the LookBehind from its paired OpenParen
-/// - CloseBrace, this will carry the LookBehind from its paired OpenBrace
 #[derive(Debug, Clone, Copy)]
 pub enum MetaToken {
     Keyword(RawKeyword, u32),
-    Punct(Punct, u32),
-    OpenParen(Paren, u32),
-    CloseParen(Paren, u32),
+    Punct(Punct),
+    OpenParen(Paren),
+    CloseParen(Paren),
     OpenBrace(Brace, u32),
-    CloseBrace(Brace, u32),
-    Ident(u32),
-    Other(u32),
+    CloseBrace(Brace),
+    Ident,
+    Other,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct Paren {
@@ -96,13 +92,8 @@ impl MetaToken {
     pub fn line_number(&self) -> u32 {
         match self {
             MetaToken::Keyword(_, line)
-            | MetaToken::Punct(_, line)
-            | MetaToken::OpenParen(_, line)
-            | MetaToken::CloseParen(_, line)
-            | MetaToken::OpenBrace(_, line)
-            | MetaToken::CloseBrace(_, line)
-            | MetaToken::Ident(line)
-            | MetaToken::Other(line) => *line,
+            | MetaToken::OpenBrace(_, line) => *line,
+            _ => 0
         }
     }
 }
@@ -111,9 +102,9 @@ impl PartialEq for MetaToken {
     fn eq(&self, other: &MetaToken) -> bool {
         match (self, other) {
             (MetaToken::Keyword(lhs, _), MetaToken::Keyword(rhs, _)) => lhs == rhs,
-            (MetaToken::Punct(lhs, _), MetaToken::Punct(rhs, _)) => lhs == rhs,
-            (MetaToken::Ident(_), MetaToken::Ident(_))
-            | (MetaToken::Other(_), MetaToken::Other(_)) => true,
+            (MetaToken::Punct(lhs), MetaToken::Punct(rhs)) => lhs == rhs,
+            (MetaToken::Ident, MetaToken::Ident)
+            | (MetaToken::Other, MetaToken::Other) => true,
             _ => false,
         }
     }
@@ -123,9 +114,9 @@ impl<T> From<(&crate::Token<T>, u32)> for MetaToken {
     fn from((other, line): (&crate::Token<T>, u32)) -> Self {
         match other {
             crate::Token::Keyword(k) => MetaToken::Keyword(k.into(), line),
-            crate::Token::Punct(p) => MetaToken::Punct(*p, line),
-            crate::Token::Ident(_) => MetaToken::Ident(line),
-            _ => MetaToken::Other(line),
+            crate::Token::Punct(p) => MetaToken::Punct(*p),
+            crate::Token::Ident(_) => MetaToken::Ident,
+            _ => MetaToken::Other,
         }
     }
 }
@@ -160,14 +151,14 @@ mod test {
 
     #[test]
     fn wrapping_collection() {
-        let first = MetaToken::Other(1);
-        let second = MetaToken::Ident(1);
+        let first = MetaToken::Other;
+        let second = MetaToken::Ident;
         let third = MetaToken::Keyword(RawKeyword::Function, 1);
-        let fourth = MetaToken::Punct(Punct::Ampersand, 1);
-        let fifth = MetaToken::Punct(Punct::Bang, 1);
-        let sixth = MetaToken::Punct(Punct::Caret, 1);
-        let seventh = MetaToken::Punct(Punct::Pipe, 1);
-        let eighth = MetaToken::Punct(Punct::Tilde, 1);
+        let fourth = MetaToken::Punct(Punct::Ampersand);
+        let fifth = MetaToken::Punct(Punct::Bang);
+        let sixth = MetaToken::Punct(Punct::Caret);
+        let seventh = MetaToken::Punct(Punct::Pipe);
+        let eighth = MetaToken::Punct(Punct::Tilde);
         let mut l = LookBehind::new();
         l.push(first);
         test(&l, Some(first), None, None);
