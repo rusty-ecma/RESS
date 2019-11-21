@@ -40,6 +40,7 @@ pub enum RawToken {
         kind: TemplateKind,
         new_line_count: usize,
         last_len: usize,
+        has_octal_escape: bool,
     },
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`

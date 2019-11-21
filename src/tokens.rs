@@ -1,7 +1,7 @@
 pub mod prelude {
     pub use super::{
         Boolean, Comment, CommentExt, Ident, IdentExt, Keyword, Number, NumberExt, Punct, RegEx,
-        RegExExt, StringLit, StringLitExt, Template, TemplateExt, Token, TokenExt,
+        RegExExt, StringLit, StringLitExt, Template, TemplateExt, Token, TokenExt, TemplateLiteral
     };
 }
 
@@ -621,18 +621,32 @@ impl StringLitExt<String> for StringLit<String> {
 /// which allows for interpolating any js expression between `${`
 /// and `}`
 pub enum Template<T> {
-    NoSub(T),
-    Head(T),
-    Middle(T),
-    Tail(T),
+    NoSub(TemplateLiteral<T>),
+    Head(TemplateLiteral<T>),
+    Middle(TemplateLiteral<T>),
+    Tail(TemplateLiteral<T>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TemplateLiteral<T> {
+    pub content: T,
+    pub contains_octal_escape: bool,
+}
+impl<T> TemplateLiteral<T> {
+    pub fn new(content: T, contains_octal_escape: bool) -> Self {
+        Self {
+            content,
+            contains_octal_escape
+        }
+    }
 }
 /// Extension methods for allowing Template
 /// to work with both &str and String
 pub trait TemplateExt<T> {
-    fn no_sub_template(content: T) -> Template<T>;
-    fn template_head(content: T) -> Template<T>;
-    fn template_middle(content: T) -> Template<T>;
-    fn template_tail(content: T) -> Template<T>;
+    fn no_sub_template(content: T, contains_octal_escape: bool) -> Template<T>;
+    fn template_head(content: T, contains_octal_escape: bool) -> Template<T>;
+    fn template_middle(content: T, contains_octal_escape: bool) -> Template<T>;
+    fn template_tail(content: T, contains_octal_escape: bool) -> Template<T>;
     fn is_head(&self) -> bool;
     fn is_middle(&self) -> bool;
     fn is_tail(&self) -> bool;
@@ -640,17 +654,17 @@ pub trait TemplateExt<T> {
 }
 
 impl<'a> TemplateExt<&'a str> for Template<&'a str> {
-    fn no_sub_template(content: &'a str) -> Self {
-        Template::NoSub(content)
+    fn no_sub_template(content: &'a str, oct: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct))
     }
-    fn template_head(content: &'a str) -> Self {
-        Template::Head(content)
+    fn template_head(content: &'a str, oct: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct))
     }
-    fn template_middle(content: &'a str) -> Self {
-        Template::Middle(content)
+    fn template_middle(content: &'a str, oct: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct))
     }
-    fn template_tail(content: &'a str) -> Self {
-        Template::Tail(content)
+    fn template_tail(content: &'a str, oct: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -678,17 +692,17 @@ impl<'a> TemplateExt<&'a str> for Template<&'a str> {
     }
 }
 impl TemplateExt<String> for Template<String> {
-    fn no_sub_template(content: String) -> Self {
-        Template::NoSub(content)
+    fn no_sub_template(content: String, oct: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct))
     }
-    fn template_head(content: String) -> Self {
-        Template::Head(content)
+    fn template_head(content: String, oct: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct))
     }
-    fn template_middle(content: String) -> Self {
-        Template::Middle(content)
+    fn template_middle(content: String, oct: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct))
     }
-    fn template_tail(content: String) -> Self {
-        Template::Tail(content)
+    fn template_tail(content: String, oct: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -722,10 +736,10 @@ where
 {
     fn to_string(&self) -> String {
         match self {
-            Template::NoSub(ref c) => format!("`{}`", c),
-            Template::Head(ref c) => format!("`{}${{", c),
-            Template::Middle(ref c) => format!("}}{}${{", c),
-            Template::Tail(ref c) => format!("}}{}`", c),
+            Template::NoSub(ref t) => format!("`{}`", t.content),
+            Template::Head(ref t) => format!("`{}${{", t.content),
+            Template::Middle(ref t) => format!("}}{}${{", t.content),
+            Template::Tail(ref t) => format!("}}{}`", t.content),
         }
     }
 }

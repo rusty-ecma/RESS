@@ -736,6 +736,7 @@ impl<'a> Tokenizer<'a> {
         );
         let mut line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the start char
+        let mut found_octal_escape = false;
         while let Some(c) = self.stream.next_char() {
             last_len = last_len.saturating_add(1);
             if c == '\\' {
@@ -746,25 +747,11 @@ impl<'a> Tokenizer<'a> {
                 } else if self.look_ahead_byte_matches('0') {
                     if let Some(_zero) = self.stream.next_char() {
                         if self.stream.at_decimal() {
-                            return Err(RawError {
-                                msg: format!(
-                                    "Template contains invalid octal literal \\0{}",
-                                    self.stream.next_char().unwrap_or('?')
-                                ),
-                                idx: self.stream.idx.saturating_sub(1),
-                            });
-                        } else {
-                            let _ = self.stream.prev_char();
+                            found_octal_escape = true;
                         }
                     }
                 } else if self.stream.at_octal() {
-                    return Err(RawError {
-                        msg: format!(
-                            "Template contains invalid octal literal \\0{}",
-                            self.stream.next_char().unwrap_or('?')
-                        ),
-                        idx: self.stream.idx.saturating_sub(1),
-                    });
+                    found_octal_escape = true;
                 }
             } else if c == '\r' {
                 if self.look_ahead_byte_matches('\n') {
@@ -780,16 +767,16 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip(1);
                     self.curly_stack.push(OpenCurlyKind::Template);
                     if start == '`' {
-                        return self.gen_template(TemplateKind::Head, line_count, last_len);
+                        return self.gen_template(TemplateKind::Head, line_count, last_len, found_octal_escape);
                     } else {
-                        return self.gen_template(TemplateKind::Body, line_count, last_len);
+                        return self.gen_template(TemplateKind::Body, line_count, last_len, found_octal_escape);
                     }
                 }
             } else if c == '`' {
                 if start == '`' {
-                    return self.gen_template(TemplateKind::NoSub, line_count, last_len);
+                    return self.gen_template(TemplateKind::NoSub, line_count, last_len, found_octal_escape);
                 } else {
-                    return self.gen_template(TemplateKind::Tail, line_count, last_len);
+                    return self.gen_template(TemplateKind::Tail, line_count, last_len, found_octal_escape);
                 }
             }
         }
@@ -1140,6 +1127,7 @@ impl<'a> Tokenizer<'a> {
         kind: TemplateKind,
         new_line_count: usize,
         last_len: usize,
+        has_octal_escape: bool,
     ) -> Res<RawItem> {
         trace!(
             "gen_template {:?}, {}, {} ({}, {})",
@@ -1153,6 +1141,7 @@ impl<'a> Tokenizer<'a> {
             kind,
             new_line_count,
             last_len,
+            has_octal_escape,
         })
     }
     #[inline]
@@ -1553,6 +1542,7 @@ mod test {
                 kind,
                 new_line_count: _,
                 last_len: _,
+                has_octal_escape: _,
             } => {
                 assert_eq!(kind, &expected_kind);
             }
