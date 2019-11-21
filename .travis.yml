@@ -7,8 +7,9 @@ matrix:
         - npm i
       cache:
         - directories:
-          - node_modules
           - /home/travis/.cargo
+          - moz-central
+          - node_modules
       before_cache:
         - rm -rf /home/travis/.cargo/registry
       script:
