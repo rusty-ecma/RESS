@@ -279,7 +279,7 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
     }
 
     fn is_html(&self) -> bool {
-        self.kind == CommentKind::Multi
+        self.kind == CommentKind::Html
     }
 
     fn is_hashbang(&self) -> bool {

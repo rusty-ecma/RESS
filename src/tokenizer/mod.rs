@@ -639,7 +639,11 @@ impl<'a> Tokenizer<'a> {
         trace!("minus ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('-') {
             self.stream.skip(1);
-            self.gen_punct(Punct::DoubleDash)
+            if self.look_ahead_byte_matches('>') {
+                self.single_comment(CommentKind::Html)
+            } else {
+                self.gen_punct(Punct::DoubleDash)
+            }
         } else if self.look_ahead_byte_matches('=') {
             self.stream.skip(1);
             self.gen_punct(Punct::DashEqual)
@@ -660,7 +664,7 @@ impl<'a> Tokenizer<'a> {
         } else if self.look_ahead_byte_matches('*') {
             self.multi_comment()
         } else if self.look_ahead_byte_matches('/') {
-            self.single_comment()
+            self.single_comment(CommentKind::Single)
         } else {
             self.gen_punct(Punct::ForwardSlash)
         }
@@ -822,9 +826,10 @@ impl<'a> Tokenizer<'a> {
         })
     }
     #[inline]
-    fn single_comment(&mut self) -> Res<RawItem> {
+    fn single_comment(&mut self, kind: CommentKind) -> Res<RawItem> {
         trace!(
-            "single_comment ({}, {})",
+            "single_comment {:?} ({}, {})",
+            kind,
             self.current_start,
             self.stream.idx
         );
@@ -833,7 +838,7 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        self.gen_comment(CommentKind::Single, 0, 0)
+        self.gen_comment(kind, 0, 0)
     }
     #[inline]
     fn multi_comment(&mut self) -> Res<RawItem> {
@@ -844,14 +849,13 @@ impl<'a> Tokenizer<'a> {
         );
         let mut new_line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the /
+        let mut found_end = false;
         while let Some(c) = self.stream.next_char() {
             if c == '*' && self.look_ahead_byte_matches('/') {
                 self.stream.skip(1);
-                return self.gen_comment(
-                    CommentKind::Multi,
-                    new_line_count,
-                    last_len.saturating_add(2),
-                );
+                found_end = true;
+                last_len = last_len.saturating_add(2);
+                break;
             } else if c == '\r' {
                 if self.look_ahead_byte_matches('\n') {
                     self.stream.skip(1);
@@ -865,10 +869,21 @@ impl<'a> Tokenizer<'a> {
                 last_len = last_len.saturating_add(1);
             }
         }
-        Err(RawError {
-            idx: self.current_start,
-            msg: "unterminated multi-line comment".to_string(),
-        })
+        if self.look_ahead_matches("-->") {
+            self.stream.skip(3);
+            while !self.stream.at_end() && !self.at_new_line() {
+                self.stream.skip(1);
+                last_len = last_len.saturating_add(1);
+            }
+        }
+        if found_end {
+            self.gen_comment(CommentKind::Multi, new_line_count, last_len)
+        } else {
+            Err(RawError {
+                idx: self.current_start,
+                msg: "unterminated multi-line comment".to_string(),
+            })
+        }
     }
     #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
@@ -1656,6 +1671,7 @@ mod test {
         multi-line comment*/",
             "<!-- This is an HTML comment -->",
             "<!-- This is an HTML comment --> with a trailer",
+            "/*multi-line comment */-->with a trailer",
         ];
         for c in COMMENTS {
             let mut t = Tokenizer::new(c);

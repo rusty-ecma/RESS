@@ -165,6 +165,40 @@ fn regex_over_div4() {
     );
 }
 
+#[test]
+fn html_comment_close() {
+    let js = "
+--> stuff is in a comment
+  --> also a comment
+/*multi-comment*/--> with trailer
+/*---*/";
+    compare(
+        js,
+        &[
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Html,
+                content: "",
+                tail_content: Some(" stuff is in a comment"),
+            }),
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Html,
+                content: "",
+                tail_content: Some(" also a comment"),
+            }),
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Multi,
+                content: "multi-comment",
+                tail_content: Some(" with trailer"),
+            }),
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Multi,
+                content: "---",
+                tail_content: None,
+            }),
+        ],
+    );
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));

@@ -315,25 +315,46 @@ impl<'b> Scanner<'b> {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
-                        tokens::CommentKind::Multi => Token::Comment(Comment::new_multi_line(
-                            s.trim_start_matches("/*").trim_end_matches("*/"),
-                        )),
+                        tokens::CommentKind::Multi => {
+                            let start_content = s.trim_start_matches("/*");
+                            let (tail_content, tail_start) =
+                                if let Some(tail_start) = start_content.find("-->") {
+                                    (Some(&start_content[tail_start + 3..]), tail_start)
+                                } else {
+                                    (None, start_content.len())
+                                };
+                            let content = start_content[..tail_start].trim_end_matches("*/");
+                            Token::Comment(Comment {
+                                kind: tokens::CommentKind::Multi,
+                                content,
+                                tail_content,
+                            })
+                        }
                         tokens::CommentKind::Single => {
                             Token::Comment(Comment::new_single_line(s.trim_start_matches("//")))
                         }
                         tokens::CommentKind::Html => {
+                            let start_idx = if s.starts_with("<!--") { 4 } else { 0 };
                             let (content, tail) = if let Some(idx) = s.rfind("-->") {
                                 let actual_end = idx.saturating_add(3);
                                 if actual_end < next.end {
                                     let tail = &s[actual_end..];
                                     let tail = if tail == "" { None } else { Some(tail) };
-                                    (&s[4..idx], tail)
+                                    (&s[start_idx..idx], tail)
                                 } else {
-                                    (&s[4..], None)
+                                    (&s[start_idx..], None)
                                 }
                             } else {
-                                (&s[4..], None)
+                                (&s[start_idx..], None)
                             };
+                            if start_idx == 0 && !self.at_first_on_line(next.start) {
+                                self.errored = true;
+                                return Some(Err(Error {
+                                    line: self.new_line_count,
+                                    column: self.line_cursor,
+                                    msg: "--> comments must either be a part of a full HTML comment or the first item on a new line".to_string()
+                                }));
+                            }
                             Token::Comment(Comment::new_html(content, tail))
                         }
                         tokens::CommentKind::Hashbang => {
@@ -729,6 +750,17 @@ impl<'b> Scanner<'b> {
         } else {
             self.line_cursor += len;
         }
+    }
+    #[inline]
+    fn at_first_on_line(&self, token_start: usize) -> bool {
+        trace!("at_first_on_line");
+        if self.line_cursor <= 1 {
+            return true;
+        }
+        let start = token_start.saturating_sub(self.line_cursor - 1);
+        let prefix = &self.original[start..token_start];
+        trace!("prefix: {:?}", prefix);
+        prefix.chars().all(|c| c.is_whitespace())
     }
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
