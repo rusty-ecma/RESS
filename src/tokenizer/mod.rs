@@ -6,7 +6,6 @@ mod tokens;
 mod unicode;
 pub use self::tokens::{RawKeyword, RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
-use unicode::{is_id_continue, is_id_start};
 pub(crate) type Res<T> = Result<T, RawError>;
 use log::trace;
 
@@ -45,9 +44,7 @@ impl<'a> Tokenizer<'a> {
                 })
             }
         };
-        if Self::is_id_start(next_char) {
-            return self.ident(next_char);
-        }
+        
         if next_char == '"' || next_char == '\'' {
             return self.string(next_char);
         }
@@ -63,6 +60,9 @@ impl<'a> Tokenizer<'a> {
         if next_char == '}' && self.curly_stack.last() == Some(&OpenCurlyKind::Template) {
             self.curly_stack.pop();
             return self.template(next_char);
+        }
+        if Self::is_id_start(next_char) {
+            return self.ident(next_char);
         }
         self.punct(next_char)
     }
@@ -1062,24 +1062,35 @@ impl<'a> Tokenizer<'a> {
 
     #[inline]
     fn is_id_continue(c: char) -> bool {
-        trace!("is_id_continue {}", c);
-        c == '$'
-            || c == '_'
-            || (c >= 'A' && c <= 'Z')
-            || (c >= 'a' && c <= 'z')
-            || c == '\\'
-            || (c >= '0' && c <= '9')
-            || is_id_continue(c)
+        trace!(target:"idents", "is_id_continue {}", c);
+        if c >= 'a' && c <= 'z' {
+            true
+        } else if c >= 'A' && c <= 'Z' {
+            true
+        } else if c >= '0' && c <= '9' {
+            true
+        } else if c == '\\' || c == '_' || c == '$' {
+            true
+        } else if c < '\u{AA}' {
+            false
+        } else {
+            unic_ucd_ident::is_id_continue(c)
+        }
     }
     #[inline]
     fn is_id_start(c: char) -> bool {
-        trace!("is_id_start {}", c);
-        c == '$'
-            || c == '_'
-            || (c >= 'A' && c <= 'Z')
-            || (c >= 'a' && c <= 'z')
-            || c == '\\'
-            || is_id_start(c)
+        trace!(target:"idents", "is_id_start {}", c);
+        if c >= 'a' && c <= 'z' {
+            true
+        } else if c >= 'A' && c <= 'Z' {
+            true
+        } else if c == '\\' || c == '_' || c == '$' {
+            true
+        } else if c < '\u{AA}' {
+            false
+        } else  {
+            unic_ucd_ident::is_id_start(c)
+        }
     }
     #[inline]
     fn look_ahead_byte_matches(&self, c: char) -> bool {
