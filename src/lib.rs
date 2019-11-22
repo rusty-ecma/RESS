@@ -416,10 +416,9 @@ impl<'b> Scanner<'b> {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
-        } else {
-            if let Err(e) = self.keep_books(&ret) {
-                return Some(Err(e));
-            }
+        } else if let Err(e) = self.keep_books(&ret) {
+            self.errored = true;
+            return Some(Err(e));
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
@@ -455,13 +454,13 @@ impl<'b> Scanner<'b> {
             self.last_three.one()
         {
             if let Some(tok) = self.last_three.two() {
-                !Self::check_for_expression(tok)
+                !Self::check_for_expression(*tok)
             } else {
                 false
             }
         } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.two() {
             if let Some(tok) = self.last_three.three() {
-                Self::check_for_expression(tok)
+                Self::check_for_expression(*tok)
             } else {
                 false
             }
@@ -469,7 +468,7 @@ impl<'b> Scanner<'b> {
             false
         };
         let conditional = if let Some(tok) = self.last_three.one() {
-            Self::check_token_for_conditional(tok)
+            Self::check_token_for_conditional(*tok)
         } else {
             false
         };
@@ -498,7 +497,7 @@ impl<'b> Scanner<'b> {
                         false
                     }
                 }
-                MetaToken::Punct(_) => !Self::is_op(&last),
+                MetaToken::Punct(_) => !Self::is_op(*last),
                 MetaToken::Keyword(RawKeyword::Return, line)
                 | MetaToken::Keyword(RawKeyword::Yield, line) => {
                     if let Some(last) = self.last_three.two() {
@@ -508,7 +507,7 @@ impl<'b> Scanner<'b> {
                     }
                 }
                 MetaToken::Keyword(RawKeyword::Case, _) => false,
-                MetaToken::Keyword(_, _) => !Self::is_op(&last),
+                MetaToken::Keyword(_, _) => !Self::is_op(*last),
                 _ => true,
             }
         } else {
@@ -590,7 +589,7 @@ impl<'b> Scanner<'b> {
     /// Check a token for the conditional keywords
     ///
     /// > used in determining if we are at a regex or not
-    fn check_token_for_conditional(tok: &MetaToken) -> bool {
+    fn check_token_for_conditional(tok: MetaToken) -> bool {
         if let MetaToken::Keyword(k, _) = tok {
             match k {
                 RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
@@ -604,7 +603,7 @@ impl<'b> Scanner<'b> {
     /// function expression
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_expression(token: &MetaToken) -> bool {
+    fn check_for_expression(token: MetaToken) -> bool {
         if Self::is_op(token) {
             true
         } else {
@@ -619,7 +618,7 @@ impl<'b> Scanner<'b> {
     /// that indicates an operation
     ///
     /// > used in determining if we are at a regex or not
-    fn is_op(tok: &MetaToken) -> bool {
+    fn is_op(tok: MetaToken) -> bool {
         match tok {
             MetaToken::Punct(ref p) => match p {
                 Punct::Equal

@@ -1173,7 +1173,7 @@ impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
 }
 
 impl Keyword<()> {
-    pub fn with_str<'a>(self, s: &'a str) -> Keyword<&'a str> {
+    pub fn with_str(self, s: &str) -> Keyword<&str> {
         match self {
             Keyword::Await(_) => Keyword::Await(s),
             Keyword::Break(_) => Keyword::Break(s),

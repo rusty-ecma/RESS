@@ -309,7 +309,7 @@ impl<'a> Tokenizer<'a> {
                 })
             }
         };
-        if code > 0x10FFFF {
+        if code > 0x10_FFFF {
             Err(RawError {
                 msg: "escaped unicode codepoint too large".to_string(),
                 idx: self.stream.idx,

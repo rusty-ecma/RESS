@@ -89,9 +89,9 @@ pub struct Brace {
 }
 
 impl MetaToken {
-    pub fn line_number(&self) -> u32 {
+    pub fn line_number(self) -> u32 {
         match self {
-            MetaToken::Keyword(_, line) | MetaToken::OpenBrace(_, line) => *line,
+            MetaToken::Keyword(_, line) | MetaToken::OpenBrace(_, line) => line,
             _ => 0,
         }
     }
