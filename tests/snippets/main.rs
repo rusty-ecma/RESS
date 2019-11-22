@@ -198,6 +198,25 @@ fn html_comment_close() {
         ],
     );
 }
+#[test]
+fn decrement_greater_than() {
+    compare("for ( var x = 0; x --> 0;);", &[
+        Token::Keyword(Keyword::For("for")),
+        Token::Punct(Punct::OpenParen),
+        Token::Keyword(Keyword::Var("var")),
+        Token::Ident("x".into()),
+        Token::Punct(Punct::Equal),
+        Token::Number("0".into()),
+        Token::Punct(Punct::SemiColon),
+        Token::Ident("x".into()),
+        Token::Punct(Punct::DoubleDash),
+        Token::Punct(Punct::GreaterThan),
+        Token::Number("0".into()),
+        Token::Punct(Punct::SemiColon),
+        Token::Punct(Punct::CloseParen),
+        Token::Punct(Punct::SemiColon),
+    ])
+}
 
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {

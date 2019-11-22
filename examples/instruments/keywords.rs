@@ -48,7 +48,7 @@ static KEYWORDS: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for key in KEYWORDS {
-            let d = Tokenizer::new(key).next().unwrap();
+            let d = Tokenizer::new(key).next(true).unwrap();
             core::mem::forget(d);
         }
     }

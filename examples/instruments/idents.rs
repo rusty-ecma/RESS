@@ -28,7 +28,7 @@ static IDENTS: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for i in IDENTS {
-            let d = Tokenizer::new(i).next().unwrap();
+            let d = Tokenizer::new(i).next(true).unwrap();
             core::mem::forget(d);
         }
     }

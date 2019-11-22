@@ -29,7 +29,7 @@ static NUMBERS: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for n in NUMBERS {
-            let d = Tokenizer::new(n).next().unwrap();
+            let d = Tokenizer::new(n).next(true).unwrap();
             core::mem::forget(d);
         }
     }

@@ -171,6 +171,7 @@ pub struct Scanner<'a> {
     last_three: LookBehind,
     brace_stack: Vec<Brace>,
     paren_stack: Vec<Paren>,
+    at_first_on_line: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -190,6 +191,7 @@ impl<'a> Scanner<'a> {
             last_three: LookBehind::new(),
             paren_stack: Vec::new(),
             brace_stack: Vec::new(),
+            at_first_on_line: true,
         }
     }
 }
@@ -236,6 +238,7 @@ impl<'b> Scanner<'b> {
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
             paren_stack: self.paren_stack.clone(),
+            at_first_on_line: self.at_first_on_line,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -247,6 +250,7 @@ impl<'b> Scanner<'b> {
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
         self.paren_stack = state.paren_stack;
+        self.at_first_on_line = state.at_first_on_line;
     }
     #[inline]
     /// The implementation of `Scanner::next` that includes
@@ -263,13 +267,14 @@ impl<'b> Scanner<'b> {
         let prev_cursor = self.stream.stream.idx;
         let prev_lines = self.new_line_count;
         let prev_line_cursor = self.line_cursor;
-        let mut next = match self.stream.next() {
+        let mut next = match self.stream.next(self.at_first_on_line) {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
                 return Some(self.error(e));
             }
         };
+        self.at_first_on_line = false;
         let mut len = next.end - next.start;
         let ret = if next.ty.is_div_punct() && self.is_regex_start() {
             next = match self.stream.next_regex(len) {
@@ -747,6 +752,7 @@ impl<'b> Scanner<'b> {
         if ct != 0 {
             self.line_cursor = len;
             self.new_line_count += ct;
+            self.at_first_on_line = true;
         } else {
             self.line_cursor += len;
         }
@@ -794,6 +800,7 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub last_three: LookBehind,
     pub paren_stack: Vec<Paren>,
+    pub at_first_on_line: bool
 }
 
 #[cfg(test)]

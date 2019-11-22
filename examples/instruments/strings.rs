@@ -19,7 +19,7 @@ hahaha'"#,
 fn main() {
     for _ in 0..1000 {
         for s in STRINGS {
-            let d = Tokenizer::new(s).next().unwrap();
+            let d = Tokenizer::new(s).next(true).unwrap();
             core::mem::forget(d);
         }
     }

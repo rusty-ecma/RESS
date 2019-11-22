@@ -31,7 +31,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
     #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Res<RawItem> {
+    pub fn next(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("next {} {}", self.stream.idx, self.stream.len);
         self.current_start = self.stream.idx;
         let next_char = match self.stream.next_char() {
@@ -49,7 +49,7 @@ impl<'a> Tokenizer<'a> {
             return self.string(next_char);
         }
         if next_char == '(' || next_char == ')' || next_char == ';' {
-            return self.punct(next_char);
+            return self.punct(next_char, allow_html_comment_close);
         }
         if next_char.is_digit(10) {
             return self.number(next_char);
@@ -64,7 +64,7 @@ impl<'a> Tokenizer<'a> {
         if Self::is_id_start(next_char) {
             return self.ident(next_char);
         }
-        self.punct(next_char)
+        self.punct(next_char, allow_html_comment_close)
     }
 
     pub fn next_regex(&mut self, start_len: usize) -> Res<RawItem> {
@@ -440,7 +440,7 @@ impl<'a> Tokenizer<'a> {
             idx: self.stream.idx,
         })
     }
-    fn punct(&mut self, c: char) -> Res<RawItem> {
+    fn punct(&mut self, c: char, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("punct {} ({}, {})", c, self.current_start, self.stream.idx);
         match c {
             '(' => self.gen_punct(Punct::OpenParen),
@@ -465,7 +465,7 @@ impl<'a> Tokenizer<'a> {
             '&' => self.ampersand(),
             '|' => self.pipe(),
             '+' => self.plus(),
-            '-' => self.minus(),
+            '-' => self.minus(allow_html_comment_close),
             '/' => self.forward_slash(),
             '%' => self.percent(),
             '^' => self.caret(),
@@ -635,11 +635,11 @@ impl<'a> Tokenizer<'a> {
         }
     }
     #[inline]
-    fn minus(&mut self) -> Res<RawItem> {
+    fn minus(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("minus ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('-') {
             self.stream.skip(1);
-            if self.look_ahead_byte_matches('>') {
+            if allow_html_comment_close && self.look_ahead_byte_matches('>') {
                 self.single_comment(CommentKind::Html)
             } else {
                 self.gen_punct(Punct::DoubleDash)
@@ -741,7 +741,7 @@ impl<'a> Tokenizer<'a> {
                 self.gen_number(NumberKind::Dec)
             }
         } else {
-            self.punct(start)
+            self.punct(start, true)
         }
     }
     fn template(&mut self, start: char) -> Res<RawItem> {
@@ -1285,7 +1285,7 @@ mod test {
         ];
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             assert!(item.ty.is_punct());
             assert!(t.stream.at_end());
         }
@@ -1294,7 +1294,7 @@ mod test {
     fn tokenizer_hashbang() {
         let b = "#!/usr/bin/env node";
         let mut t = Tokenizer::new(b);
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         match item.ty {
             RawToken::Comment {
                 kind: CommentKind::Hashbang,
@@ -1306,7 +1306,7 @@ mod test {
 
         let b = "#!";
         let mut t = Tokenizer::new(b);
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         match item.ty {
             RawToken::Comment {
                 kind: CommentKind::Hashbang,
@@ -1318,7 +1318,7 @@ mod test {
 
         let b = "#!\nlol";
         let mut t = Tokenizer::new(b);
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         match item.ty {
             RawToken::Comment {
                 kind: CommentKind::Hashbang,
@@ -1330,7 +1330,7 @@ mod test {
 
         let b = "#!/usr/bin/env node\nprocess.exit(1)";
         let mut t = Tokenizer::new(b);
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         match item.ty {
             RawToken::Comment {
                 kind: CommentKind::Hashbang,
@@ -1344,7 +1344,7 @@ mod test {
         let b = "\n#!/usr/bin/env node";
         let mut t = Tokenizer::new(b);
         t.skip_whitespace();
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         match item.ty {
             RawToken::Punct(Punct::Hash) => (),
             _ => panic!("expected hash, found {:?}", item.ty),
@@ -1368,7 +1368,7 @@ mod test {
         ];
         for s in STRINGS {
             let mut t = Tokenizer::new(s);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             match &item.ty {
                 RawToken::String {
                     kind,
@@ -1426,7 +1426,7 @@ mod test {
         ];
         for i in IDENTS {
             let mut t = Tokenizer::new(dbg!(i));
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             assert_eq!(item.ty, RawToken::Ident);
             if !t.stream.at_end() {
                 panic!(
@@ -1479,7 +1479,7 @@ mod test {
         for n in NUMBERS {
             println!("n: {}", n);
             let mut t = Tokenizer::new(n);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             dbg!(&n[item.start..item.end]);
             assert!(match item.ty {
                 RawToken::Number(_) => true,
@@ -1521,7 +1521,7 @@ mod test {
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
-            let next = t.next().unwrap();
+            let next = t.next(true).unwrap();
             let item = t.next_regex(next.end - next.start).unwrap();
             assert!(match item.ty {
                 RawToken::RegEx(_) => true,
@@ -1536,40 +1536,40 @@ mod test {
         let subbed = "`things and stuff times ${} and animals and minerals`";
         println!("subbed: {}", subbed);
         let mut t = Tokenizer::new(subbed);
-        let start = t.next().unwrap();
+        let start = t.next(true).unwrap();
         check_temp(&start.ty, TemplateKind::Head);
-        let end = t.next().unwrap();
+        let end = t.next(true).unwrap();
         check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
         let no_sub = "`things and stuff`";
         println!("no_sub {}", no_sub);
         t = Tokenizer::new(no_sub);
-        let one = t.next().unwrap();
+        let one = t.next(true).unwrap();
         check_temp(&one.ty, TemplateKind::NoSub);
         assert!(t.stream.at_end());
         let escaped_sub = r#"`\0\n\x0A\u000A\u{A}${}`"#;
         println!("escaped_sub: {}", escaped_sub);
         t = Tokenizer::new(escaped_sub);
-        let start = t.next().unwrap();
+        let start = t.next(true).unwrap();
         check_temp(&start.ty, TemplateKind::Head);
-        let end = t.next().unwrap();
+        let end = t.next(true).unwrap();
         check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
         let escaped_no_sub = r#"`a\${b`"#;
         println!("escaped_no_sub: {}", escaped_no_sub);
         t = Tokenizer::new(escaped_no_sub);
-        let one = t.next().unwrap();
+        let one = t.next(true).unwrap();
         check_temp(&one.ty, TemplateKind::NoSub);
         assert!(t.stream.at_end());
         let double_sub =
             "`things and stuff times ${} and animals and minerals ${} and places and people`";
         println!("double_sub: {}", double_sub);
         t = Tokenizer::new(double_sub);
-        let start = t.next().unwrap();
+        let start = t.next(true).unwrap();
         check_temp(&start.ty, TemplateKind::Head);
-        let mid = t.next().unwrap();
+        let mid = t.next(true).unwrap();
         check_temp(&mid.ty, TemplateKind::Body);
-        let end = t.next().unwrap();
+        let end = t.next(true).unwrap();
         check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
     }
@@ -1592,7 +1592,7 @@ mod test {
     fn tokenizer_bools() {
         for b in &["true", "false"] {
             let mut t = Tokenizer::new(b);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             assert!(match item.ty {
                 RawToken::Boolean(_) => true,
                 _ => false,
@@ -1604,7 +1604,7 @@ mod test {
     #[test]
     fn tokenizer_null() {
         let mut t = Tokenizer::new("null");
-        let item = t.next().unwrap();
+        let item = t.next(true).unwrap();
         assert_eq!(item.ty, RawToken::Null);
         assert!(t.stream.at_end());
     }
@@ -1654,7 +1654,7 @@ mod test {
         ];
         for k in KEYWORDS {
             let mut t = Tokenizer::new(k);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             match item.ty {
                 RawToken::Keyword(_) => (),
                 _ => panic!("{} was not parsed as a keyword", k),
@@ -1675,7 +1675,7 @@ mod test {
         ];
         for c in COMMENTS {
             let mut t = Tokenizer::new(c);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             assert!(item.ty.is_comment());
             assert!(t.stream.at_end());
         }
@@ -1694,12 +1694,12 @@ mod test {
         static FAIL_COMMENTS: &[&str] = &["<!--this will fail", "hello world"];
         for c in SUCCESS_COMMENTS {
             let mut t = Tokenizer::new(c);
-            let item = t.next().unwrap();
+            let item = t.next(true).unwrap();
             assert!(item.ty.is_comment());
         }
         for c in FAIL_COMMENTS {
             let mut t = Tokenizer::new(c);
-            match t.next() {
+            match t.next(true) {
                 Err(_) => continue,
                 Ok(item) => assert!(!item.ty.is_comment()),
             };
@@ -1713,23 +1713,23 @@ mod test {
 0 0
 0 0 0 0 0";
         let mut t = Tokenizer::new(js);
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 1); //\n
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 1); //\r
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 1); //\r\n
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 1); // line seperator
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
-        let _ = t.next();
+        let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 1); // paragraph separator
     }
 
@@ -1738,7 +1738,7 @@ mod test {
     fn char_too_large() {
         let js = r"asdf\u{FFFFFFF}";
         let mut t = Tokenizer::new(js);
-        dbg!(t.next()).unwrap();
+        dbg!(t.next(true)).unwrap();
     }
 
     #[test]
@@ -1747,7 +1747,7 @@ mod test {
 
         for i in &tests {
             let mut t = Tokenizer::new(i);
-            assert!(t.next().is_err());
+            assert!(t.next(true).is_err());
         }
     }
 
@@ -1757,7 +1757,7 @@ mod test {
 
         for i in &tests {
             let mut t = Tokenizer::new(i);
-            assert!(t.next().is_err());
+            assert!(t.next(true).is_err());
         }
     }
 }

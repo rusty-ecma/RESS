@@ -14,7 +14,7 @@ static PUNCTS: &[&str] = &[
 fn main() {
     for _ in 0..1000 {
         for punct in PUNCTS {
-            let d = Tokenizer::new(punct).next().unwrap();
+            let d = Tokenizer::new(punct).next(true).unwrap();
             core::mem::forget(d);
         }
     }
