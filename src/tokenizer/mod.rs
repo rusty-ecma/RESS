@@ -44,7 +44,7 @@ impl<'a> Tokenizer<'a> {
                 })
             }
         };
-        
+
         if next_char == '"' || next_char == '\'' {
             return self.string(next_char);
         }
@@ -160,7 +160,7 @@ impl<'a> Tokenizer<'a> {
                 let c = self.escaped_ident_part()?;
                 if !Self::is_id_continue(c) {
                     return Err(RawError {
-                        msg: "invalid escaped identifier character".to_string(),
+                        msg: format!("invalid escaped identifier character: {}", c),
                         idx: self.current_start,
                     });
                 }
@@ -245,6 +245,7 @@ impl<'a> Tokenizer<'a> {
     /// picking up after the \
     #[inline]
     fn escaped_ident_part(&mut self) -> Res<char> {
+        trace!("escaped_ident_part");
         if let Some('u') = self.stream.next_char() {
             let x = if let Some(c) = self.stream.next_char() {
                 if c == '{' {
@@ -275,6 +276,7 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     pub(crate) fn escaped_with_code_point(&mut self) -> Res<u32> {
+        trace!("escaped_with_code_point");
         let mut code = String::new();
         let mut last_char: char = '{';
         while let Some(c) = self.stream.next_char() {
@@ -291,15 +293,21 @@ impl<'a> Tokenizer<'a> {
                 code.push(c)
             }
         }
+        debug!("attempting to convert {:?} to u32", code);
         let code = match u32::from_str_radix(&code, 16) {
-            Ok(n) => n,
-            Err(e) => return Err(RawError {
-                msg: format!(
+            Ok(n) => {
+                debug!("converted {:?} to {}", code, n);
+                n
+            }
+            Err(e) => {
+                return Err(RawError {
+                    msg: format!(
                     "escaped unicode code point could not be converted to a u32 with the error {}",
                     e
                 ),
-                idx: self.stream.idx,
-            }),
+                    idx: self.stream.idx,
+                })
+            }
         };
         if code > 0x10FFFF {
             Err(RawError {
@@ -317,7 +325,8 @@ impl<'a> Tokenizer<'a> {
     }
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
-        let mut code = String::new();
+        trace!("escaped_with_hex4");
+        let mut code = start.to_string();
         if !start.is_digit(16) {
             return Err(RawError {
                 msg: "escaped unicode char code is not a hex digit".to_string(),
@@ -340,8 +349,12 @@ impl<'a> Tokenizer<'a> {
                 });
             }
         }
+        debug!("attemting to convert {:?} to u32", code);
         let code_point = match u32::from_str_radix(&code, 16) {
-            Ok(n) => n,
+            Ok(n) => {
+                debug!("converted {:?} to {}", code, n);
+                n
+            }
             Err(e) => {
                 return Err(RawError {
                     msg: format!("escaped unicode char code is not a hex digit {}", e),
@@ -767,16 +780,36 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip(1);
                     self.curly_stack.push(OpenCurlyKind::Template);
                     if start == '`' {
-                        return self.gen_template(TemplateKind::Head, line_count, last_len, found_octal_escape);
+                        return self.gen_template(
+                            TemplateKind::Head,
+                            line_count,
+                            last_len,
+                            found_octal_escape,
+                        );
                     } else {
-                        return self.gen_template(TemplateKind::Body, line_count, last_len, found_octal_escape);
+                        return self.gen_template(
+                            TemplateKind::Body,
+                            line_count,
+                            last_len,
+                            found_octal_escape,
+                        );
                     }
                 }
             } else if c == '`' {
                 if start == '`' {
-                    return self.gen_template(TemplateKind::NoSub, line_count, last_len, found_octal_escape);
+                    return self.gen_template(
+                        TemplateKind::NoSub,
+                        line_count,
+                        last_len,
+                        found_octal_escape,
+                    );
                 } else {
-                    return self.gen_template(TemplateKind::Tail, line_count, last_len, found_octal_escape);
+                    return self.gen_template(
+                        TemplateKind::Tail,
+                        line_count,
+                        last_len,
+                        found_octal_escape,
+                    );
                 }
             }
         }
@@ -1063,34 +1096,12 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn is_id_continue(c: char) -> bool {
         trace!(target:"idents", "is_id_continue {}", c);
-        if c >= 'a' && c <= 'z' {
-            true
-        } else if c >= 'A' && c <= 'Z' {
-            true
-        } else if c >= '0' && c <= '9' {
-            true
-        } else if c == '\\' || c == '_' || c == '$' {
-            true
-        } else if c < '\u{AA}' {
-            false
-        } else {
-            unic_ucd_ident::is_id_continue(c)
-        }
+        unicode::is_id_continue(c)
     }
     #[inline]
     fn is_id_start(c: char) -> bool {
         trace!(target:"idents", "is_id_start {}", c);
-        if c >= 'a' && c <= 'z' {
-            true
-        } else if c >= 'A' && c <= 'Z' {
-            true
-        } else if c == '\\' || c == '_' || c == '$' {
-            true
-        } else if c < '\u{AA}' {
-            false
-        } else  {
-            unic_ucd_ident::is_id_start(c)
-        }
+        unicode::is_id_start(c)
     }
     #[inline]
     fn look_ahead_byte_matches(&self, c: char) -> bool {
@@ -1396,6 +1407,7 @@ mod test {
             r#"ﬁⅷ"#,
             r#"ユニコード"#,
             r#"x‌‍"#,
+            r#"q\u309C"#,
         ];
         for i in IDENTS {
             let mut t = Tokenizer::new(dbg!(i));

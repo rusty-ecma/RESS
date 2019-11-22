@@ -91,9 +91,8 @@ pub struct Brace {
 impl MetaToken {
     pub fn line_number(&self) -> u32 {
         match self {
-            MetaToken::Keyword(_, line)
-            | MetaToken::OpenBrace(_, line) => *line,
-            _ => 0
+            MetaToken::Keyword(_, line) | MetaToken::OpenBrace(_, line) => *line,
+            _ => 0,
         }
     }
 }
@@ -103,8 +102,7 @@ impl PartialEq for MetaToken {
         match (self, other) {
             (MetaToken::Keyword(lhs, _), MetaToken::Keyword(rhs, _)) => lhs == rhs,
             (MetaToken::Punct(lhs), MetaToken::Punct(rhs)) => lhs == rhs,
-            (MetaToken::Ident, MetaToken::Ident)
-            | (MetaToken::Other, MetaToken::Other) => true,
+            (MetaToken::Ident, MetaToken::Ident) | (MetaToken::Other, MetaToken::Other) => true,
             _ => false,
         }
     }
@@ -163,54 +161,19 @@ mod test {
         l.push(first);
         test(&l, Some(first), None, None);
         l.push(second);
-        test(
-            &l,
-            Some(second),
-            Some(first),
-            None,
-        );
+        test(&l, Some(second), Some(first), None);
         l.push(third);
-        test(
-            &l,
-            Some(third),
-            Some(second),
-            Some(first),
-        );
+        test(&l, Some(third), Some(second), Some(first));
         l.push(fourth);
-        test(
-            &l,
-            Some(fourth),
-            Some(third),
-            Some(second),
-        );
+        test(&l, Some(fourth), Some(third), Some(second));
         l.push(fifth);
-        test(
-            &l,
-            Some(fifth),
-            Some(fourth),
-            Some(third),
-        );
+        test(&l, Some(fifth), Some(fourth), Some(third));
         l.push(sixth);
-        test(
-            &l,
-            Some(sixth),
-            Some(fifth),
-            Some(fourth),
-        );
+        test(&l, Some(sixth), Some(fifth), Some(fourth));
         l.push(seventh);
-        test(
-            &l,
-            Some(seventh),
-            Some(sixth),
-            Some(fifth),
-        );
+        test(&l, Some(seventh), Some(sixth), Some(fifth));
         l.push(eighth);
-        test(
-            &l,
-            Some(eighth),
-            Some(seventh),
-            Some(sixth),
-        );
+        test(&l, Some(eighth), Some(seventh), Some(sixth));
     }
 
     fn test(

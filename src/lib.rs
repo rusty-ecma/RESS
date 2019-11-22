@@ -42,7 +42,7 @@ use error::{Error, RawError};
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
-use look_behind::{LookBehind, MetaToken, Brace, Paren};
+use look_behind::{Brace, LookBehind, MetaToken, Paren};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -416,7 +416,7 @@ impl<'b> Scanner<'b> {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
-        } else  {
+        } else {
             if let Err(e) = self.keep_books(&ret) {
                 return Some(Err(e));
             }
@@ -428,7 +428,7 @@ impl<'b> Scanner<'b> {
     }
     #[inline]
     /// Evaluate the token for possible regex
-    /// start and handle updating the 
+    /// start and handle updating the
     /// `self.last_three`, `self.paren_stack` and `self.brace_stack`
     fn keep_books(&mut self, item: &Item<Token<&'b str>>) -> Res<()> {
         if let Token::Punct(ref p) = &item.token {
@@ -437,10 +437,13 @@ impl<'b> Scanner<'b> {
                 Punct::OpenBrace => self.handle_open_brace_books(),
                 Punct::CloseParen => self.handle_close_paren_books(item.span.start)?,
                 Punct::CloseBrace => self.handle_close_brace_books(item.span.start)?,
-                _ => self.last_three.push((&item.token, self.new_line_count as u32).into()),
+                _ => self
+                    .last_three
+                    .push((&item.token, self.new_line_count as u32).into()),
             }
         } else if !item.token.is_comment() {
-            self.last_three.push((&item.token, self.new_line_count as u32).into());
+            self.last_three
+                .push((&item.token, self.new_line_count as u32).into());
         }
         Ok(())
     }
@@ -456,9 +459,7 @@ impl<'b> Scanner<'b> {
             } else {
                 false
             }
-        } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
-            self.last_three.two()
-        {
+        } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.two() {
             if let Some(tok) = self.last_three.three() {
                 Self::check_for_expression(tok)
             } else {
@@ -513,8 +514,7 @@ impl<'b> Scanner<'b> {
         } else {
             true
         };
-        let paren = if let Some(MetaToken::CloseParen(open)) = self.last_three.one()
-        {
+        let paren = if let Some(MetaToken::CloseParen(open)) = self.last_three.one() {
             Some(*open)
         } else {
             None
@@ -536,8 +536,7 @@ impl<'b> Scanner<'b> {
                 msg: "Unmatched open close paren".to_string(),
             });
         };
-        self.last_three
-            .push(MetaToken::CloseParen(paren));
+        self.last_three.push(MetaToken::CloseParen(paren));
         Ok(())
     }
     #[inline]
@@ -589,7 +588,7 @@ impl<'b> Scanner<'b> {
         }
     }
     /// Check a token for the conditional keywords
-    /// 
+    ///
     /// > used in determining if we are at a regex or not
     fn check_token_for_conditional(tok: &MetaToken) -> bool {
         if let MetaToken::Keyword(k, _) = tok {
@@ -618,7 +617,7 @@ impl<'b> Scanner<'b> {
     }
     /// Determine if a token is a punctuation or keyword
     /// that indicates an operation
-    /// 
+    ///
     /// > used in determining if we are at a regex or not
     fn is_op(tok: &MetaToken) -> bool {
         match tok {

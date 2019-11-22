@@ -1,7 +1,7 @@
 pub mod prelude {
     pub use super::{
         Boolean, Comment, CommentExt, Ident, IdentExt, Keyword, Number, NumberExt, Punct, RegEx,
-        RegExExt, StringLit, StringLitExt, Template, TemplateExt, Token, TokenExt, TemplateLiteral
+        RegExExt, StringLit, StringLitExt, Template, TemplateExt, TemplateLiteral, Token, TokenExt,
     };
 }
 
@@ -636,7 +636,7 @@ impl<T> TemplateLiteral<T> {
     pub fn new(content: T, contains_octal_escape: bool) -> Self {
         Self {
             content,
-            contains_octal_escape
+            contains_octal_escape,
         }
     }
 }
