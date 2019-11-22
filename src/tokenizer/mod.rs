@@ -466,7 +466,7 @@ impl<'a> Tokenizer<'a> {
             '|' => self.pipe(),
             '+' => self.plus(),
             '-' => self.minus(allow_html_comment_close),
-            '/' => self.forward_slash(),
+            '/' => self.forward_slash(allow_html_comment_close),
             '%' => self.percent(),
             '^' => self.caret(),
             _ => Err(RawError {
@@ -652,7 +652,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
     #[inline]
-    fn forward_slash(&mut self) -> Res<RawItem> {
+    fn forward_slash(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!(
             "forward_slash ({}, {})",
             self.current_start,
@@ -662,7 +662,7 @@ impl<'a> Tokenizer<'a> {
             self.stream.skip(1);
             self.gen_punct(Punct::ForwardSlashEqual)
         } else if self.look_ahead_byte_matches('*') {
-            self.multi_comment()
+            self.multi_comment(allow_html_comment_close)
         } else if self.look_ahead_byte_matches('/') {
             self.single_comment(CommentKind::Single)
         } else {
@@ -841,7 +841,7 @@ impl<'a> Tokenizer<'a> {
         self.gen_comment(kind, 0, 0)
     }
     #[inline]
-    fn multi_comment(&mut self) -> Res<RawItem> {
+    fn multi_comment(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!(
             "multi_comment ({}, {})",
             self.current_start,
@@ -869,8 +869,9 @@ impl<'a> Tokenizer<'a> {
                 last_len = last_len.saturating_add(1);
             }
         }
-        if self.look_ahead_matches("-->") {
+        if (last_len < 3 || allow_html_comment_close) && self.look_ahead_matches("-->") {
             self.stream.skip(3);
+            
             while !self.stream.at_end() && !self.at_new_line() {
                 self.stream.skip(1);
                 last_len = last_len.saturating_add(1);
