@@ -23,6 +23,10 @@ jobs:
       run: unzip -qq moz_central -d moz_central
     - name: Run tests
       run: cargo test --features moz_central
+    - name: Run Major Libs example
+      run: cargo run --example major_libs
+    - name: Check syntax
+      run: cargo fmt --all -- --check
     - name: Cache node_modules
       uses: actions/cache@v1.0.3
       with:

@@ -871,7 +871,7 @@ impl<'a> Tokenizer<'a> {
         }
         if (last_len < 3 || allow_html_comment_close) && self.look_ahead_matches("-->") {
             self.stream.skip(3);
-            
+
             while !self.stream.at_end() && !self.at_new_line() {
                 self.stream.skip(1);
                 last_len = last_len.saturating_add(1);

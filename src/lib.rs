@@ -274,7 +274,7 @@ impl<'b> Scanner<'b> {
                 return Some(self.error(e));
             }
         };
-        
+
         let mut len = next.end - next.start;
         let ret = if next.ty.is_div_punct() && self.is_regex_start() {
             next = match self.stream.next_regex(len) {
@@ -801,7 +801,7 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub last_three: LookBehind,
     pub paren_stack: Vec<Paren>,
-    pub at_first_on_line: bool
+    pub at_first_on_line: bool,
 }
 
 #[cfg(test)]
