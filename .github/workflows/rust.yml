@@ -22,7 +22,7 @@ jobs:
     - name: unzip moz_central
       run: unzip -qq moz_central -d moz_central
     - name: Run tests
-      run: cargo test
+      run: cargo test --features moz_central
     - name: Cache node_modules
       uses: actions/cache@v1.0.3
       with:
