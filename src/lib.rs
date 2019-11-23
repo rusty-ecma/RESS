@@ -274,7 +274,7 @@ impl<'b> Scanner<'b> {
                 return Some(self.error(e));
             }
         };
-        self.at_first_on_line = false;
+        
         let mut len = next.end - next.start;
         let ret = if next.ty.is_div_punct() && self.is_regex_start() {
             next = match self.stream.next_regex(len) {
@@ -426,6 +426,7 @@ impl<'b> Scanner<'b> {
                     }
                 }
             };
+            self.at_first_on_line = self.at_first_on_line && token.is_multi_line_comment();
             self.bump_line_cursors(new_lines, len);
             Item::new_(
                 token,

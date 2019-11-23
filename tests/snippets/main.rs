@@ -171,7 +171,9 @@ fn html_comment_close() {
 --> stuff is in a comment
   --> also a comment
 /*multi-comment*/--> with trailer
-/*---*/";
+/*---*/
+let a;
+/*first comment*/ /*second comment*/--> with trailer";
     compare(
         js,
         &[
@@ -194,6 +196,19 @@ fn html_comment_close() {
                 kind: ress::tokens::CommentKind::Multi,
                 content: "---",
                 tail_content: None,
+            }),
+            Token::Keyword(Keyword::Let("let")),
+            Token::Ident("a".into()),
+            Token::Punct(Punct::SemiColon),
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Multi,
+                content: "first comment",
+                tail_content: None,
+            }),
+            Token::Comment(Comment {
+                kind: ress::tokens::CommentKind::Multi,
+                content: "second comment",
+                tail_content: Some(" with trailer"),
             }),
         ],
     );
