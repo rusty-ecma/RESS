@@ -17,3 +17,11 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Cache node_modules
+      uses: actions/cache@v1.0.3
+      with:
+        path: ./node_modules
+    - name: Cache cargo directory
+      uses: actions/cache@v1.0.3
+      with:
+        path: ~/.cargo
