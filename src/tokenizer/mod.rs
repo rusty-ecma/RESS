@@ -869,7 +869,7 @@ impl<'a> Tokenizer<'a> {
                 last_len = last_len.saturating_add(1);
             }
         }
-        if (last_len < 3 || allow_html_comment_close) && self.look_ahead_matches("-->") {
+        if (new_line_count > 0 || allow_html_comment_close) && self.look_ahead_matches("-->") {
             self.stream.skip(3);
 
             while !self.stream.at_end() && !self.at_new_line() {
