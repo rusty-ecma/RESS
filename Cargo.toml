@@ -17,17 +17,13 @@ appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github
 [dependencies]
 log = "0.4"
 unic-ucd-ident = { version = "0.9.0", default_features = false, features = ["id"] }
-reqwest = { version = "0.9", optional = true }
-zip = { version = "0.5", optional = true }
-walkdir = { version = "2", optional = true}
-indicatif = { version = "0.12", optional = true, features = ["with_rayon"] }
 
 [dev-dependencies]
+walkdir = "2"
 docopt = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
 proptest = "0.8"
-walkdir = "2.2"
 pretty_env_logger = "0.2"
 regex_generate = "0.2.0"
 criterion = "0.2"
@@ -35,7 +31,7 @@ lazy_static = "1"
 
 [features]
 default = []
-moz_central = ["zip", "reqwest", "walkdir", "indicatif"]
+moz_central = []
 
 [[example]]
 name = "major_libs"

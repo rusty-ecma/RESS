@@ -9,11 +9,11 @@ I do not work on this full time, please be patient if I am not able to respond q
 
 The primary development branch is the `next` branch. It would be ideal to create any pull requests against that branch over `master` or one of the other feature branches that might have been missed when cleaning up.
 
-For any PRs know that the code must pass travis and appveyor tests before they will be reviewed/merged. These test include the following commands you could use to check your version.
+For any PRs know that the code must pass ci tests before they will be reviewed/merged. These test include the following commands you could use to check your version.
 ```sh
 $ npm i
 $ cargo test
-$ cargo run --example major_libs --release
+$ cargo run --example major_libs
 ```
 The release flag in the above is due to the fact that this example is a naive benchmark to validate that changes haven't completely ruined the performance. Feel free to leave this flag off when you are testing for a PR.
 
@@ -21,6 +21,8 @@ This will run all of the project's unit tests as well as a test against some maj
 
 If you are interested in becoming a maintainer send me an email and we can talk more about what that looks like.
 
+
+# Getting Started
 There are a few things you might need to know to get started. First, the tests and benchmarks require that `npm` is installed to pull down the javascript they evaluate so you'll need [node.js](https://nodejs.org/en/) installed. 
 
 Because the benchmarks use Criterion, it can be difficult to use them with profiling so each of the single token benchmarks is extracted out as an example (you can find these in the examples/instruments folder). For the major_libs benchmark, you can use the example with the same name. These are helpful for working with tools like [`cargo instruments`](https://crates.io/crates/cargo-instruments).
@@ -59,3 +61,17 @@ The overall code layout works like this.
     - `is_ident_start`: check if a `char` has the attribute of ident_start
     - `is_id_continue`: check if a `char` has the attribute of ident_continue
     - `is_other_whitesapce`: the ECMA spec says that any Zs category character is valid whitespace. This function will test any exotic whitespaces 
+
+# Testing
+There are a few sets of JavaScript files that are required to run the tests in this repository. The first set can be easily aquired by running `npm install` in the root of this project. An additional test is also available behind a feature flag `moz_central` that requires the JIT Test files from the FireFox repository, the expectation is that these will exist in the folder `moz-central` in the root of this project. To get these files you can either manually download and unzip them by following [this link]("https://hg.mozilla.org/mozilla-central/archive/tip.zip/js/src/jit-test/tests/",) or you can execute the following command.
+
+```sh
+curl https://hg.mozilla.org/mozilla-central/archive/tip.zip/js/src/jit-test/tests/ --output moz-central.zip
+unzip -q moz-central.zip -d moz-central
+```
+
+To run these tests simple execute the following command.
+
+```sh
+cargo test --features moz_central -- moz_central
+```
