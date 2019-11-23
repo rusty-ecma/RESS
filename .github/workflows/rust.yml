@@ -14,9 +14,9 @@ jobs:
     - name: install js test libs from npm
       run: npm install
     - name: Build
-      run: cargo build --verbose
+      run: cargo build
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
     - name: Cache node_modules
       uses: actions/cache@v1.0.3
       with:
