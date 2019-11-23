@@ -15,6 +15,12 @@ jobs:
       run: npm install
     - name: Build
       run: cargo build
+    - name: curl
+      uses: wei/curl@master
+      with:
+        args: https://hg.mozilla.org/mozilla-central/archive/tip.zip/js/src/jit-test/tests/ --output moz_central.zip
+    - name: unzip moz_central
+      run: unzip -qq moz_central -d moz_central
     - name: Run tests
       run: cargo test
     - name: Cache node_modules
