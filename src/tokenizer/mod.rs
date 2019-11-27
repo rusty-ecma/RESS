@@ -662,6 +662,7 @@ impl<'a> Tokenizer<'a> {
             self.stream.skip(1);
             self.gen_punct(Punct::ForwardSlashEqual)
         } else if self.look_ahead_byte_matches('*') {
+            self.stream.skip(1);
             self.multi_comment(allow_html_comment_close)
         } else if self.look_ahead_byte_matches('/') {
             self.single_comment(CommentKind::Single)
@@ -848,7 +849,7 @@ impl<'a> Tokenizer<'a> {
             self.stream.idx
         );
         let mut new_line_count = 0usize;
-        let mut last_len = 1usize; // we already skipped the /
+        let mut last_len = 2usize; // we already skipped the /*
         let mut found_end = false;
         while let Some(c) = self.stream.next_char() {
             if c == '*' && self.look_ahead_byte_matches('/') {

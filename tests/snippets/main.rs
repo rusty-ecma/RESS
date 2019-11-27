@@ -259,9 +259,21 @@ fn decrement_greater_than_inline_multi() {
     )
 }
 
+#[test]
+#[should_panic = "unterminated multi-line comment"]
+fn star_only_regex() {
+    run_failure("/*/");
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));
+    }
+}
+
+fn run_failure(js: &str) {
+    for _ in panicing_scanner(js) {
+    
     }
 }
 
