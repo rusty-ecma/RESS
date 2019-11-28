@@ -272,9 +272,7 @@ fn compare(js: &str, expectation: &[Token<&str>]) {
 }
 
 fn run_failure(js: &str) {
-    for _ in panicing_scanner(js) {
-    
-    }
+    for _ in panicing_scanner(js) {}
 }
 
 fn panicing_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
