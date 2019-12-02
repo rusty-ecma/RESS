@@ -634,7 +634,11 @@ pub struct TemplateLiteral<T> {
     pub contains_invalid_unicode_escape: bool,
 }
 impl<T> TemplateLiteral<T> {
-    pub fn new(content: T, contains_octal_escape: bool, contains_invalid_unicode_escape: bool) -> Self {
+    pub fn new(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+    ) -> Self {
         Self {
             content,
             contains_octal_escape,
@@ -645,10 +649,26 @@ impl<T> TemplateLiteral<T> {
 /// Extension methods for allowing Template
 /// to work with both &str and String
 pub trait TemplateExt<T> {
-    fn no_sub_template(content: T, contains_octal_escape: bool, contains_invalid_unicode_escape: bool) -> Template<T>;
-    fn template_head(content: T, contains_octal_escape: bool, contains_invalid_unicode_escape: bool) -> Template<T>;
-    fn template_middle(content: T, contains_octal_escape: bool, contains_invalid_unicode_escape: bool) -> Template<T>;
-    fn template_tail(content: T, contains_octal_escape: bool, contains_invalid_unicode_escape: bool) -> Template<T>;
+    fn no_sub_template(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+    ) -> Template<T>;
+    fn template_head(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+    ) -> Template<T>;
+    fn template_middle(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+    ) -> Template<T>;
+    fn template_tail(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+    ) -> Template<T>;
     fn is_head(&self) -> bool;
     fn is_middle(&self) -> bool;
     fn is_tail(&self) -> bool;

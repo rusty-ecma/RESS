@@ -1,11 +1,7 @@
-
-
 fn main() {
     let mut args = std::env::args();
     let _ = args.next();
-    let path = args
-        .next()
-        .expect("First argument must be a file path");
+    let path = args.next().expect("First argument must be a file path");
     let path = std::path::Path::new(&path);
     if !path.exists() {
         panic!("First argument must be a file path");

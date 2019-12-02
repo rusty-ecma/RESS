@@ -275,13 +275,13 @@ impl<'a> Tokenizer<'a> {
             })
         }
     }
-    
+
     /// Consume an escaped code point returning a tuple of the u32
     /// represented in the string as well as the lenght of the code
     /// point only (the {} will not be included in the count)
-    /// 
+    ///
     /// ```js
-    /// '\u{888}' \\ returns (2184, 3) 
+    /// '\u{888}' \\ returns (2184, 3)
     /// ```
     #[inline]
     pub(crate) fn escaped_with_code_point(&mut self) -> Res<(u32, usize)> {
@@ -334,7 +334,7 @@ impl<'a> Tokenizer<'a> {
             Ok((code, len))
         }
     }
-    
+
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
         trace!("escaped_with_hex4");
@@ -826,7 +826,7 @@ impl<'a> Tokenizer<'a> {
                                 self.stream.skip(1);
                                 last_len = last_len.saturating_add(1);
                             }
-                            
+
                             if acc > 0x10_FFFF {
                                 found_invalid_unicode = true;
                             }
@@ -844,7 +844,6 @@ impl<'a> Tokenizer<'a> {
                                 found_invalid_unicode = true;
                             }
                         };
-
                     } else {
                         return Err(RawError {
                             idx: self.stream.idx,
