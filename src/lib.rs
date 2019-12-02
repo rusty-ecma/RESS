@@ -403,25 +403,42 @@ impl<'b> Scanner<'b> {
                     new_line_count,
                     last_len,
                     has_octal_escape,
+                    found_invalid_unicode_escape,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
                         tokenizer::TemplateKind::Head => {
                             let s = &s[1..s.len() - 2];
-                            Token::Template(Template::template_head(s, has_octal_escape))
+                            Token::Template(Template::template_head(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::Body => {
                             let s = &s[1..s.len() - 2];
-                            Token::Template(Template::template_middle(s, has_octal_escape))
+                            Token::Template(Template::template_middle(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::Tail => {
                             let s = &s[1..s.len() - 1];
-                            Token::Template(Template::template_tail(s, has_octal_escape))
+                            Token::Template(Template::template_tail(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::NoSub => {
                             let s = &s[1..s.len() - 1];
-                            Token::Template(Template::no_sub_template(s, has_octal_escape))
+                            Token::Template(Template::no_sub_template(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                            ))
                         }
                     }
                 }
