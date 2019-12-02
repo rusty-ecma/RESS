@@ -41,6 +41,7 @@ pub enum RawToken {
         new_line_count: usize,
         last_len: usize,
         has_octal_escape: bool,
+        found_invalid_unicode_escape: bool,
     },
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`

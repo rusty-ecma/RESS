@@ -5,6 +5,7 @@
 **/node_modules
 Cargo.lock
 *.log
-/perf.js
+/*.js
 package-lock.json
 moz_central
+moz-central

@@ -249,7 +249,8 @@ impl<'a> Tokenizer<'a> {
         if let Some('u') = self.stream.next_char() {
             let x = if let Some(c) = self.stream.next_char() {
                 if c == '{' {
-                    self.escaped_with_code_point()?
+                    let (x, _) = self.escaped_with_code_point()?;
+                    x
                 } else {
                     self.escaped_with_hex4(c)?
                 }
@@ -274,12 +275,22 @@ impl<'a> Tokenizer<'a> {
             })
         }
     }
+
+    /// Consume an escaped code point returning a tuple of the u32
+    /// represented in the string as well as the lenght of the code
+    /// point only (the {} will not be included in the count)
+    ///
+    /// ```js
+    /// '\u{888}' \\ returns (2184, 3)
+    /// ```
     #[inline]
-    pub(crate) fn escaped_with_code_point(&mut self) -> Res<u32> {
+    pub(crate) fn escaped_with_code_point(&mut self) -> Res<(u32, usize)> {
         trace!("escaped_with_code_point");
         let mut code = String::new();
         let mut last_char: char = '{';
+        let mut len: usize = 0;
         while let Some(c) = self.stream.next_char() {
+            len = len.saturating_add(1);
             last_char = c;
             if c == '}' {
                 break;
@@ -320,9 +331,10 @@ impl<'a> Tokenizer<'a> {
                 idx: self.current_start,
             })
         } else {
-            Ok(code)
+            Ok((code, len))
         }
     }
+
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
         trace!("escaped_with_hex4");
@@ -428,7 +440,25 @@ impl<'a> Tokenizer<'a> {
                 }
                 escaped = false;
             } else {
-                last_len = last_len.saturating_add(1);
+                let len = if escaped && c == 'u' {
+                    if let Some(next) = self.stream.next_char() {
+                        if next == '{' {
+                            self.escaped_with_code_point()?;
+                            8
+                        } else {
+                            self.escaped_with_hex4(next)?;
+                            5
+                        }
+                    } else {
+                        return Err(RawError {
+                            idx: self.stream.idx,
+                            msg: "Invalid escape in string literal".to_string(),
+                        });
+                    }
+                } else {
+                    1
+                };
+                last_len = last_len.saturating_add(len);
                 escaped = false;
             }
         }
@@ -755,21 +785,71 @@ impl<'a> Tokenizer<'a> {
         let mut line_count = 0usize;
         let mut last_len = 1usize; // we already skipped the start char
         let mut found_octal_escape = false;
+        let mut found_invalid_unicode = false;
         while let Some(c) = self.stream.next_char() {
             last_len = last_len.saturating_add(1);
             if c == '\\' {
                 if self.look_ahead_matches("${") {
+                    last_len = last_len.saturating_add(2);
                     self.stream.skip(2);
                 } else if self.look_ahead_byte_matches('`') || self.look_ahead_byte_matches('\\') {
+                    last_len = last_len.saturating_add(1);
                     self.stream.skip(1);
                 } else if self.look_ahead_byte_matches('0') {
+                    last_len = last_len.saturating_add(1);
                     if let Some(_zero) = self.stream.next_char() {
+                        last_len = last_len.saturating_add(1);
                         if self.stream.at_decimal() {
                             found_octal_escape = true;
                         }
                     }
                 } else if self.stream.at_octal() {
                     found_octal_escape = true;
+                } else if self.look_ahead_byte_matches('u') {
+                    self.stream.skip(1);
+                    last_len = last_len.saturating_add(1);
+                    if let Some(ch) = self.stream.next_char() {
+                        last_len = last_len.saturating_add(1);
+                        if ch == '{' {
+                            let mut acc = 0u32;
+                            while self.stream.at_hex() {
+                                last_len = last_len.saturating_add(1);
+                                if let Some(n) = self.stream.next_char() {
+                                    acc = (acc * 16) + n.to_digit(16).unwrap();
+                                }
+                            }
+                            while !self.look_ahead_byte_matches('}') {
+                                found_invalid_unicode = true;
+                                if self.look_ahead_byte_matches('`') {
+                                    break;
+                                }
+                                self.stream.skip(1);
+                                last_len = last_len.saturating_add(1);
+                            }
+
+                            if acc > 0x10_FFFF {
+                                found_invalid_unicode = true;
+                            }
+                        } else {
+                            if ch.is_digit(16) {
+                                for _ in 0..3 {
+                                    if self.stream.at_hex() {
+                                        self.stream.skip(1);
+                                    } else {
+                                        found_invalid_unicode = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                found_invalid_unicode = true;
+                            }
+                        };
+                    } else {
+                        return Err(RawError {
+                            idx: self.stream.idx,
+                            msg: "Invalid escape sequence in template literal".to_string(),
+                        });
+                    }
                 }
             } else if c == '\r' {
                 if self.look_ahead_byte_matches('\n') {
@@ -790,6 +870,7 @@ impl<'a> Tokenizer<'a> {
                             line_count,
                             last_len,
                             found_octal_escape,
+                            found_invalid_unicode,
                         );
                     } else {
                         return self.gen_template(
@@ -797,6 +878,7 @@ impl<'a> Tokenizer<'a> {
                             line_count,
                             last_len,
                             found_octal_escape,
+                            found_invalid_unicode,
                         );
                     }
                 }
@@ -807,6 +889,7 @@ impl<'a> Tokenizer<'a> {
                         line_count,
                         last_len,
                         found_octal_escape,
+                        found_invalid_unicode,
                     );
                 } else {
                     return self.gen_template(
@@ -814,6 +897,7 @@ impl<'a> Tokenizer<'a> {
                         line_count,
                         last_len,
                         found_octal_escape,
+                        found_invalid_unicode,
                     );
                 }
             }
@@ -1167,6 +1251,7 @@ impl<'a> Tokenizer<'a> {
         new_line_count: usize,
         last_len: usize,
         has_octal_escape: bool,
+        invalid_unicode: bool,
     ) -> Res<RawItem> {
         trace!(
             "gen_template {:?}, {}, {} ({}, {})",
@@ -1181,6 +1266,7 @@ impl<'a> Tokenizer<'a> {
             new_line_count,
             last_len,
             has_octal_escape,
+            found_invalid_unicode_escape: invalid_unicode,
         })
     }
     #[inline]
@@ -1369,6 +1455,7 @@ mod test {
 ""#,
         ];
         for s in STRINGS {
+            dbg!(&s);
             let mut t = Tokenizer::new(s);
             let item = t.next(true).unwrap();
             match &item.ty {
@@ -1583,6 +1670,7 @@ mod test {
                 new_line_count: _,
                 last_len: _,
                 has_octal_escape: _,
+                found_invalid_unicode_escape: _,
             } => {
                 assert_eq!(kind, &expected_kind);
             }
