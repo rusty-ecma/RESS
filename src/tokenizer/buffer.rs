@@ -163,19 +163,42 @@ impl<'a> JSBuffer<'a> {
             || self.buffer[self.idx] == 12 // \f
             || self.buffer[self.idx] == 13 // \r
             || self.buffer[self.idx] == 32 // ' '
-            || {
-                let c = if let Some(c) = self.next_char() {
-                    let _ = self.prev_char();
-                    c
-                } else {
-                    return false;
-                };
-                c == '\u{00A0}'
-                    || c == '\u{FEFF}'
-                    || c == '\u{2028}'
-                    || c == '\u{2029}'
-                    || is_other_whitespace(c)
-            }
+            || (self.buffer[self.idx] == 194 && self.idx + 1 < self.len && self.buffer[self.idx+1] == 160)
+            || (self.buffer[self.idx] >= 226 && self.buffer[self.idx] <= 239 && self.len > self.idx + 2 && {
+                match &self.buffer[self.idx..self.idx+3] {
+                    &[239, 187, 191] //"\u{feff}",
+                    | &[226, 128, 168] //"\u{2028}",
+                    | &[226, 128, 169] //"\u{2029}",
+                    | &[226, 128, 128] //"\u{2000}",
+                    | &[226, 128, 129] //"\u{2001}",
+                    | &[226, 128, 130] //"\u{2002}",
+                    | &[226, 128, 131] //"\u{2003}",
+                    | &[226, 128, 132] //"\u{2004}",
+                    | &[226, 128, 133] //"\u{2005}",
+                    | &[226, 128, 134] //"\u{2006}",
+                    | &[226, 128, 135] //"\u{2007}",
+                    | &[226, 128, 136] //"\u{2008}",
+                    | &[226, 128, 137] //"\u{2009}",
+                    | &[226, 128, 138] //"\u{200a}",
+                    | &[226, 128, 175] //"\u{202f}",
+                    | &[226, 129, 159] //"\u{205f}",
+                    | &[227, 128, 128] => true,  //"\u{3000}",
+                    _ => false,
+                }
+            } )
+            // || {
+            //     let c = if let Some(c) = self.next_char() {
+            //         let _ = self.prev_char();
+            //         c
+            //     } else {
+            //         return false;
+            //     };
+            //     c == '\u{00A0}'
+            //         || c == '\u{FEFF}'
+            //         || c == '\u{2028}'
+            //         || c == '\u{2029}'
+            //         || is_other_whitespace(c)
+            // }
     }
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
