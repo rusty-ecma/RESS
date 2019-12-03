@@ -186,19 +186,6 @@ impl<'a> JSBuffer<'a> {
                     _ => false,
                 }
             } )
-            // || {
-            //     let c = if let Some(c) = self.next_char() {
-            //         let _ = self.prev_char();
-            //         c
-            //     } else {
-            //         return false;
-            //     };
-            //     c == '\u{00A0}'
-            //         || c == '\u{FEFF}'
-            //         || c == '\u{2028}'
-            //         || c == '\u{2029}'
-            //         || is_other_whitespace(c)
-            // }
     }
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
