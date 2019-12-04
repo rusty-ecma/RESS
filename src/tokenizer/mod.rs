@@ -830,19 +830,17 @@ impl<'a> Tokenizer<'a> {
                             if acc > 0x10_FFFF {
                                 found_invalid_unicode = true;
                             }
-                        } else {
-                            if ch.is_digit(16) {
-                                for _ in 0..3 {
-                                    if self.stream.at_hex() {
-                                        self.stream.skip(1);
-                                    } else {
-                                        found_invalid_unicode = true;
-                                        break;
-                                    }
+                        } else if ch.is_digit(16) {
+                            for _ in 0..3 {
+                                if self.stream.at_hex() {
+                                    self.stream.skip(1);
+                                } else {
+                                    found_invalid_unicode = true;
+                                    break;
                                 }
-                            } else {
-                                found_invalid_unicode = true;
                             }
+                        } else {
+                            found_invalid_unicode = true;
                         };
                     } else {
                         return Err(RawError {
