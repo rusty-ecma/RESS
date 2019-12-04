@@ -1457,10 +1457,7 @@ mod test {
             let mut t = Tokenizer::new(s);
             let item = t.next(true).unwrap();
             match &item.ty {
-                RawToken::String {
-                    kind,
-                    ..
-                } => {
+                RawToken::String { kind, .. } => {
                     if &s[0..1] == "'" {
                         match kind {
                             StringKind::Single => (),
@@ -1623,7 +1620,7 @@ mod test {
     #[should_panic = "new line in regex literal"]
     fn tokenizer_regex_new_line_negative() {
         let regex = "/a\\
-";
+                     ";
         let mut t = Tokenizer::new(regex);
         let next = t.next(true).unwrap();
         let _item = t.next_regex(next.end - next.start).unwrap();
