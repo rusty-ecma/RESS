@@ -1,4 +1,3 @@
-
 use std::char;
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
@@ -254,7 +253,7 @@ mod test {
     #[test]
     fn at_whitespace() {
         let whitespaces = &[
-             9, // \t
+            9,  // \t
             10, // \n
             11, // \u{000b}
             12, // \f
@@ -281,7 +280,11 @@ mod test {
         ];
         let mut buf = JSBuffer::new(whitespaces);
         while !buf.at_end() {
-            assert!(buf.at_whitespace(), "buffer was not at whitespace {}", buf.idx);
+            assert!(
+                buf.at_whitespace(),
+                "buffer was not at whitespace {}",
+                buf.idx
+            );
             buf.skip(1);
         }
     }
