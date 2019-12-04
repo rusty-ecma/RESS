@@ -319,13 +319,14 @@ mod test {
         assert!(b.next_char().unwrap() == 'k');
         assert!(b.next_char().unwrap() == 'ł');
         assert!(b.next_char().unwrap() == '둘');
-
+        assert!(b.next_char().is_none());
         assert!(b.prev_char().unwrap() == '둘');
         assert!(b.prev_char().unwrap() == 'ł');
         assert!(b.prev_char().unwrap() == 'k');
         assert!(b.prev_char().unwrap() == '🐁');
         assert!(b.prev_char().unwrap() == '🦡');
         assert!(b.prev_char().unwrap() == '🦜');
+        assert!(b.prev_char().is_none());
     }
 
     #[test]
