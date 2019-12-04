@@ -1367,7 +1367,7 @@ mod test {
             "-", "/", "*", "%", "&", "|", "^", ">>>=", //3 char
             "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
             "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
-            "^=", "%=", "<=", ">=", "=>", "**",
+            "^=", "%=", "<=", ">=", "=>", "**", "@",
         ];
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
@@ -1459,8 +1459,7 @@ mod test {
             match &item.ty {
                 RawToken::String {
                     kind,
-                    new_line_count: _,
-                    last_len: _,
+                    ..
                 } => {
                     if &s[0..1] == "'" {
                         match kind {
@@ -1605,6 +1604,8 @@ mod test {
             r#"/.{0,}/"#,
             r#"/.{0,0}/"#,
             r#"/=/"#,
+            r#"/\u{12345}\u0F00/"#,
+            r#"/a\/b/"#,
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
@@ -1616,6 +1617,32 @@ mod test {
             });
             assert!(t.stream.at_end());
         }
+    }
+
+    #[test]
+    #[should_panic = "new line in regex literal"]
+    fn tokenizer_regex_new_line_negative() {
+        let regex = "/a\\
+";
+        let mut t = Tokenizer::new(regex);
+        let next = t.next(true).unwrap();
+        let _item = t.next_regex(next.end - next.start).unwrap();
+    }
+    #[test]
+    #[should_panic = "new line in regex literal"]
+    fn tokenizer_regex_line_term_negative() {
+        let regex = "/a\r/";
+        let mut t = Tokenizer::new(regex);
+        let next = t.next(true).unwrap();
+        let _item = t.next_regex(next.end - next.start).unwrap();
+    }
+    #[test]
+    #[should_panic = "unterminated regex"]
+    fn tokenizer_regex_unterm_negative() {
+        let regex = "/asdf";
+        let mut t = Tokenizer::new(regex);
+        let next = t.next(true).unwrap();
+        let _item = t.next_regex(next.end - next.start).unwrap();
     }
 
     #[test]
