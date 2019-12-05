@@ -304,7 +304,7 @@ impl<'a> Tokenizer<'a> {
                 });
             }
         }
-        
+
         if code > 0x10_FFFF {
             Err(RawError {
                 msg: "escaped unicode codepoint too large".to_string(),
@@ -341,7 +341,6 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx,
                     });
                 }
-                
             } else {
                 return Err(RawError {
                     msg: "escaped unicode sequence does not have 4 characters".to_string(),
