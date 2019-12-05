@@ -1527,7 +1527,7 @@ mod test {
         let mut t = Tokenizer::new(r#"\u"#);
         t.next(true).unwrap();
     }
-    
+
     #[test]
     #[should_panic = "invalid unicode escape sequence in identifier"]
     fn tokenizer_ident_slash_only() {
@@ -1703,10 +1703,7 @@ mod test {
 
     fn check_temp(temp: &RawToken, expected_kind: TemplateKind) {
         match temp {
-            RawToken::Template {
-                kind,
-                ..
-            } => {
+            RawToken::Template { kind, .. } => {
                 assert_eq!(kind, &expected_kind);
             }
             _ => unreachable!(),
