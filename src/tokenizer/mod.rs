@@ -2042,7 +2042,10 @@ mod test {
     fn template_octal() {
         let mut t = Tokenizer::new(r#"`a\7`"#);
         let item = t.next(true).unwrap();
-        if let RawToken::Template { has_octal_escape, .. } = item.ty {
+        if let RawToken::Template {
+            has_octal_escape, ..
+        } = item.ty
+        {
             assert!(has_octal_escape);
         }
     }
@@ -2051,7 +2054,11 @@ mod test {
     fn template_invalid_unicode_char_code() {
         let mut t = Tokenizer::new(r#"`asdf\u99T`"#);
         let item = t.next(true).unwrap();
-        if let RawToken::Template { found_invalid_unicode_escape, .. } = item.ty {
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
             assert!(found_invalid_unicode_escape);
         }
     }
@@ -2059,7 +2066,11 @@ mod test {
     fn template_invalid_unicode_char_code2() {
         let mut t = Tokenizer::new(r#"`asdf\uT`"#);
         let item = t.next(true).unwrap();
-        if let RawToken::Template { found_invalid_unicode_escape, .. } = item.ty {
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
             assert!(found_invalid_unicode_escape);
         }
     }
@@ -2068,7 +2079,11 @@ mod test {
     fn template_escape_u() {
         let mut t = Tokenizer::new(r#"`asdf\u"#);
         let item = t.next(true).unwrap();
-        if let RawToken::Template { found_invalid_unicode_escape, .. } = item.ty {
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
             assert!(found_invalid_unicode_escape);
         }
     }
