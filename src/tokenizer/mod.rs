@@ -286,7 +286,7 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     pub(crate) fn escaped_with_code_point(&mut self) -> Res<(u32, usize)> {
         trace!("escaped_with_code_point");
-        let mut code = String::new();
+        let mut code = 0;
         let mut last_char: char = '{';
         let mut len: usize = 0;
         while let Some(c) = self.stream.next_char() {
@@ -295,31 +295,16 @@ impl<'a> Tokenizer<'a> {
             if c == '}' {
                 break;
             }
-            if !c.is_digit(16) {
+            if let Some(n) = c.to_digit(16) {
+                code = (code * 16) + n;
+            } else {
                 return Err(RawError {
                     msg: "escaped unicode code point contains a non-hex digit".to_string(),
                     idx: self.stream.idx,
                 });
-            } else {
-                code.push(c)
             }
         }
-        debug!("attempting to convert {:?} to u32", code);
-        let code = match u32::from_str_radix(&code, 16) {
-            Ok(n) => {
-                debug!("converted {:?} to {}", code, n);
-                n
-            }
-            Err(e) => {
-                return Err(RawError {
-                    msg: format!(
-                    "escaped unicode code point could not be converted to a u32 with the error {}",
-                    e
-                ),
-                    idx: self.stream.idx,
-                })
-            }
-        };
+        
         if code > 0x10_FFFF {
             Err(RawError {
                 msg: "escaped unicode codepoint too large".to_string(),
@@ -338,22 +323,25 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
         trace!("escaped_with_hex4");
-        let mut code = start.to_string();
-        if !start.is_digit(16) {
+        let mut code = if let Some(n) = start.to_digit(16) {
+            n
+        } else {
             return Err(RawError {
                 msg: "escaped unicode char code is not a hex digit".to_string(),
                 idx: self.stream.idx,
             });
-        }
+        };
         for _ in 0..3 {
             if let Some(c) = self.stream.next_char() {
-                if !c.is_digit(16) {
+                if let Some(n) = c.to_digit(16) {
+                    code = (code * 16) + n;
+                } else {
                     return Err(RawError {
                         msg: "escaped unicode code point is not a hex digit".to_string(),
                         idx: self.stream.idx,
                     });
                 }
-                code.push(c);
+                
             } else {
                 return Err(RawError {
                     msg: "escaped unicode sequence does not have 4 characters".to_string(),
@@ -361,20 +349,7 @@ impl<'a> Tokenizer<'a> {
                 });
             }
         }
-        debug!("attemting to convert {:?} to u32", code);
-        let code_point = match u32::from_str_radix(&code, 16) {
-            Ok(n) => {
-                debug!("converted {:?} to {}", code, n);
-                n
-            }
-            Err(e) => {
-                return Err(RawError {
-                    msg: format!("escaped unicode char code is not a hex digit {}", e),
-                    idx: self.stream.idx,
-                })
-            }
-        };
-        Ok(code_point)
+        Ok(code)
     }
 
     fn string(&mut self, quote: char) -> Res<RawItem> {
