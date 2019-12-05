@@ -1686,7 +1686,12 @@ mod test {
     fn oct_escape_template() {
         let mut t = Tokenizer::new(r#"`\01`"#);
         let temp = t.next(true).unwrap();
-        if let RawToken::Template { kind, has_octal_escape, .. } = temp.ty {
+        if let RawToken::Template {
+            kind,
+            has_octal_escape,
+            ..
+        } = temp.ty
+        {
             assert_eq!(kind, TemplateKind::NoSub);
             assert!(has_octal_escape);
         }
@@ -1710,7 +1715,13 @@ mod test {
         for template in ts {
             let mut t = Tokenizer::new(template);
             let temp = t.next(true).unwrap();
-            if let RawToken::Template { kind, new_line_count, last_len, .. } = temp.ty {
+            if let RawToken::Template {
+                kind,
+                new_line_count,
+                last_len,
+                ..
+            } = temp.ty
+            {
                 assert_eq!(kind, TemplateKind::NoSub);
                 assert!(new_line_count == 1);
                 assert!(last_len == 5, "{}", last_len);
@@ -1720,15 +1731,16 @@ mod test {
 
     #[test]
     fn invalid_unicode_escape_template() {
-        let ts = &[
-            r#"`\u{FFFFFFF}`"#,
-            r#"`\u{AAA`"#,
-            r#"`\u{AAG}`"#,
-        ];
+        let ts = &[r#"`\u{FFFFFFF}`"#, r#"`\u{AAA`"#, r#"`\u{AAG}`"#];
         for template in ts {
             let mut t = Tokenizer::new(template);
             let temp = t.next(true).unwrap();
-            if let RawToken::Template { kind, found_invalid_unicode_escape, .. } = temp.ty {
+            if let RawToken::Template {
+                kind,
+                found_invalid_unicode_escape,
+                ..
+            } = temp.ty
+            {
                 assert_eq!(kind, TemplateKind::NoSub);
                 assert!(found_invalid_unicode_escape)
             }
@@ -1819,7 +1831,7 @@ mod test {
             "<!-- This is an HTML comment -->",
             "<!-- This is an HTML comment --> with a trailer",
             "/*multi-line comment */-->with a trailer",
-            "/*\nmulti-line\rweird\u{2028}new\u{2029}lines\r\n*/"
+            "/*\nmulti-line\rweird\u{2028}new\u{2029}lines\r\n*/",
         ];
         for c in COMMENTS {
             let mut t = Tokenizer::new(c);
@@ -2025,5 +2037,4 @@ mod test {
         let mut t = Tokenizer::new("1__1;");
         t.next(true).unwrap();
     }
-
 }
