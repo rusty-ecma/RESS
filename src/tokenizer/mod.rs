@@ -1522,6 +1522,20 @@ mod test {
     }
 
     #[test]
+    #[should_panic = "invalid unicode escape sequence in identifier"]
+    fn tokenizer_ident_bad_escape() {
+        let mut t = Tokenizer::new(r#"\u"#);
+        t.next(true).unwrap();
+    }
+    
+    #[test]
+    #[should_panic = "invalid unicode escape sequence in identifier"]
+    fn tokenizer_ident_slash_only() {
+        let mut t = Tokenizer::new(r#"\x"#);
+        t.next(true).unwrap();
+    }
+
+    #[test]
     fn tokenizer_number() {
         static NUMBERS: &[&str] = &[
             "0",
@@ -1603,6 +1617,8 @@ mod test {
             r#"/=/"#,
             r#"/\u{12345}\u0F00/"#,
             r#"/a\/b/"#,
+            r#"/\//"#,
+            r#"/a/\u{12345}\u0F00"#,
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
@@ -1689,10 +1705,7 @@ mod test {
         match temp {
             RawToken::Template {
                 kind,
-                new_line_count: _,
-                last_len: _,
-                has_octal_escape: _,
-                found_invalid_unicode_escape: _,
+                ..
             } => {
                 assert_eq!(kind, &expected_kind);
             }
