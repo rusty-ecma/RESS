@@ -121,7 +121,7 @@ impl<'a> Tokenizer<'a> {
                 Ok(None)
             }
         } else if self.eat_ch_or_escaped('n')? {
-             if self.eat_ch_or_escaped('s')? {
+            if self.eat_ch_or_escaped('s')? {
                 self.suffix_for_token("tanceof", RawToken::Keyword(RawKeyword::InstanceOf))
             } else if self.eat_ch_or_escaped('t')? {
                 self.suffix_for_token("erface", RawToken::Keyword(RawKeyword::Interface))
