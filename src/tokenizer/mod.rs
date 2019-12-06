@@ -286,7 +286,7 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     pub(crate) fn escaped_with_code_point(&mut self) -> Res<(u32, usize)> {
         trace!("escaped_with_code_point");
-        let mut code = String::new();
+        let mut code = 0;
         let mut last_char: char = '{';
         let mut len: usize = 0;
         while let Some(c) = self.stream.next_char() {
@@ -295,31 +295,16 @@ impl<'a> Tokenizer<'a> {
             if c == '}' {
                 break;
             }
-            if !c.is_digit(16) {
+            if let Some(n) = c.to_digit(16) {
+                code = (code * 16) + n;
+            } else {
                 return Err(RawError {
                     msg: "escaped unicode code point contains a non-hex digit".to_string(),
                     idx: self.stream.idx,
                 });
-            } else {
-                code.push(c)
             }
         }
-        debug!("attempting to convert {:?} to u32", code);
-        let code = match u32::from_str_radix(&code, 16) {
-            Ok(n) => {
-                debug!("converted {:?} to {}", code, n);
-                n
-            }
-            Err(e) => {
-                return Err(RawError {
-                    msg: format!(
-                    "escaped unicode code point could not be converted to a u32 with the error {}",
-                    e
-                ),
-                    idx: self.stream.idx,
-                })
-            }
-        };
+
         if code > 0x10_FFFF {
             Err(RawError {
                 msg: "escaped unicode codepoint too large".to_string(),
@@ -338,22 +323,24 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
         trace!("escaped_with_hex4");
-        let mut code = start.to_string();
-        if !start.is_digit(16) {
+        let mut code = if let Some(n) = start.to_digit(16) {
+            n
+        } else {
             return Err(RawError {
                 msg: "escaped unicode char code is not a hex digit".to_string(),
                 idx: self.stream.idx,
             });
-        }
+        };
         for _ in 0..3 {
             if let Some(c) = self.stream.next_char() {
-                if !c.is_digit(16) {
+                if let Some(n) = c.to_digit(16) {
+                    code = (code * 16) + n;
+                } else {
                     return Err(RawError {
                         msg: "escaped unicode code point is not a hex digit".to_string(),
                         idx: self.stream.idx,
                     });
                 }
-                code.push(c);
             } else {
                 return Err(RawError {
                     msg: "escaped unicode sequence does not have 4 characters".to_string(),
@@ -361,20 +348,7 @@ impl<'a> Tokenizer<'a> {
                 });
             }
         }
-        debug!("attemting to convert {:?} to u32", code);
-        let code_point = match u32::from_str_radix(&code, 16) {
-            Ok(n) => {
-                debug!("converted {:?} to {}", code, n);
-                n
-            }
-            Err(e) => {
-                return Err(RawError {
-                    msg: format!("escaped unicode char code is not a hex digit {}", e),
-                    idx: self.stream.idx,
-                })
-            }
-        };
-        Ok(code_point)
+        Ok(code)
     }
 
     fn string(&mut self, quote: char) -> Res<RawItem> {
@@ -1572,6 +1546,7 @@ mod test {
             "0o6n",
             "0b1n",
             "2_141_192_192",
+            "0n",
         ];
         for n in NUMBERS {
             println!("n: {}", n);
@@ -1702,11 +1677,73 @@ mod test {
     }
 
     fn check_temp(temp: &RawToken, expected_kind: TemplateKind) {
-        match temp {
-            RawToken::Template { kind, .. } => {
-                assert_eq!(kind, &expected_kind);
+        if let RawToken::Template { kind, .. } = temp {
+            assert_eq!(kind, &expected_kind);
+        }
+    }
+
+    #[test]
+    fn oct_escape_template() {
+        let mut t = Tokenizer::new(r#"`\01`"#);
+        let temp = t.next(true).unwrap();
+        if let RawToken::Template {
+            kind,
+            has_octal_escape,
+            ..
+        } = temp.ty
+        {
+            assert_eq!(kind, TemplateKind::NoSub);
+            assert!(has_octal_escape);
+        }
+    }
+
+    #[test]
+    #[should_panic = "unterminated template"]
+    fn untermed_template() {
+        let mut t = Tokenizer::new(r#"`asdf"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    fn template_new_lines() {
+        let ts = &[
+            "`asdf\r\nasdf`",
+            "`asdf\rasdf`",
+            "`asdf\nasdf`",
+            "`asdf\u{2028}asdf`",
+            "`asdf\u{2029}asdf`",
+        ];
+        for template in ts {
+            let mut t = Tokenizer::new(template);
+            let temp = t.next(true).unwrap();
+            if let RawToken::Template {
+                kind,
+                new_line_count,
+                last_len,
+                ..
+            } = temp.ty
+            {
+                assert_eq!(kind, TemplateKind::NoSub);
+                assert!(new_line_count == 1);
+                assert!(last_len == 5, "{}", last_len);
             }
-            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn invalid_unicode_escape_template() {
+        let ts = &[r#"`\u{FFFFFFF}`"#, r#"`\u{AAA`"#, r#"`\u{AAG}`"#];
+        for template in ts {
+            let mut t = Tokenizer::new(template);
+            let temp = t.next(true).unwrap();
+            if let RawToken::Template {
+                kind,
+                found_invalid_unicode_escape,
+                ..
+            } = temp.ty
+            {
+                assert_eq!(kind, TemplateKind::NoSub);
+                assert!(found_invalid_unicode_escape)
+            }
         }
     }
 
@@ -1794,6 +1831,7 @@ mod test {
             "<!-- This is an HTML comment -->",
             "<!-- This is an HTML comment --> with a trailer",
             "/*multi-line comment */-->with a trailer",
+            "/*\nmulti-line\rweird\u{2028}new\u{2029}lines\r\n*/",
         ];
         for c in COMMENTS {
             let mut t = Tokenizer::new(c);
@@ -1880,6 +1918,173 @@ mod test {
         for i in &tests {
             let mut t = Tokenizer::new(i);
             assert!(t.next(true).is_err());
+        }
+    }
+    #[test]
+    #[should_panic = "escaped unicode code points must end in }"]
+    fn untermed_codepoint() {
+        let mut t = Tokenizer::new(r#"\u{0000"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "escaped unicode code point contains a non-hex digit"]
+    fn codepoint_not_hex() {
+        let mut t = Tokenizer::new(r#"\u{11G}"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "escaped unicode code point is not a hex digit"]
+    fn char_code_not_hex() {
+        let mut t = Tokenizer::new(r#"\u11G0"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "escaped unicode char code is not a hex digit"]
+    fn start_char_code_not_hex() {
+        let mut t = Tokenizer::new(r#"\uG1G0"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "escaped unicode sequence does not have 4 characters"]
+    fn char_code_short() {
+        let mut t = Tokenizer::new(r#"\u010"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "unescaped new line in string literal"]
+    fn unescaped_carrage_return_in_str() {
+        let mut t = Tokenizer::new("'asdf\r'");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "Invalid escape in string literal"]
+    fn short_unicode_escape_in_str() {
+        let mut t = Tokenizer::new(r#"'\u"#);
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "unterminated string literal"]
+    fn untermed_str_lit() {
+        let mut t = Tokenizer::new("'asdf");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "unknown punct"]
+    fn unknown_punct() {
+        let mut t = Tokenizer::new("¬");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty hex literal"]
+    fn empty_hex() {
+        let mut t = Tokenizer::new("0x");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty hex literal"]
+    fn empty_hex2() {
+        let mut t = Tokenizer::new("0x;");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty octal literal"]
+    fn empty_oct() {
+        let mut t = Tokenizer::new("0o");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty octal literal"]
+    fn empty_oct2() {
+        let mut t = Tokenizer::new("0o;");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty binary literal"]
+    fn empty_bin() {
+        let mut t = Tokenizer::new("0b");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "empty binary literal"]
+    fn empty_bin2() {
+        let mut t = Tokenizer::new("0b;");
+        t.next(true).unwrap();
+    }
+
+    #[test]
+    #[should_panic = "Invalid decimal, exponents must be followed by +, - or decimal digits"]
+    fn empty_exp() {
+        let mut t = Tokenizer::new("1e;");
+        t.next(true).unwrap();
+    }
+    #[test]
+    #[should_panic = "Invalid decimal, Floats cannot be BigInts"]
+    fn float_big_int() {
+        let mut t = Tokenizer::new("1e3n;");
+        t.next(true).unwrap();
+    }
+
+    #[test]
+    #[should_panic = "Invalid decimal. Numbers cannot end with an underscore"]
+    fn trailing_sep() {
+        let mut t = Tokenizer::new("1_;");
+        t.next(true).unwrap();
+    }
+
+    #[test]
+    #[should_panic = "double numeric seperator"]
+    fn rep_sep() {
+        let mut t = Tokenizer::new("1__1;");
+        t.next(true).unwrap();
+    }
+
+    #[test]
+    fn template_octal() {
+        let mut t = Tokenizer::new(r#"`a\7`"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            has_octal_escape, ..
+        } = item.ty
+        {
+            assert!(has_octal_escape);
+        }
+    }
+
+    #[test]
+    fn template_invalid_unicode_char_code() {
+        let mut t = Tokenizer::new(r#"`asdf\u99T`"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
+            assert!(found_invalid_unicode_escape);
+        }
+    }
+    #[test]
+    fn template_invalid_unicode_char_code2() {
+        let mut t = Tokenizer::new(r#"`asdf\uT`"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
+            assert!(found_invalid_unicode_escape);
+        }
+    }
+    #[test]
+    #[should_panic = "Invalid escape sequence in template literal"]
+    fn template_escape_u() {
+        let mut t = Tokenizer::new(r#"`asdf\u"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            found_invalid_unicode_escape,
+            ..
+        } = item.ty
+        {
+            assert!(found_invalid_unicode_escape);
         }
     }
 }

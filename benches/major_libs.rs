@@ -31,6 +31,26 @@ lazy_static! {
     static ref EVMOD: String = get_js(Lib::EveryEs2015Mod).unwrap();
 }
 
+fn setup(c: &mut Criterion) {
+    c.bench_function("setup", |b| {
+        b.iter(|| {
+            assert!(!NG.is_empty());
+            assert!(!NG_MIN.is_empty());
+            assert!(!JQ.is_empty());
+            assert!(!JQ_MIN.is_empty());
+            assert!(!REACT.is_empty());
+            assert!(!REACT_MIN.is_empty());
+            assert!(!REACT_DOM.is_empty());
+            assert!(!REACT_DOM_MIN.is_empty());
+            assert!(!VUE.is_empty());
+            assert!(!VUE_MIN.is_empty());
+            assert!(!EV5.is_empty());
+            assert!(!EV2015.is_empty());
+            assert!(!EVMOD.is_empty());
+        });
+    });
+}
+
 fn angular(c: &mut Criterion) {
     c.bench_function("angular", |b| {
         b.iter(|| {
@@ -235,6 +255,7 @@ fn npm_install() {
 
 criterion_group!(
     benches,
+    setup,
     angular,
     angular_min,
     jq,

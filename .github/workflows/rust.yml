@@ -35,6 +35,7 @@ jobs:
       run: cargo tarpaulin --out Xml && bash <(curl -s https://codecov.io/bash)
       env: 
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        RUST_LOG: trace
       if: success()
     - name: Cache node_modules
       uses: actions/cache@v1.0.3
