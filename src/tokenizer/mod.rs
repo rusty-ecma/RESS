@@ -1,7 +1,6 @@
 use crate::tokens::{CommentKind, NumberKind, Punct};
 use crate::{is_line_term, OpenCurlyKind};
 mod buffer;
-mod keyword_escape;
 mod tokens;
 mod unicode;
 pub use self::tokens::{RawKeyword, RawToken, StringKind, TemplateKind};
@@ -143,7 +142,8 @@ impl<'a> Tokenizer<'a> {
             self.current_start,
             self.stream.idx
         );
-        let mut has_escaped = if start == '\\' {
+
+        let start = if start == '\\' {
             let c = self.escaped_ident_part()?;
             if !Self::is_id_start(c) {
                 debug!("bad char: {:?}", c);
@@ -152,10 +152,13 @@ impl<'a> Tokenizer<'a> {
                     idx: self.current_start,
                 });
             }
-            true
+            c
         } else {
-            false
+            start
         };
+        if let Some(tok) = self.keyword(start)? {
+            return self.gen_token(tok);
+        }
         while let Some(c) = self.stream.next_char() {
             if c == '\\' {
                 let c = self.escaped_ident_part()?;
@@ -165,7 +168,6 @@ impl<'a> Tokenizer<'a> {
                         idx: self.current_start,
                     });
                 }
-                has_escaped = true;
             }
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
                 // if we have moved past the last valid identifier, go back 1
@@ -173,74 +175,8 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        if let Some(k) = self.at_keyword(has_escaped) {
-            self.gen_token(k)
-        } else {
-            self.gen_token(RawToken::Ident)
-        }
-    }
-    /// Includes keywords, booleans & null
-    #[allow(clippy::cognitive_complexity)]
-    fn at_keyword(&self, has_escaped: bool) -> Option<RawToken> {
-        trace!(
-            "at_keyword {} ({}, {})",
-            has_escaped,
-            self.current_start,
-            self.stream.idx
-        );
-        let ident = &self.stream.buffer[self.current_start..self.stream.idx];
-        if has_escaped {
-            return keyword_escape::check_complicated_keyword(ident);
-        }
-        match self.stream.idx - self.current_start {
-            2 if ident == b"do" => Some(RawToken::Keyword(RawKeyword::Do)),
-            2 if ident == b"if" => Some(RawToken::Keyword(RawKeyword::If)),
-            2 if ident == b"in" => Some(RawToken::Keyword(RawKeyword::In)),
-            3 if ident == b"for" => Some(RawToken::Keyword(RawKeyword::For)),
-            3 if ident == b"new" => Some(RawToken::Keyword(RawKeyword::New)),
-            3 if ident == b"try" => Some(RawToken::Keyword(RawKeyword::Try)),
-            3 if ident == b"var" => Some(RawToken::Keyword(RawKeyword::Var)),
-            3 if ident == b"let" => Some(RawToken::Keyword(RawKeyword::Let)),
-            4 if ident == b"case" => Some(RawToken::Keyword(RawKeyword::Case)),
-            4 if ident == b"this" => Some(RawToken::Keyword(RawKeyword::This)),
-            4 if ident == b"void" => Some(RawToken::Keyword(RawKeyword::Void)),
-            4 if ident == b"with" => Some(RawToken::Keyword(RawKeyword::With)),
-            4 if ident == b"enum" => Some(RawToken::Keyword(RawKeyword::Enum)),
-            4 if ident == b"else" => Some(RawToken::Keyword(RawKeyword::Else)),
-            4 if ident == b"true" => Some(RawToken::Boolean(true)),
-            4 if ident == b"null" => Some(RawToken::Null),
-            5 if ident == b"await" => Some(RawToken::Keyword(RawKeyword::Await)),
-            5 if ident == b"break" => Some(RawToken::Keyword(RawKeyword::Break)),
-            5 if ident == b"catch" => Some(RawToken::Keyword(RawKeyword::Catch)),
-            5 if ident == b"class" => Some(RawToken::Keyword(RawKeyword::Class)),
-            5 if ident == b"const" => Some(RawToken::Keyword(RawKeyword::Const)),
-            5 if ident == b"throw" => Some(RawToken::Keyword(RawKeyword::Throw)),
-            5 if ident == b"while" => Some(RawToken::Keyword(RawKeyword::While)),
-            5 if ident == b"super" => Some(RawToken::Keyword(RawKeyword::Super)),
-            5 if ident == b"yield" => Some(RawToken::Keyword(RawKeyword::Yield)),
-            5 if ident == b"false" => Some(RawToken::Boolean(false)),
-            6 if ident == b"delete" => Some(RawToken::Keyword(RawKeyword::Delete)),
-            6 if ident == b"return" => Some(RawToken::Keyword(RawKeyword::Return)),
-            6 if ident == b"switch" => Some(RawToken::Keyword(RawKeyword::Switch)),
-            6 if ident == b"typeof" => Some(RawToken::Keyword(RawKeyword::TypeOf)),
-            6 if ident == b"export" => Some(RawToken::Keyword(RawKeyword::Export)),
-            6 if ident == b"import" => Some(RawToken::Keyword(RawKeyword::Import)),
-            6 if ident == b"static" => Some(RawToken::Keyword(RawKeyword::Static)),
-            6 if ident == b"public" => Some(RawToken::Keyword(RawKeyword::Public)),
-            7 if ident == b"default" => Some(RawToken::Keyword(RawKeyword::Default)),
-            7 if ident == b"extends" => Some(RawToken::Keyword(RawKeyword::Extends)),
-            7 if ident == b"finally" => Some(RawToken::Keyword(RawKeyword::Finally)),
-            7 if ident == b"package" => Some(RawToken::Keyword(RawKeyword::Package)),
-            7 if ident == b"private" => Some(RawToken::Keyword(RawKeyword::Private)),
-            8 if ident == b"continue" => Some(RawToken::Keyword(RawKeyword::Continue)),
-            8 if ident == b"debugger" => Some(RawToken::Keyword(RawKeyword::Debugger)),
-            8 if ident == b"function" => Some(RawToken::Keyword(RawKeyword::Function)),
-            9 if ident == b"interface" => Some(RawToken::Keyword(RawKeyword::Interface)),
-            9 if ident == b"protected" => Some(RawToken::Keyword(RawKeyword::Protected)),
-            10 if ident == b"instanceof" => Some(RawToken::Keyword(RawKeyword::InstanceOf)),
-            10 if ident == b"implements" => Some(RawToken::Keyword(RawKeyword::Implements)),
-            _ => None,
-        }
+
+        self.gen_token(RawToken::Ident)
     }
 
     /// picking up after the \
