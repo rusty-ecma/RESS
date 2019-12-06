@@ -149,6 +149,14 @@ impl<'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
+    /// Skip a single byte
+    /// node: this can cause the buffer to become unaligned
+    /// be sure to always know the character you are skipping
+    /// is 1 byte wide or use `skip` instead when unsure
+    #[inline]
+    pub fn skip_bytes(&mut self, count: usize) {
+        self.idx += count;
+    }
 
     /// check if current char is a valid
     /// js whitespace character

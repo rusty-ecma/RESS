@@ -268,11 +268,11 @@ impl<'a> Tokenizer<'a> {
 
     pub(crate) fn eat_ch_or_escaped(&mut self, ch: char) -> Res<bool> {
         Ok(if self.look_ahead_byte_matches(ch) {
-            self.stream.skip(1);
+            self.stream.skip_bytes(1);
             true
         } else if self.look_ahead_matches("\\u") {
             let start = self.stream.idx;
-            self.stream.skip(1);
+            self.stream.skip_bytes(1);
             let c = self.escaped_ident_part()?;
             if c != ch {
                 self.stream.idx = start;
