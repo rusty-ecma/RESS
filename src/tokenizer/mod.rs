@@ -8,6 +8,7 @@ pub use self::tokens::{RawKeyword, RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
 pub(crate) type Res<T> = Result<T, RawError>;
 use log::trace;
+mod keyword_trie;
 
 #[derive(Debug)]
 pub struct RawItem {
