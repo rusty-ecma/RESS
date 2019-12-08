@@ -244,7 +244,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn at_ident_end(&mut self) -> bool {
-        let ret = if let Some(c) = self.stream.next_char() {
+        if let Some(c) = self.stream.next_char() {
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
                 let _ = self.stream.prev_char();
                 true
@@ -253,8 +253,7 @@ impl<'a> Tokenizer<'a> {
             }
         } else {
             true
-        };
-        ret
+        }
     }
 
     fn eat_chs_or_escaped(&mut self, chars: &str) -> Res<bool> {
