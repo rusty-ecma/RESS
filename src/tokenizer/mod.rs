@@ -134,7 +134,8 @@ impl<'a> Tokenizer<'a> {
             idx: self.current_start,
         })
     }
-
+    /// Parse an identifier, including
+    /// any possible keywords
     fn ident(&mut self, start: char) -> Res<RawItem> {
         trace!(
             "ident {} ({}, {})",
