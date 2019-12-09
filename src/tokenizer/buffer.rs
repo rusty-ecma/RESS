@@ -4,10 +4,10 @@ pub struct JSBuffer<'a> {
     pub idx: usize,
     pub len: usize,
 }
-/// Re-implementation of
-/// the std::str::Chars logic
 const CONT_MASK: u8 = 0b0011_1111;
 const TAG_CONT_U8: u8 = 0b1000_0000;
+/// Re-implementation of
+/// the std::str::Chars logic
 impl<'a> JSBuffer<'a> {
     #[inline]
     #[allow(clippy::all)]
@@ -116,6 +116,8 @@ impl<'a> JSBuffer<'a> {
             len: buffer.len(),
         }
     }
+    /// Check if the buffer is at or past the
+    /// end of the bytes provided
     #[inline]
     pub fn at_end(&self) -> bool {
         self.idx >= self.len
@@ -131,7 +133,7 @@ impl<'a> JSBuffer<'a> {
         }
         end <= self.len && &self.buffer[self.idx..end] == s
     }
-
+    /// Check if the next byte matches a single byte provided
     #[inline]
     pub fn look_ahead_byte_matches(&self, b: u8) -> bool {
         if self.at_end() {
@@ -150,7 +152,7 @@ impl<'a> JSBuffer<'a> {
         }
     }
     /// Skip a single byte
-    /// node: this can cause the buffer to become unaligned
+    /// note: this can cause the buffer to become unaligned
     /// be sure to always know the character you are skipping
     /// is 1 byte wide or use `skip` instead when unsure
     #[inline]
@@ -194,6 +196,8 @@ impl<'a> JSBuffer<'a> {
                 }
             } )
     }
+    /// Check of the look ahead character is
+    /// a valid js new line character
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
         if self.at_end() {
@@ -217,6 +221,7 @@ impl<'a> JSBuffer<'a> {
             false
         }
     }
+    /// check if the look ahead character is `0` or `1`
     #[inline]
     pub fn at_binary(&self) -> bool {
         if self.at_end() {
@@ -224,6 +229,8 @@ impl<'a> JSBuffer<'a> {
         }
         self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'1'
     }
+    /// check if the look ahead character is a number
+    /// between `0` and `9`, inclusive
     #[inline]
     pub fn at_decimal(&self) -> bool {
         if self.at_end() {
@@ -231,6 +238,8 @@ impl<'a> JSBuffer<'a> {
         }
         self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'9'
     }
+    /// check if the look ahead character is a number
+    /// between `0` and `7`, inclusive
     #[inline]
     pub fn at_octal(&self) -> bool {
         if self.at_end() {
@@ -238,6 +247,8 @@ impl<'a> JSBuffer<'a> {
         }
         self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'7'
     }
+    /// check if the look ahead character is a number
+    /// between `0` and `9` or `a` and `f` or `A` and `F`, inclusive
     #[inline]
     pub fn at_hex(&self) -> bool {
         if self.at_end() {

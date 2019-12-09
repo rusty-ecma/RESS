@@ -9,6 +9,10 @@ pub(crate) type Res<T> = Result<T, RawError>;
 use log::trace;
 mod keyword_trie;
 
+/// A Raw version of the Scanner's `Item`
+/// simply providing the start and end of the 
+/// span and the type of token that span 
+/// represents
 #[derive(Debug)]
 pub struct RawItem {
     pub ty: tokens::RawToken,
@@ -16,6 +20,9 @@ pub struct RawItem {
     pub end: usize,
 }
 
+/// This structure will perform the low level
+/// tokenization before the `Scanner` provides
+/// additional context
 pub struct Tokenizer<'a> {
     pub(super) stream: buffer::JSBuffer<'a>,
     pub(super) current_start: usize,
@@ -23,6 +30,9 @@ pub struct Tokenizer<'a> {
 }
 
 impl<'a> Tokenizer<'a> {
+    /// Create a new tokenizer using
+    /// the provided string reference
+    /// to create a `JsBuffer`
     pub fn new(stream: &'a str) -> Self {
         Tokenizer {
             current_start: 0,
@@ -30,7 +40,7 @@ impl<'a> Tokenizer<'a> {
             curly_stack: Vec::with_capacity(2),
         }
     }
-    #[allow(clippy::should_implement_trait)]
+    /// Get the next raw token from the js text
     pub fn next(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("next {} {}", self.stream.idx, self.stream.len);
         self.current_start = self.stream.idx;
@@ -66,7 +76,11 @@ impl<'a> Tokenizer<'a> {
         }
         self.punct(next_char, allow_html_comment_close)
     }
-
+    /// get the next regex token from the js text, providing
+    /// the lenth of the already consumed token (this will be either 1 or 2)
+    /// 
+    /// note: this should only be used after first getting `/` or `/=`
+    /// from the `next` method.
     pub fn next_regex(&mut self, start_len: usize) -> Res<RawItem> {
         trace!("next_regex{} {}", self.stream.idx, self.stream.len);
         self.current_start = self.stream.idx;
@@ -180,7 +194,8 @@ impl<'a> Tokenizer<'a> {
         self.gen_token(RawToken::Ident)
     }
 
-    /// picking up after the \
+    /// picking up after the \ in a unicode escape 
+    /// ex: `\u{61}` or `\u0061`
     #[inline]
     fn escaped_ident_part(&mut self) -> Res<char> {
         trace!("escaped_ident_part");
@@ -257,7 +272,8 @@ impl<'a> Tokenizer<'a> {
             Ok((code, len))
         }
     }
-
+    /// picking up after the `\u` in a unicode escape with 4 hex characters
+    /// ex: `\u0061`
     #[inline]
     fn escaped_with_hex4(&mut self, start: char) -> Res<u32> {
         trace!("escaped_with_hex4");
@@ -288,7 +304,8 @@ impl<'a> Tokenizer<'a> {
         }
         Ok(code)
     }
-
+    /// Parse a string literal, the provided `quote` should be `'` or `"`
+    /// to signal where the end of the string might be
     fn string(&mut self, quote: char) -> Res<RawItem> {
         trace!(
             "string {} ({}, {})",
@@ -382,6 +399,11 @@ impl<'a> Tokenizer<'a> {
             idx: self.stream.idx,
         })
     }
+    /// Parse a punctuation mark or sequence the `c` provided is the 
+    /// first character in the possible sequence
+    /// 
+    /// note: some of these may actually resolve to a another token, for example
+    /// `.0` will resolve to a number
     fn punct(&mut self, c: char, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("punct {} ({}, {})", c, self.current_start, self.stream.idx);
         match c {
@@ -417,6 +439,10 @@ impl<'a> Tokenizer<'a> {
             }),
         }
     }
+    /// An open curly doesn't have a possible sequence but there
+    /// is some book keeping for detecting a possible template 
+    /// start. The provided `curly` argument will be pushed
+    /// onto the `curly_stack` for inspection later
     #[inline]
     fn open_curly(&mut self, curly: OpenCurlyKind, punct: Punct) -> Res<RawItem> {
         trace!(
@@ -428,6 +454,9 @@ impl<'a> Tokenizer<'a> {
         self.curly_stack.push(curly);
         self.gen_punct(punct)
     }
+    /// An close curly doesn't have a possible sequence but we 
+    /// need to pop the top off of the `curly_stack` to make 
+    /// sure we correctly detect a possible template start
     #[inline]
     fn close_curly(&mut self, punct: Punct) -> Res<RawItem> {
         trace!(
@@ -439,6 +468,8 @@ impl<'a> Tokenizer<'a> {
         let _ = self.curly_stack.pop();
         self.gen_punct(punct)
     }
+    /// A period could result in a spread/rest operator (`...`),
+    /// a number (`.0`) or just be a period
     #[inline]
     fn period(&mut self) -> Res<RawItem> {
         trace!("period ({}, {})", self.current_start, self.stream.idx);
@@ -451,6 +482,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Period)
         }
     }
+    /// A `>` could be `>>>=`, `>>>`, `>>=` , `>>` or `>=`
     #[inline]
     fn greater_than(&mut self) -> Res<RawItem> {
         trace!("greater_than ({}, {})", self.current_start, self.stream.idx);
@@ -473,6 +505,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::GreaterThan)
         }
     }
+    /// A < could be `<<=`, `<=`, `<<`, or `<!--`
     #[inline]
     fn less_than(&mut self) -> Res<RawItem> {
         trace!("less_than ({}, {})", self.current_start, self.stream.idx);
@@ -492,6 +525,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::LessThan)
         }
     }
+    /// An `=` could be `===`, `==` or `=>`
     #[inline]
     fn equals(&mut self) -> Res<RawItem> {
         trace!("equals ({}, {})", self.current_start, self.stream.idx);
@@ -508,6 +542,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Equal)
         }
     }
+    /// a `!` could be `!==`, or `!=`
     #[inline]
     fn bang(&mut self) -> Res<RawItem> {
         trace!("bang ({}, {})", self.current_start, self.stream.idx);
@@ -521,6 +556,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Bang)
         }
     }
+    /// a `*` could be `**=`, `**`, or `*=`
     #[inline]
     fn asterisk(&mut self) -> Res<RawItem> {
         trace!("asterisk ({}, {})", self.current_start, self.stream.idx);
@@ -537,6 +573,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Asterisk)
         }
     }
+    /// a `&` could be `&&` or `&=`
     #[inline]
     fn ampersand(&mut self) -> Res<RawItem> {
         trace!("ampersand ({}, {})", self.current_start, self.stream.idx);
@@ -550,6 +587,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Ampersand)
         }
     }
+    /// a `|` could be `||` or `|=`
     #[inline]
     fn pipe(&mut self) -> Res<RawItem> {
         trace!("pipe ({}, {})", self.current_start, self.stream.idx);
@@ -563,6 +601,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Pipe)
         }
     }
+    /// a `+` could be `++` or `+=`
     #[inline]
     fn plus(&mut self) -> Res<RawItem> {
         trace!("plus ({}, {})", self.current_start, self.stream.idx);
@@ -576,6 +615,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Plus)
         }
     }
+    /// a `-` could be `--` or `-=`
     #[inline]
     fn minus(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!("minus ({}, {})", self.current_start, self.stream.idx);
@@ -593,6 +633,8 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Dash)
         }
     }
+    /// a `/` could be `/=` or the start of a multiline comment `/*`
+    /// or the start of a single line comment `//`
     #[inline]
     fn forward_slash(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!(
@@ -612,6 +654,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::ForwardSlash)
         }
     }
+    /// A `%` could also be `%=`
     #[inline]
     fn percent(&mut self) -> Res<RawItem> {
         trace!("percent ({}, {})", self.current_start, self.stream.idx);
@@ -622,6 +665,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Percent)
         }
     }
+    // a `^` could also be `^=`
     #[inline]
     fn caret(&mut self) -> Res<RawItem> {
         trace!("caret ({}, {})", self.current_start, self.stream.idx);
@@ -632,6 +676,8 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Caret)
         }
     }
+    /// a `#` could also be the start of a hash bang comment `#!`
+    #[inline]
     fn hash(&mut self) -> Res<RawItem> {
         trace!("hash ({}, {})", self.current_start, self.stream.idx);
         // hashbang comment can only appear at the start
@@ -646,6 +692,11 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Hash)
         }
     }
+    /// parse a number, this can include decimal or float literals
+    /// like `0.01e1` or `10` as well as binary, octal or hex
+    /// literals like `0b1`, `0o7`, or `0xf` and BigInt literals
+    /// like `1n`
+    #[inline]
     fn number(&mut self, start: char) -> Res<RawItem> {
         trace!(
             "number {} ({}, {})",
@@ -687,6 +738,11 @@ impl<'a> Tokenizer<'a> {
             self.punct(start, true)
         }
     }
+
+    /// parse the string portion of a template literal
+    /// the start will either be a back tick or
+    /// `${`
+    #[inline]
     fn template(&mut self, start: char) -> Res<RawItem> {
         trace!(
             "template {} ({}, {})",
@@ -820,6 +876,7 @@ impl<'a> Tokenizer<'a> {
             idx: self.current_start,
         })
     }
+    /// parse a single comment after finding `//`
     #[inline]
     fn single_comment(&mut self, kind: CommentKind) -> Res<RawItem> {
         trace!(
@@ -835,6 +892,7 @@ impl<'a> Tokenizer<'a> {
         }
         self.gen_comment(kind, 0, 0)
     }
+    /// parse a multi-line comment after finding `/*`
     #[inline]
     fn multi_comment(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!(
@@ -881,6 +939,7 @@ impl<'a> Tokenizer<'a> {
             })
         }
     }
+    /// parse an html comment after finding `<!--`
     #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
         trace!("html_comment ({}, {})", self.current_start, self.stream.idx);
@@ -906,6 +965,7 @@ impl<'a> Tokenizer<'a> {
             idx: self.current_start,
         })
     }
+    /// parse a number literal after finding `0x` or `0X`
     #[inline]
     fn hex_number(&mut self) -> Res<RawItem> {
         trace!("hex_number ({}, {})", self.current_start, self.stream.idx);
@@ -934,6 +994,7 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
+    /// parse a number literal after finding `0o` or `0O`
     #[inline]
     fn oct_number(&mut self) -> Res<RawItem> {
         trace!("oct_number ({}, {})", self.current_start, self.stream.idx);
@@ -961,7 +1022,7 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
-
+    /// parse a number literal after finding a `0b` or `0B`
     #[inline]
     fn bin_number(&mut self) -> Res<RawItem> {
         trace!("bin_number ({}, {})", self.current_start, self.stream.idx);
@@ -989,7 +1050,8 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
-
+    /// parse a decimal or float literal
+    /// like `1234` or `12.34` or `12.34e56`
     #[inline]
     fn dec_number(&mut self, seen_point: bool, mut prev_char: char) -> Res<RawItem> {
         trace!("dec_number ({}, {})", self.current_start, self.stream.idx);
@@ -1031,7 +1093,8 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
-
+    /// Helper to consume consectuive digits, taking into account 
+    /// that _ is a valid numeric seperator
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
         trace!(
             "consume_digits {}, {} ({}, {})",
@@ -1050,7 +1113,7 @@ impl<'a> Tokenizer<'a> {
         }
         Ok(prev_char)
     }
-
+    /// Guard against a number ending with `_` 
     #[inline]
     fn check_trailing_underscore(&self, prev_char: char) -> Res<()> {
         trace!(
@@ -1068,7 +1131,7 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         }
     }
-
+    /// Guard against a number literal having two `_` in a row
     #[inline]
     fn check_repeating_underscore(&self, char_1: char, char_2: char) -> Res<()> {
         trace!(
@@ -1087,7 +1150,7 @@ impl<'a> Tokenizer<'a> {
             Ok(())
         }
     }
-
+    /// If a number literal ends with a `n` it would actually be a BigInt
     #[inline]
     fn bigint_guard(&mut self, number_kind: NumberKind) -> NumberKind {
         trace!(
@@ -1103,17 +1166,22 @@ impl<'a> Tokenizer<'a> {
             number_kind
         }
     }
-
+    /// check if a character has the unicode property of 
+    /// ID_CONTINUE
     #[inline]
     fn is_id_continue(c: char) -> bool {
         trace!(target:"idents", "is_id_continue {}", c);
         unicode::is_id_continue(c)
     }
+    /// check if a character has the unicode property of 
+    /// ID_START
     #[inline]
     fn is_id_start(c: char) -> bool {
         trace!(target:"idents", "is_id_start {}", c);
         unicode::is_id_start(c)
     }
+    /// Test if the next character matches a single byte
+    /// character
     #[inline]
     fn look_ahead_byte_matches(&self, c: char) -> bool {
         trace!(
@@ -1124,6 +1192,8 @@ impl<'a> Tokenizer<'a> {
         );
         self.stream.look_ahead_byte_matches(c as u8)
     }
+    /// Test if the next character matches a multi byte
+    /// character
     #[inline]
     fn look_ahead_matches(&self, s: &str) -> bool {
         trace!(
@@ -1134,6 +1204,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.stream.look_ahead_matches(s.as_bytes())
     }
+    /// Convience method for wrapping a `Punct` in a `RawItem`
     #[inline]
     fn gen_punct(&self, p: Punct) -> Res<RawItem> {
         trace!(
@@ -1144,6 +1215,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.gen_token(RawToken::Punct(p))
     }
+    /// Convience method for wrapping a `Number` in a `RawItem`
     #[inline]
     fn gen_number(&self, n: NumberKind) -> Res<RawItem> {
         trace!(
@@ -1154,6 +1226,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.gen_token(RawToken::Number(n))
     }
+    /// Convience method for wrapping a `Template` in a `RawItem`
     #[inline]
     fn gen_template(
         &self,
@@ -1179,6 +1252,7 @@ impl<'a> Tokenizer<'a> {
             found_invalid_unicode_escape: invalid_unicode,
         })
     }
+    /// Convience method for wrapping a `RegEx` in a `RawItem`
     #[inline]
     fn gen_regex(&self, start_len: usize, body_idx: usize) -> Res<RawItem> {
         trace!(
@@ -1194,6 +1268,7 @@ impl<'a> Tokenizer<'a> {
             ty: RawToken::RegEx(body_idx),
         })
     }
+    /// Convience method for wrapping a `Comment` in a `RawItem`
     #[inline]
     fn gen_comment(
         &self,
@@ -1215,6 +1290,7 @@ impl<'a> Tokenizer<'a> {
             last_len,
         })
     }
+    /// Convience method for wrapping a `RawToken` in a `RawItem`
     #[inline]
     fn gen_token(&self, ty: RawToken) -> Res<RawItem> {
         trace!(
@@ -1229,6 +1305,7 @@ impl<'a> Tokenizer<'a> {
             ty,
         })
     }
+    /// Skip any whitespace that might be coming up
     #[inline]
     pub fn skip_whitespace(&mut self) -> (usize, usize) {
         trace!(
@@ -1249,6 +1326,7 @@ impl<'a> Tokenizer<'a> {
         }
         (ct, leading_whitespace)
     }
+    /// Check if the look ahead is a new line character
     #[inline]
     fn at_new_line(&mut self) -> bool {
         trace!("at_new_line ({}, {})", self.current_start, self.stream.idx);

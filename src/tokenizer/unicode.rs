@@ -1,5 +1,8 @@
 #![allow(clippy::all)]
 
+/// wrap the `unic_ucd_ident`'s function
+/// first short-circuiting around the ascii
+/// and other non `CJK` characters
 #[inline]
 pub(crate) fn is_id_start(c: char) -> bool {
     if c >= 'a' && c <= 'z' {
@@ -22,6 +25,9 @@ pub(crate) fn is_id_start(c: char) -> bool {
         unic_ucd_ident::is_id_start(c)
     }
 }
+/// wrap the `unic_ucd_ident`'s function
+/// first short-circuiting around the ascii
+/// and other non `CJK` characters
 #[inline]
 pub(crate) fn is_id_continue(c: char) -> bool {
     if c >= 'a' && c <= 'z' {

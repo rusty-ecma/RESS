@@ -3,6 +3,12 @@ use crate::tokenizer::{RawKeyword, RawToken, Res, Tokenizer};
 type MaybeKeyword = Res<Option<RawToken>>;
 
 impl<'a> Tokenizer<'a> {
+    /// Detect if an ident is a keyword starting from and id_start
+    /// character
+    ///
+    /// note: the expectation of the start char is that if it were a
+    /// unicode escape, it would already have been parsed to its approprate
+    /// character
     pub(crate) fn keyword(&mut self, start: char) -> MaybeKeyword {
         match start {
             'a' => self.a_keywords(),
@@ -24,13 +30,16 @@ impl<'a> Tokenizer<'a> {
             _ => Ok(None),
         }
     }
+    /// attempt to parse `await`
     fn a_keywords(&mut self) -> MaybeKeyword {
         self.suffix_for_token("wait", RawToken::Keyword(RawKeyword::Await))
     }
+    /// attempt to parse `break`
     fn b_keywords(&mut self) -> MaybeKeyword {
         self.suffix_for_token("reak", RawToken::Keyword(RawKeyword::Break))
     }
-
+    /// attempt to parse `case`, `catch`, `class`, `const` or
+    /// `continue`
     fn c_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('a')? {
             if self.eat_ch_or_escaped('s')? {
@@ -54,7 +63,7 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `debugger`, `default`, `delete` or `do`
     fn d_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('e')? {
             if self.eat_ch_or_escaped('b')? {
@@ -66,17 +75,13 @@ impl<'a> Tokenizer<'a> {
             } else {
                 Ok(None)
             }
-        } else if self.eat_ch_or_escaped('o')? {
-            if self.at_ident_end() {
-                Ok(Some(RawToken::Keyword(RawKeyword::Do)))
-            } else {
-                Ok(None)
-            }
+        } else if self.eat_ch_or_escaped('o')? && self.at_ident_end() {
+            Ok(Some(RawToken::Keyword(RawKeyword::Do)))
         } else {
             Ok(None)
         }
     }
-
+    /// attempt to parse `else`, `enum`, `export`, or `extends`
     fn e_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('l')? {
             self.suffix_for_token("se", RawToken::Keyword(RawKeyword::Else))
@@ -94,7 +99,7 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `false`, `finally`, `for` or `function`
     fn f_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('a')? {
             self.suffix_for_token("lse", RawToken::Boolean(false))
@@ -108,7 +113,8 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `if`, `implements`, `import`, `in`, `instanceof`,
+    /// or `interface`
     fn i_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('f')? && self.at_ident_end() {
             Ok(Some(RawToken::Keyword(RawKeyword::If)))
@@ -134,11 +140,11 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `let`
     fn l_keywords(&mut self) -> MaybeKeyword {
         self.suffix_for_token("et", RawToken::Keyword(RawKeyword::Let))
     }
-
+    /// attempt to parse `new` or `null`
     fn n_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('e')? {
             self.suffix_for_token("w", RawToken::Keyword(RawKeyword::New))
@@ -148,7 +154,8 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `package`, `private`, `protected`, or
+    /// `public`,
     fn p_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('a')? {
             self.suffix_for_token("ckage", RawToken::Keyword(RawKeyword::Package))
@@ -170,7 +177,7 @@ impl<'a> Tokenizer<'a> {
     fn r_keywords(&mut self) -> MaybeKeyword {
         self.suffix_for_token("eturn", RawToken::Keyword(RawKeyword::Return))
     }
-
+    /// attempt to parse `static`, `super`, or `switch`
     fn s_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('t')? {
             self.suffix_for_token("atic", RawToken::Keyword(RawKeyword::Static))
@@ -182,7 +189,8 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `this`, `throw`, `true`,
+    /// `try`, or `typeof`
     fn t_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('h')? {
             if self.eat_ch_or_escaped('i')? {
@@ -206,7 +214,7 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// ttempt to parse `var` or `void`,
     fn v_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('a')? {
             self.suffix_for_token("r", RawToken::Keyword(RawKeyword::Var))
@@ -216,7 +224,7 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `while` or `with`
     fn w_keywords(&mut self) -> MaybeKeyword {
         if self.eat_ch_or_escaped('h')? {
             self.suffix_for_token("ile", RawToken::Keyword(RawKeyword::While))
@@ -226,11 +234,15 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// attempt to parse `yield`
     fn y_keywords(&mut self) -> MaybeKeyword {
         self.suffix_for_token("ield", RawToken::Keyword(RawKeyword::Yield))
     }
-
+    /// This will attempt to consumer the suffix, if successful and
+    /// the stream is at the end of an identifier, it will return
+    /// the `tok` provided
+    ///
+    /// This is useful for when we have reached a leaf on a trie
     fn suffix_for_token(&mut self, suffix: &str, tok: RawToken) -> MaybeKeyword {
         if self.eat_chs_or_escaped(suffix)? {
             if self.at_ident_end() {
@@ -242,7 +254,7 @@ impl<'a> Tokenizer<'a> {
             Ok(None)
         }
     }
-
+    /// Test if the stream has moved past the end of an identifier
     fn at_ident_end(&mut self) -> bool {
         if let Some(c) = self.stream.next_char() {
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
@@ -255,7 +267,14 @@ impl<'a> Tokenizer<'a> {
             true
         }
     }
-
+    /// If the characters in the provided &str matche the look ahead _bytes_
+    /// or a unicode escape of the characters, it will move
+    /// the stream's index forward to the approrate position
+    /// it will stop moving forward after at the first failed
+    /// match (this means it will consume any leading positive matches)
+    ///
+    /// note: the character provided must be an ascii character
+    /// to get a positive match
     fn eat_chs_or_escaped(&mut self, chars: &str) -> Res<bool> {
         for c in chars.chars() {
             if !self.eat_ch_or_escaped(c)? {
@@ -264,14 +283,23 @@ impl<'a> Tokenizer<'a> {
         }
         Ok(true)
     }
-
+    /// If the character provided matches the look ahead _byte_
+    /// or a unicode escape of the character, it will move
+    /// the stream's index forward to the approrate position
+    ///
+    /// note: the character provided must be an ascii character
+    /// to get a positive match
     pub(crate) fn eat_ch_or_escaped(&mut self, ch: char) -> Res<bool> {
+        debug_assert!(
+            ch.len_utf8() == 1,
+            "cannot use eat_ch_or_escaped with characters larger than 1 byte wide"
+        );
         Ok(if self.look_ahead_byte_matches(ch) {
             self.stream.skip_bytes(1);
             true
         } else if self.look_ahead_matches("\\u") {
             let start = self.stream.idx;
-            self.stream.skip_bytes(1);
+            self.stream.skip_bytes(1); // skip the slash only
             let c = self.escaped_ident_part()?;
             if c != ch {
                 self.stream.idx = start;

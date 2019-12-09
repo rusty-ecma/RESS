@@ -62,26 +62,29 @@ impl Copy for Keyword<()> {}
 
 impl RawToken {
     pub fn is_punct(&self) -> bool {
-        match self {
-            RawToken::Punct(_) => true,
-            _ => false,
+        if let RawToken::Punct(_) = self {
+            true
+        } else {
+            false
         }
     }
 
     pub fn is_comment(&self) -> bool {
-        match self {
-            RawToken::Comment { .. } => true,
-            _ => false,
+        if let RawToken::Comment { .. } = self {
+            true
+        } else {
+            false
         }
     }
     pub fn is_div_punct(&self) -> bool {
-        match self {
-            RawToken::Punct(ref p) => match p {
+        if let RawToken::Punct(ref p) = self {
+            match p {
                 Punct::ForwardSlash => true,
                 Punct::ForwardSlashEqual => true,
                 _ => false,
-            },
-            _ => false,
+            }
+        } else {
+            false
         }
     }
 }
