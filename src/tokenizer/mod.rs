@@ -10,8 +10,8 @@ use log::trace;
 mod keyword_trie;
 
 /// A Raw version of the Scanner's `Item`
-/// simply providing the start and end of the 
-/// span and the type of token that span 
+/// simply providing the start and end of the
+/// span and the type of token that span
 /// represents
 #[derive(Debug)]
 pub struct RawItem {
@@ -78,7 +78,7 @@ impl<'a> Tokenizer<'a> {
     }
     /// get the next regex token from the js text, providing
     /// the lenth of the already consumed token (this will be either 1 or 2)
-    /// 
+    ///
     /// note: this should only be used after first getting `/` or `/=`
     /// from the `next` method.
     pub fn next_regex(&mut self, start_len: usize) -> Res<RawItem> {
@@ -194,7 +194,7 @@ impl<'a> Tokenizer<'a> {
         self.gen_token(RawToken::Ident)
     }
 
-    /// picking up after the \ in a unicode escape 
+    /// picking up after the \ in a unicode escape
     /// ex: `\u{61}` or `\u0061`
     #[inline]
     fn escaped_ident_part(&mut self) -> Res<char> {
@@ -399,9 +399,9 @@ impl<'a> Tokenizer<'a> {
             idx: self.stream.idx,
         })
     }
-    /// Parse a punctuation mark or sequence the `c` provided is the 
+    /// Parse a punctuation mark or sequence the `c` provided is the
     /// first character in the possible sequence
-    /// 
+    ///
     /// note: some of these may actually resolve to a another token, for example
     /// `.0` will resolve to a number
     fn punct(&mut self, c: char, allow_html_comment_close: bool) -> Res<RawItem> {
@@ -440,7 +440,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
     /// An open curly doesn't have a possible sequence but there
-    /// is some book keeping for detecting a possible template 
+    /// is some book keeping for detecting a possible template
     /// start. The provided `curly` argument will be pushed
     /// onto the `curly_stack` for inspection later
     #[inline]
@@ -454,8 +454,8 @@ impl<'a> Tokenizer<'a> {
         self.curly_stack.push(curly);
         self.gen_punct(punct)
     }
-    /// An close curly doesn't have a possible sequence but we 
-    /// need to pop the top off of the `curly_stack` to make 
+    /// An close curly doesn't have a possible sequence but we
+    /// need to pop the top off of the `curly_stack` to make
     /// sure we correctly detect a possible template start
     #[inline]
     fn close_curly(&mut self, punct: Punct) -> Res<RawItem> {
@@ -1093,7 +1093,7 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_underscore(prev_char)?;
         self.gen_number(kind)
     }
-    /// Helper to consume consectuive digits, taking into account 
+    /// Helper to consume consectuive digits, taking into account
     /// that _ is a valid numeric seperator
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
         trace!(
@@ -1113,7 +1113,7 @@ impl<'a> Tokenizer<'a> {
         }
         Ok(prev_char)
     }
-    /// Guard against a number ending with `_` 
+    /// Guard against a number ending with `_`
     #[inline]
     fn check_trailing_underscore(&self, prev_char: char) -> Res<()> {
         trace!(
@@ -1166,14 +1166,14 @@ impl<'a> Tokenizer<'a> {
             number_kind
         }
     }
-    /// check if a character has the unicode property of 
+    /// check if a character has the unicode property of
     /// ID_CONTINUE
     #[inline]
     fn is_id_continue(c: char) -> bool {
         trace!(target:"idents", "is_id_continue {}", c);
         unicode::is_id_continue(c)
     }
-    /// check if a character has the unicode property of 
+    /// check if a character has the unicode property of
     /// ID_START
     #[inline]
     fn is_id_start(c: char) -> bool {
