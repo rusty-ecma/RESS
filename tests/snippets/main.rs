@@ -265,6 +265,13 @@ fn star_only_regex() {
     run_failure("/*/");
 }
 
+#[test]
+#[should_panic]
+fn var_escaped_cr() {
+    let js = r"var\u000Dx;";
+    run_failure(js);
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));

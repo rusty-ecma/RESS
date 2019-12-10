@@ -256,7 +256,9 @@ impl<'a> Tokenizer<'a> {
     }
     /// Test if the stream has moved past the end of an identifier
     fn at_ident_end(&mut self) -> bool {
-        if let Some(c) = self.stream.next_char() {
+        if self.look_ahead_matches(r"\u") {
+            false
+        } else if let Some(c) = self.stream.next_char() {
             if !Self::is_id_continue(c) && c != '\u{200C}' && c != '\u{200D}' {
                 let _ = self.stream.prev_char();
                 true
