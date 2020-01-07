@@ -13,12 +13,9 @@ use ress::Scanner;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-
 fn angular(c: &mut Criterion) {
     run_bench(c, Lib::Angular, "angular", false);
 }
-
-
 
 fn angular_min(c: &mut Criterion) {
     run_bench(c, Lib::Angular, "angular_min", true);
