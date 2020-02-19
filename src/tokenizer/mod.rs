@@ -828,7 +828,6 @@ impl<'a> Tokenizer<'a> {
                             found_invalid_hex = true;
                         }
                     }
-
                 }
             } else if c == '\r' {
                 if self.look_ahead_byte_matches('\n') {
@@ -1159,7 +1158,7 @@ impl<'a> Tokenizer<'a> {
                 return Err(RawError {
                     idx: self.stream.idx,
                     msg: "Number literal cannot be immedatly followed by an identifier".to_string(),
-                })
+                });
             }
         }
         Ok(())

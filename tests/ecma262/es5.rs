@@ -1,6 +1,7 @@
 use ress::prelude::*;
 lazy_static! {
-    pub static ref ES5: Vec<Token<&'static str>> = vec![
+    pub static ref ES5: Vec<Token<&'static str>> =
+        vec![
         Token::Comment(Comment::new_multi_line(
             " this file contains all grammatical productions in ECMA-262 edition 5.1 ** * *"
         )),

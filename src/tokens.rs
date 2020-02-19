@@ -594,14 +594,14 @@ impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
     }
     fn no_quote(&self) -> &'a str {
         match self {
-            StringLit::Single(ref inner)
-            | StringLit::Double(ref inner) => inner.content,
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => inner.content,
         }
     }
     fn has_octal_escape(&self) -> bool {
         match self {
-            StringLit::Single(ref inner)
-            | StringLit::Double(ref inner) => inner.contains_octal_escape,
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => {
+                inner.contains_octal_escape
+            }
         }
     }
 }
@@ -632,15 +632,15 @@ impl StringLitExt<String> for StringLit<String> {
     }
     fn no_quote(&self) -> String {
         match self {
-            StringLit::Single(ref inner)
-            | StringLit::Double(ref inner) => inner.content.clone(),
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => inner.content.clone(),
         }
     }
 
     fn has_octal_escape(&self) -> bool {
         match self {
-            StringLit::Single(ref inner)
-            | StringLit::Double(ref inner) => inner.contains_octal_escape,
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => {
+                inner.contains_octal_escape
+            }
         }
     }
 }
@@ -676,7 +676,7 @@ impl<T> TemplateLiteral<T> {
             content,
             contains_octal_escape,
             contains_invalid_unicode_escape,
-            contains_invalid_hex_escape
+            contains_invalid_hex_escape,
         }
     }
 }

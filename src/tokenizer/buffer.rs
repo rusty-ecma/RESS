@@ -260,9 +260,9 @@ impl<'a> JSBuffer<'a> {
     }
     /// Peek forward 1 char with out updating the
     /// `idx` to this new position.
-    /// 
+    ///
     /// note: this will still cost the same amount
-    /// of work as `next_char` but cleans up the 
+    /// of work as `next_char` but cleans up the
     /// book keeping for you
     #[inline]
     pub fn peek_char(&mut self) -> Option<char> {

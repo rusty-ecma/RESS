@@ -411,8 +411,12 @@ impl<'b> Scanner<'b> {
                     new_lines = new_line_count;
                     let s = &s[1..s.len() - 1];
                     match kind {
-                        tokenizer::StringKind::Double => Token::String(StringLit::double(s, found_octal_escape)),
-                        tokenizer::StringKind::Single => Token::String(StringLit::single(s, found_octal_escape)),
+                        tokenizer::StringKind::Double => {
+                            Token::String(StringLit::double(s, found_octal_escape))
+                        }
+                        tokenizer::StringKind::Single => {
+                            Token::String(StringLit::single(s, found_octal_escape))
+                        }
                     }
                 }
                 RawToken::Template {
