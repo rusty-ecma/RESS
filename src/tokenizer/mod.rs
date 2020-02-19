@@ -314,15 +314,14 @@ impl<'a> Tokenizer<'a> {
             self.stream.idx
         );
         let mut escaped = false;
-        let mut last_len = 1usize; // we already skipped the quote char
+        // we already skipped the quote char
+        // so 1 is appropriate
+        let mut last_len = 1usize;
         let mut new_line_count = 0usize;
+        let mut found_octal_escape = false;
         while let Some(c) = self.stream.next_char() {
             if c == '\\' {
-                if escaped {
-                    escaped = false;
-                } else {
-                    escaped = true;
-                }
+                escaped = !escaped;
                 last_len = last_len.saturating_add(1);
             } else if c == '\r' {
                 if !escaped {
@@ -365,6 +364,7 @@ impl<'a> Tokenizer<'a> {
                         kind,
                         new_line_count,
                         last_len,
+                        found_octal_escape,
                     });
                 }
                 escaped = false;
@@ -384,6 +384,9 @@ impl<'a> Tokenizer<'a> {
                             msg: "Invalid escape in string literal".to_string(),
                         });
                     }
+                } else if escaped && c.is_digit(8) {
+                    found_octal_escape = true;
+                    1
                 } else {
                     1
                 };
@@ -754,6 +757,7 @@ impl<'a> Tokenizer<'a> {
         let mut last_len = 1usize; // we already skipped the start char
         let mut found_octal_escape = false;
         let mut found_invalid_unicode = false;
+        let mut found_invalid_hex = false;
         while let Some(c) = self.stream.next_char() {
             last_len = last_len.saturating_add(1);
             if c == '\\' {
@@ -767,9 +771,7 @@ impl<'a> Tokenizer<'a> {
                     last_len = last_len.saturating_add(1);
                     if let Some(_zero) = self.stream.next_char() {
                         last_len = last_len.saturating_add(1);
-                        if self.stream.at_decimal() {
-                            found_octal_escape = true;
-                        }
+                        found_octal_escape = true;
                     }
                 } else if self.stream.at_octal() {
                     found_octal_escape = true;
@@ -816,6 +818,17 @@ impl<'a> Tokenizer<'a> {
                             msg: "Invalid escape sequence in template literal".to_string(),
                         });
                     }
+                } else if self.look_ahead_byte_matches('x') {
+                    let _ = self.stream.skip_bytes(1);
+                    last_len = last_len.saturating_add(1);
+                    for _ in 0..2 {
+                        if self.stream.at_hex() {
+                            let _ = self.stream.next_char();
+                        } else {
+                            found_invalid_hex = true;
+                        }
+                    }
+
                 }
             } else if c == '\r' {
                 if self.look_ahead_byte_matches('\n') {
@@ -837,6 +850,7 @@ impl<'a> Tokenizer<'a> {
                             last_len,
                             found_octal_escape,
                             found_invalid_unicode,
+                            found_invalid_hex,
                         );
                     } else {
                         return self.gen_template(
@@ -845,6 +859,7 @@ impl<'a> Tokenizer<'a> {
                             last_len,
                             found_octal_escape,
                             found_invalid_unicode,
+                            found_invalid_hex,
                         );
                     }
                 }
@@ -856,6 +871,7 @@ impl<'a> Tokenizer<'a> {
                         last_len,
                         found_octal_escape,
                         found_invalid_unicode,
+                        found_invalid_hex,
                     );
                 } else {
                     return self.gen_template(
@@ -864,6 +880,7 @@ impl<'a> Tokenizer<'a> {
                         last_len,
                         found_octal_escape,
                         found_invalid_unicode,
+                        found_invalid_hex,
                     );
                 }
             }
@@ -992,6 +1009,7 @@ impl<'a> Tokenizer<'a> {
         let kind = self.bigint_guard(NumberKind::Hex);
 
         self.check_trailing_underscore(prev_char)?;
+        self.check_trailing_ident_start()?;
         self.gen_number(kind)
     }
     /// parse a number literal after finding `0o` or `0O`
@@ -1020,6 +1038,7 @@ impl<'a> Tokenizer<'a> {
         let kind = self.bigint_guard(NumberKind::Oct);
 
         self.check_trailing_underscore(prev_char)?;
+        self.check_trailing_ident_start()?;
         self.gen_number(kind)
     }
     /// parse a number literal after finding a `0b` or `0B`
@@ -1048,6 +1067,7 @@ impl<'a> Tokenizer<'a> {
         let kind = self.bigint_guard(NumberKind::Bin);
 
         self.check_trailing_underscore(prev_char)?;
+        self.check_trailing_ident_start()?;
         self.gen_number(kind)
     }
     /// parse a decimal or float literal
@@ -1091,6 +1111,7 @@ impl<'a> Tokenizer<'a> {
         }
 
         self.check_trailing_underscore(prev_char)?;
+        self.check_trailing_ident_start()?;
         self.gen_number(kind)
     }
     /// Helper to consume consectuive digits, taking into account
@@ -1130,6 +1151,18 @@ impl<'a> Tokenizer<'a> {
         } else {
             Ok(())
         }
+    }
+    #[inline]
+    fn check_trailing_ident_start(&mut self) -> Res<()> {
+        if let Some(next) = self.stream.peek_char() {
+            if Self::is_id_start(next) {
+                return Err(RawError {
+                    idx: self.stream.idx,
+                    msg: "Number literal cannot be immedatly followed by an identifier".to_string(),
+                })
+            }
+        }
+        Ok(())
     }
     /// Guard against a number literal having two `_` in a row
     #[inline]
@@ -1235,6 +1268,7 @@ impl<'a> Tokenizer<'a> {
         last_len: usize,
         has_octal_escape: bool,
         invalid_unicode: bool,
+        invalid_hex: bool,
     ) -> Res<RawItem> {
         trace!(
             "gen_template {:?}, {}, {} ({}, {})",
@@ -1250,6 +1284,7 @@ impl<'a> Tokenizer<'a> {
             last_len,
             has_octal_escape,
             found_invalid_unicode_escape: invalid_unicode,
+            found_invalid_hex_escape: invalid_hex,
         })
     }
     /// Convience method for wrapping a `RegEx` in a `RawItem`
@@ -2102,5 +2137,37 @@ mod test {
         {
             assert!(found_invalid_unicode_escape);
         }
+    }
+
+    #[test]
+    fn template_with_valid_hex() {
+        let mut t = Tokenizer::new(r#"`\x0A`"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            found_invalid_hex_escape,
+            ..
+        } = item.ty
+        {
+            assert!(!found_invalid_hex_escape);
+        }
+    }
+    #[test]
+    fn template_with_invalid_hex() {
+        let mut t = Tokenizer::new(r#"`\x0G`"#);
+        let item = t.next(true).unwrap();
+        if let RawToken::Template {
+            found_invalid_hex_escape,
+            ..
+        } = item.ty
+        {
+            assert!(found_invalid_hex_escape);
+        }
+    }
+
+    #[test]
+    #[should_panic = "Number literal cannot be immedatly followed by an identifier"]
+    fn number_followed_by_ident_start() {
+        let mut t = Tokenizer::new("1234.56e78in []");
+        t.next(true).unwrap();
     }
 }

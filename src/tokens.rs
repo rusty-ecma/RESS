@@ -525,8 +525,13 @@ impl RegExExt<String> for RegEx<String> {
 /// A single or double quoted string
 /// literal
 pub enum StringLit<T> {
-    Single(T),
-    Double(T),
+    Single(InnerString<T>),
+    Double(InnerString<T>),
+}
+#[derive(Debug, PartialEq, Clone)]
+pub struct InnerString<T> {
+    pub content: T,
+    pub contains_octal_escape: bool,
 }
 
 impl<'a> ToString for RegEx<&'a str> {
@@ -542,11 +547,12 @@ impl<'a> ToString for RegEx<&'a str> {
 /// Extension methods for allowing StringLit
 /// to work with both &str and String
 pub trait StringLitExt<T> {
-    fn single(content: T) -> StringLit<T>;
-    fn double(content: T) -> StringLit<T>;
+    fn single(content: T, found_octal_escape: bool) -> StringLit<T>;
+    fn double(content: T, found_octal_escape: bool) -> StringLit<T>;
     fn is_single(&self) -> bool;
     fn is_double(&self) -> bool;
     fn no_quote(&self) -> T;
+    fn has_octal_escape(&self) -> bool;
 }
 
 impl<T> ToString for StringLit<T>
@@ -555,18 +561,24 @@ where
 {
     fn to_string(&self) -> String {
         match self {
-            StringLit::Single(ref s) => format!(r#"'{}'"#, s),
-            StringLit::Double(ref s) => format!(r#""{}""#, s),
+            StringLit::Single(ref s) => format!(r#"'{}'"#, s.content),
+            StringLit::Double(ref s) => format!(r#""{}""#, s.content),
         }
     }
 }
 
 impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
-    fn single(content: &'a str) -> Self {
-        StringLit::Single(content)
+    fn single(content: &'a str, oct: bool) -> Self {
+        StringLit::Single(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
-    fn double(content: &'a str) -> Self {
-        StringLit::Double(content)
+    fn double(content: &'a str, oct: bool) -> Self {
+        StringLit::Double(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
     fn is_single(&self) -> bool {
         match self {
@@ -582,17 +594,29 @@ impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
     }
     fn no_quote(&self) -> &'a str {
         match self {
-            StringLit::Single(ref inner) => inner,
-            StringLit::Double(ref inner) => inner,
+            StringLit::Single(ref inner)
+            | StringLit::Double(ref inner) => inner.content,
+        }
+    }
+    fn has_octal_escape(&self) -> bool {
+        match self {
+            StringLit::Single(ref inner)
+            | StringLit::Double(ref inner) => inner.contains_octal_escape,
         }
     }
 }
 impl StringLitExt<String> for StringLit<String> {
-    fn single(content: String) -> Self {
-        StringLit::Single(content)
+    fn single(content: String, oct: bool) -> Self {
+        StringLit::Single(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
-    fn double(content: String) -> Self {
-        StringLit::Double(content)
+    fn double(content: String, oct: bool) -> Self {
+        StringLit::Double(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
     fn is_single(&self) -> bool {
         match self {
@@ -608,8 +632,15 @@ impl StringLitExt<String> for StringLit<String> {
     }
     fn no_quote(&self) -> String {
         match self {
-            StringLit::Single(ref inner) => inner.clone(),
-            StringLit::Double(ref inner) => inner.clone(),
+            StringLit::Single(ref inner)
+            | StringLit::Double(ref inner) => inner.content.clone(),
+        }
+    }
+
+    fn has_octal_escape(&self) -> bool {
+        match self {
+            StringLit::Single(ref inner)
+            | StringLit::Double(ref inner) => inner.contains_octal_escape,
         }
     }
 }
@@ -632,17 +663,20 @@ pub struct TemplateLiteral<T> {
     pub content: T,
     pub contains_octal_escape: bool,
     pub contains_invalid_unicode_escape: bool,
+    pub contains_invalid_hex_escape: bool,
 }
 impl<T> TemplateLiteral<T> {
     pub fn new(
         content: T,
         contains_octal_escape: bool,
         contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
     ) -> Self {
         Self {
             content,
             contains_octal_escape,
             contains_invalid_unicode_escape,
+            contains_invalid_hex_escape
         }
     }
 }
@@ -653,21 +687,25 @@ pub trait TemplateExt<T> {
         content: T,
         contains_octal_escape: bool,
         contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
     ) -> Template<T>;
     fn template_head(
         content: T,
         contains_octal_escape: bool,
         contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
     ) -> Template<T>;
     fn template_middle(
         content: T,
         contains_octal_escape: bool,
         contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
     ) -> Template<T>;
     fn template_tail(
         content: T,
         contains_octal_escape: bool,
         contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
     ) -> Template<T>;
     fn is_head(&self) -> bool;
     fn is_middle(&self) -> bool;
@@ -676,17 +714,17 @@ pub trait TemplateExt<T> {
 }
 
 impl<'a> TemplateExt<&'a str> for Template<&'a str> {
-    fn no_sub_template(content: &'a str, oct: bool, uni: bool) -> Self {
-        Template::NoSub(TemplateLiteral::new(content, oct, uni))
+    fn no_sub_template(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_head(content: &'a str, oct: bool, uni: bool) -> Self {
-        Template::Head(TemplateLiteral::new(content, oct, uni))
+    fn template_head(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_middle(content: &'a str, oct: bool, uni: bool) -> Self {
-        Template::Middle(TemplateLiteral::new(content, oct, uni))
+    fn template_middle(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_tail(content: &'a str, oct: bool, uni: bool) -> Self {
-        Template::Tail(TemplateLiteral::new(content, oct, uni))
+    fn template_tail(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct, uni, hex))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -714,17 +752,17 @@ impl<'a> TemplateExt<&'a str> for Template<&'a str> {
     }
 }
 impl TemplateExt<String> for Template<String> {
-    fn no_sub_template(content: String, oct: bool, uni: bool) -> Self {
-        Template::NoSub(TemplateLiteral::new(content, oct, uni))
+    fn no_sub_template(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_head(content: String, oct: bool, uni: bool) -> Self {
-        Template::Head(TemplateLiteral::new(content, oct, uni))
+    fn template_head(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_middle(content: String, oct: bool, uni: bool) -> Self {
-        Template::Middle(TemplateLiteral::new(content, oct, uni))
+    fn template_middle(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_tail(content: String, oct: bool, uni: bool) -> Self {
-        Template::Tail(TemplateLiteral::new(content, oct, uni))
+    fn template_tail(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct, uni, hex))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -1751,8 +1789,8 @@ impl<'a> TokenExt for Token<&'a str> {
     fn matches_string_content(&self, content: &str) -> bool {
         match self {
             Token::String(ref lit) => match lit {
-                StringLit::Single(s) => content == *s,
-                StringLit::Double(s) => content == *s,
+                StringLit::Single(s) => content == s.content,
+                StringLit::Double(s) => content == s.content,
             },
             _ => false,
         }

@@ -258,6 +258,27 @@ impl<'a> JSBuffer<'a> {
             || (self.buffer[self.idx] >= b'a' && self.buffer[self.idx] <= b'f')
             || (self.buffer[self.idx] >= b'A' && self.buffer[self.idx] <= b'F')
     }
+    /// Peek forward 1 char with out updating the
+    /// `idx` to this new position.
+    /// 
+    /// note: this will still cost the same amount
+    /// of work as `next_char` but cleans up the 
+    /// book keeping for you
+    #[inline]
+    pub fn peek_char(&mut self) -> Option<char> {
+        let ch = self.next_char()?;
+        self.skip_back_bytes(ch.len_utf8());
+        Some(ch)
+    }
+    /// Skip backwards a number of bytes
+    /// note: this can cause the buffer to become unaligned
+    /// be sure to always know the character you are skipping
+    /// is [count] bytes wide or use `skip` instead when unsure
+    /// the right width is skipped
+    #[inline]
+    pub fn skip_back_bytes(&mut self, count: usize) {
+        self.idx -= count;
+    }
 }
 
 impl<'a> From<&'a str> for JSBuffer<'a> {

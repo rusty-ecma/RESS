@@ -150,7 +150,7 @@ fn regex_over_div4() {
     compare(
         js,
         &[
-            Token::String(StringLit::Single("use strict")),
+            Token::String(StringLit::single("use strict", false)),
             Token::Punct(Punct::SemiColon),
             Token::Keyword(Keyword::Function("function")),
             Token::Ident("name".into()),

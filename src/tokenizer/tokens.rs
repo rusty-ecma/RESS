@@ -25,6 +25,7 @@ pub enum RawToken {
         kind: StringKind,
         new_line_count: usize,
         last_len: usize,
+        found_octal_escape: bool,
     },
     /// A regular expression literal.
     /// ```js
@@ -42,6 +43,7 @@ pub enum RawToken {
         last_len: usize,
         has_octal_escape: bool,
         found_invalid_unicode_escape: bool,
+        found_invalid_hex_escape: bool,
     },
     /// A comment, the associated value will contain the raw comment
     /// This will capture both inline comments `// I am an inline comment`

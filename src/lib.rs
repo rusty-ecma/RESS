@@ -405,13 +405,14 @@ impl<'b> Scanner<'b> {
                     kind,
                     new_line_count,
                     last_len,
+                    found_octal_escape,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
                     let s = &s[1..s.len() - 1];
                     match kind {
-                        tokenizer::StringKind::Double => Token::String(StringLit::Double(s)),
-                        tokenizer::StringKind::Single => Token::String(StringLit::Single(s)),
+                        tokenizer::StringKind::Double => Token::String(StringLit::double(s, found_octal_escape)),
+                        tokenizer::StringKind::Single => Token::String(StringLit::single(s, found_octal_escape)),
                     }
                 }
                 RawToken::Template {
@@ -420,6 +421,7 @@ impl<'b> Scanner<'b> {
                     last_len,
                     has_octal_escape,
                     found_invalid_unicode_escape,
+                    found_invalid_hex_escape,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
@@ -430,6 +432,7 @@ impl<'b> Scanner<'b> {
                                 s,
                                 has_octal_escape,
                                 found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
                             ))
                         }
                         tokenizer::TemplateKind::Body => {
@@ -438,6 +441,7 @@ impl<'b> Scanner<'b> {
                                 s,
                                 has_octal_escape,
                                 found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
                             ))
                         }
                         tokenizer::TemplateKind::Tail => {
@@ -446,6 +450,7 @@ impl<'b> Scanner<'b> {
                                 s,
                                 has_octal_escape,
                                 found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
                             ))
                         }
                         tokenizer::TemplateKind::NoSub => {
@@ -454,6 +459,7 @@ impl<'b> Scanner<'b> {
                                 s,
                                 has_octal_escape,
                                 found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
                             ))
                         }
                     }
@@ -855,7 +861,7 @@ function thing() {
                 content: "/usr/bin/env node",
                 tail_content: None,
             }),
-            Token::String(StringLit::Single("use strict")),
+            Token::String(StringLit::single("use strict", false)),
             Token::Punct(Punct::SemiColon),
             Token::Keyword(Keyword::Function("function".into())),
             Token::Ident("thing".into()),
@@ -871,7 +877,7 @@ function thing() {
             Token::Punct(Punct::Period),
             Token::Ident("log".into()),
             Token::Punct(Punct::OpenParen),
-            Token::String(StringLit::Single("stuff")),
+            Token::String(StringLit::single("stuff", false)),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::SemiColon),
             Token::Punct(Punct::CloseBrace),
@@ -994,7 +1000,7 @@ this.y = 0;
             Token::Punct(Punct::OpenParen),
             Token::RegEx(RegEx::from_parts("%(\\d)", Some("g"))),
             Token::Punct(Punct::Comma),
-            Token::String(StringLit::Single("")),
+            Token::String(StringLit::single("", false)),
             Token::Punct(Punct::CloseParen),
         ];
         let js = r#"ident.replace(/%(\d)/g, '')"#;
