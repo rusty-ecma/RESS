@@ -385,7 +385,9 @@ impl<'a> Tokenizer<'a> {
                         });
                     }
                 } else if escaped && c.is_digit(8) {
-                    found_octal_escape = true;
+                    if c == '0' && self.stream.at_octal() {
+                        found_octal_escape = true;
+                    }
                     1
                 } else {
                     1
@@ -769,8 +771,8 @@ impl<'a> Tokenizer<'a> {
                     self.stream.skip_bytes(1);
                 } else if self.look_ahead_byte_matches('0') {
                     last_len = last_len.saturating_add(1);
-                    if let Some(_zero) = self.stream.next_char() {
-                        last_len = last_len.saturating_add(1);
+                    self.stream.skip_bytes(1);
+                    if self.stream.at_octal() {
                         found_octal_escape = true;
                     }
                 } else if self.stream.at_octal() {
