@@ -385,7 +385,7 @@ impl<'a> Tokenizer<'a> {
                         });
                     }
                 } else if escaped && c.is_digit(8) {
-                    if c == '0' && self.stream.at_octal() {
+                    if c == '0' && self.stream.at_decimal() {
                         found_octal_escape = true;
                     }
                     1
