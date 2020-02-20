@@ -981,9 +981,7 @@ this.y = 0;
             }
             let token = item.token.to_string();
 
-            if from_stream != token {
-                panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
-            }
+            assert_eq!(from_stream, token, "token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
         }
     }
 
@@ -1070,5 +1068,94 @@ f`;
             let item = lhs.expect("error parsing item");
             assert_eq!((i, item.location), (i, *rhs))
         }
+    }
+
+    #[test]
+    fn position_display() {
+        assert_eq!(
+            format!("{}", Position::new(1, 25)),
+            "1:25".to_string(),
+        );
+        assert_eq!(
+            format!("{}", Position::new(25, 0)),
+            "25:0".to_string(),
+        );
+    }
+    #[test]
+    fn position_ord() {
+        assert!(Position::new(1, 25) < Position::new(2, 25), "line 1 not less than line 2");
+        assert!(Position::new(2, 25) > Position::new(1, 25), "line 2 not greater than line 1");
+        assert!(Position::new(1, 1) < Position::new(1, 5), "same line, col 1 not less than col 5");
+        assert!(Position::new(1, 5) > Position::new(1, 1), "same line, col 5 not greater than col 1");
+    }
+
+    #[test]
+    fn skip_comments() {
+        let js = "#! /bin/node;
+'use strict';
+// comment 1
+let x = 1;
+/*
+Lots of information
+in a multi line comment
+let q = 0;
+*/
+let y = 1;
+// more than one
+/* comment type */
+<!-- could be skipped -->
+ley z = 9;";
+        let mut s = Scanner::new(js);
+        for i in 0..4 {
+            s.skip_comments().unwrap();
+            assert!(!s.next().unwrap().unwrap().token.is_comment(), " failed to skip comment on iter {}", i);
+        }
+    }
+
+    #[test]
+    fn invalid_regex_flags_for_error() {
+        let mut s = Scanner::new("let x = /asdf");
+        let _let = s.next();
+        let _x = s.next();
+        let _eq = s.next();
+        let re = s.next().unwrap();
+        assert!(re.is_err(), "regex was not an error");
+    }
+
+    #[test]
+    fn template_with_middle() {
+        let mut s = Scanner::new("`asdf${0}qwerty${1}poiuy`");
+        let _head = s.next().unwrap().unwrap();
+        let _zero = s.next().unwrap().unwrap();
+        let middle = s.next().unwrap().unwrap();
+        assert!(middle.token.is_template_body(), "middle was not a template");
+        let _one = s.next().unwrap().unwrap();
+        let _tail = s.next().unwrap().unwrap();
+    }
+
+    #[test]
+    #[should_panic = "Unmatched open close paren"]
+    fn unmatched_close_paren_error() {
+        Scanner::new(")").next().unwrap().unwrap();
+    }
+    #[test]
+    #[should_panic = "unmatched close brace"]
+    fn unmatched_close_brace_error() {
+        Scanner::new("}").next().unwrap().unwrap();
+    }
+    #[test]
+    fn this_over_number() {
+        let mut s = Scanner::new("this / 100");
+        let _this = s.next().unwrap().unwrap();
+        let div = s.next().unwrap().unwrap();
+        assert!(div.token.matches_punct(Punct::ForwardSlash), "regex with leading this");
+        let _one_hundred = s.next().unwrap().unwrap();
+    }
+    #[test]
+    fn keyword_regex() {
+        let mut s = Scanner::new("break /a/");
+        let _break = s.next().unwrap().unwrap();
+        let re = s.next().unwrap().unwrap();
+        assert!(re.token.is_regex(), "regex was not a regex");
     }
 }
