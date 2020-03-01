@@ -35,14 +35,14 @@ pub mod prelude {
     pub use super::ScannerState;
     pub use super::SourceLocation;
 }
-use crate::tokenizer::RawToken;
+use crate::tokenizer::{RawKeyword, RawToken};
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
 
 type Res<T> = Result<T, Error>;
 mod look_behind;
 
-use look_behind::{LookBehind, MetaToken};
+use look_behind::{Brace, LookBehind, MetaToken, Paren};
 
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
@@ -70,7 +70,7 @@ impl SourceLocation {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// A single character position in the
 /// file including the line/column number
 pub struct Position {
@@ -81,6 +81,22 @@ pub struct Position {
 impl ::std::fmt::Display for Position {
     fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(f, "{}:{}", self.line, self.column)
+    }
+}
+impl ::std::cmp::PartialOrd for Position {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl std::cmp::Ord for Position {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.line < other.line {
+            std::cmp::Ordering::Less
+        } else if self.line > other.line {
+            std::cmp::Ordering::Greater
+        } else {
+            self.column.cmp(&other.column)
+        }
     }
 }
 
@@ -168,8 +184,10 @@ pub struct Scanner<'a> {
     errored: bool,
     new_line_count: usize,
     line_cursor: usize,
-    before_last_open: LookBehind,
     last_three: LookBehind,
+    brace_stack: Vec<Brace>,
+    paren_stack: Vec<Paren>,
+    at_first_on_line: bool,
 }
 
 impl<'a> Scanner<'a> {
@@ -186,8 +204,10 @@ impl<'a> Scanner<'a> {
             errored: false,
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
-            before_last_open: LookBehind::new(),
             last_three: LookBehind::new(),
+            paren_stack: Vec::new(),
+            brace_stack: Vec::new(),
+            at_first_on_line: true,
         }
     }
 }
@@ -233,7 +253,8 @@ impl<'b> Scanner<'b> {
             new_line_count: self.new_line_count,
             line_cursor: self.line_cursor,
             last_three: self.last_three.clone(),
-            paren_three: self.before_last_open.clone(),
+            paren_stack: self.paren_stack.clone(),
+            at_first_on_line: self.at_first_on_line,
         }
     }
     /// Set the scanner's current state to the state provided
@@ -244,7 +265,8 @@ impl<'b> Scanner<'b> {
         self.new_line_count = state.new_line_count;
         self.line_cursor = state.line_cursor;
         self.last_three = state.last_three;
-        self.before_last_open = state.paren_three;
+        self.paren_stack = state.paren_stack;
+        self.at_first_on_line = state.at_first_on_line;
     }
     #[inline]
     /// The implementation of `Scanner::next` that includes
@@ -261,13 +283,14 @@ impl<'b> Scanner<'b> {
         let prev_cursor = self.stream.stream.idx;
         let prev_lines = self.new_line_count;
         let prev_line_cursor = self.line_cursor;
-        let mut next = match self.stream.next() {
+        let mut next = match self.stream.next(self.at_first_on_line) {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
                 return Some(self.error(e));
             }
         };
+
         let mut len = next.end - next.start;
         let ret = if next.ty.is_div_punct() && self.is_regex_start() {
             next = match self.stream.next_regex(len) {
@@ -314,24 +337,45 @@ impl<'b> Scanner<'b> {
                     new_lines = new_line_count;
                     match kind {
                         tokens::CommentKind::Multi => {
-                            Token::Comment(Comment::new_multi_line(s.trim_start_matches("/*").trim_end_matches("*/")))
+                            let start_content = s.trim_start_matches("/*");
+                            let (tail_content, tail_start) =
+                                if let Some(tail_start) = start_content.find("-->") {
+                                    (Some(&start_content[tail_start + 3..]), tail_start)
+                                } else {
+                                    (None, start_content.len())
+                                };
+                            let content = start_content[..tail_start].trim_end_matches("*/");
+                            Token::Comment(Comment {
+                                kind: tokens::CommentKind::Multi,
+                                content,
+                                tail_content,
+                            })
                         }
                         tokens::CommentKind::Single => {
                             Token::Comment(Comment::new_single_line(s.trim_start_matches("//")))
                         }
                         tokens::CommentKind::Html => {
+                            let start_idx = if s.starts_with("<!--") { 4 } else { 0 };
                             let (content, tail) = if let Some(idx) = s.rfind("-->") {
                                 let actual_end = idx.saturating_add(3);
                                 if actual_end < next.end {
                                     let tail = &s[actual_end..];
                                     let tail = if tail == "" { None } else { Some(tail) };
-                                    (&s[4..idx], tail)
+                                    (&s[start_idx..idx], tail)
                                 } else {
-                                    (&s[4..], None)
+                                    (&s[start_idx..], None)
                                 }
                             } else {
-                                (&s[4..], None)
+                                (&s[start_idx..], None)
                             };
+                            if start_idx == 0 && !self.at_first_on_line(next.start) {
+                                self.errored = true;
+                                return Some(Err(Error {
+                                    line: self.new_line_count,
+                                    column: self.line_cursor,
+                                    msg: "--> comments must either be a part of a full HTML comment or the first item on a new line".to_string()
+                                }));
+                            }
                             Token::Comment(Comment::new_html(content, tail))
                         }
                         tokens::CommentKind::Hashbang => {
@@ -341,10 +385,18 @@ impl<'b> Scanner<'b> {
                 }
                 RawToken::EoF => {
                     self.eof = true;
-                    Token::EoF
+                    return Some(Ok(Item::new_(
+                        Token::EoF,
+                        self.original.len(),
+                        self.original.len(),
+                        prev_lines.saturating_add(1),
+                        prev_line_cursor,
+                        self.new_line_count.saturating_add(1),
+                        self.line_cursor,
+                    )));
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
-                RawToken::Keyword(k) => Token::Keyword(k),
+                RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
                 RawToken::Null => Token::Null,
                 RawToken::Number(_) => Token::Number(Number::from(s)),
                 RawToken::Punct(p) => Token::Punct(p),
@@ -353,42 +405,71 @@ impl<'b> Scanner<'b> {
                     kind,
                     new_line_count,
                     last_len,
+                    found_octal_escape,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
                     let s = &s[1..s.len() - 1];
                     match kind {
-                        tokenizer::StringKind::Double => Token::String(StringLit::Double(s)),
-                        tokenizer::StringKind::Single => Token::String(StringLit::Single(s)),
+                        tokenizer::StringKind::Double => {
+                            Token::String(StringLit::double(s, found_octal_escape))
+                        }
+                        tokenizer::StringKind::Single => {
+                            Token::String(StringLit::single(s, found_octal_escape))
+                        }
                     }
                 }
                 RawToken::Template {
                     kind,
                     new_line_count,
                     last_len,
+                    has_octal_escape,
+                    found_invalid_unicode_escape,
+                    found_invalid_hex_escape,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
                         tokenizer::TemplateKind::Head => {
                             let s = &s[1..s.len() - 2];
-                            Token::Template(Template::Head(s))
+                            Token::Template(Template::template_head(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::Body => {
                             let s = &s[1..s.len() - 2];
-                            Token::Template(Template::Middle(s))
+                            Token::Template(Template::template_middle(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::Tail => {
                             let s = &s[1..s.len() - 1];
-                            Token::Template(Template::Tail(s))
+                            Token::Template(Template::template_tail(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
+                            ))
                         }
                         tokenizer::TemplateKind::NoSub => {
                             let s = &s[1..s.len() - 1];
-                            Token::Template(Template::NoSub(s))
+                            Token::Template(Template::no_sub_template(
+                                s,
+                                has_octal_escape,
+                                found_invalid_unicode_escape,
+                                found_invalid_hex_escape,
+                            ))
                         }
                     }
                 }
             };
+            self.at_first_on_line = self.at_first_on_line && token.is_multi_line_comment();
             self.bump_line_cursors(new_lines, len);
             Item::new_(
                 token,
@@ -405,152 +486,266 @@ impl<'b> Scanner<'b> {
             self.stream.stream.idx = prev_cursor;
             self.new_line_count = prev_lines;
             self.line_cursor = prev_line_cursor;
-        } else {
-            if let Token::Punct(ref p) = &ret.token {
-                if let Punct::OpenParen = p {
-                    ::std::mem::replace(
-                        &mut self.before_last_open,
-                        ::std::mem::replace(&mut self.last_three, LookBehind::new()),
-                    );
-                }
-            }
-            if !next.ty.is_comment() {
-                self.last_three.push((&next.ty).into());
-            }
+        } else if let Err(e) = self.keep_books(&ret) {
+            self.errored = true;
+            return Some(Err(e));
         }
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
         self.pending_new_line = new_line_count > 0;
         Some(Ok(ret))
     }
+    #[inline]
+    /// Evaluate the token for possible regex
+    /// start and handle updating the
+    /// `self.last_three`, `self.paren_stack` and `self.brace_stack`
+    fn keep_books(&mut self, item: &Item<Token<&'b str>>) -> Res<()> {
+        if let Token::Punct(ref p) = &item.token {
+            match p {
+                Punct::OpenParen => self.handle_open_paren_books(),
+                Punct::OpenBrace => self.handle_open_brace_books(),
+                Punct::CloseParen => self.handle_close_paren_books(item.span.start)?,
+                Punct::CloseBrace => self.handle_close_brace_books(item.span.start)?,
+                _ => self
+                    .last_three
+                    .push((&item.token, self.new_line_count as u32).into()),
+            }
+        } else if !item.token.is_comment() {
+            self.last_three
+                .push((&item.token, self.new_line_count as u32).into());
+        }
+        Ok(())
+    }
+    #[inline]
+    /// Handle the book keeping when we find
+    /// an `(`
+    fn handle_open_paren_books(&mut self) {
+        let func_expr = if let Some(MetaToken::Keyword(RawKeyword::Function, _)) =
+            self.last_three.one()
+        {
+            if let Some(tok) = self.last_three.two() {
+                !Self::check_for_expression(*tok)
+            } else {
+                false
+            }
+        } else if let Some(MetaToken::Keyword(RawKeyword::Function, _)) = self.last_three.two() {
+            if let Some(tok) = self.last_three.three() {
+                Self::check_for_expression(*tok)
+            } else {
+                false
+            }
+        } else {
+            false
+        };
+        let conditional = if let Some(tok) = self.last_three.one() {
+            Self::check_token_for_conditional(*tok)
+        } else {
+            false
+        };
+        let paren = Paren {
+            func_expr,
+            conditional,
+        };
+        let meta = MetaToken::OpenParen(paren);
+        self.paren_stack.push(paren);
+        self.last_three.push(meta);
+    }
+    #[inline]
+    /// Handle the book keeping when we find
+    /// and `{`
+    fn handle_open_brace_books(&mut self) {
+        let is_block = if let Some(last) = self.last_three.one() {
+            match last {
+                MetaToken::Punct(Punct::OpenParen)
+                | MetaToken::Punct(Punct::OpenBracket)
+                | MetaToken::OpenParen(_)
+                | MetaToken::OpenBrace(_, _) => false,
+                MetaToken::Punct(Punct::Colon) => {
+                    if let Some(parent) = self.brace_stack.last() {
+                        parent.is_block
+                    } else {
+                        false
+                    }
+                }
+                MetaToken::Punct(_) => !Self::is_op(*last),
+                MetaToken::Keyword(RawKeyword::Return, line)
+                | MetaToken::Keyword(RawKeyword::Yield, line) => {
+                    if let Some(last) = self.last_three.two() {
+                        last.line_number() != *line
+                    } else {
+                        false
+                    }
+                }
+                MetaToken::Keyword(RawKeyword::Case, _) => false,
+                MetaToken::Keyword(_, _) => !Self::is_op(*last),
+                _ => true,
+            }
+        } else {
+            true
+        };
+        let paren = if let Some(MetaToken::CloseParen(open)) = self.last_three.one() {
+            Some(*open)
+        } else {
+            None
+        };
+        let brace = look_behind::Brace { is_block, paren };
+        self.brace_stack.push(brace);
+        self.last_three
+            .push(MetaToken::OpenBrace(brace, self.new_line_count as u32));
+    }
+    #[inline]
+    /// Handle the book keeping when we find a `(`
+    fn handle_close_paren_books(&mut self, start: usize) -> Res<()> {
+        let paren = if let Some(paren) = self.paren_stack.pop() {
+            paren
+        } else {
+            self.errored = true;
+            return self.error(RawError {
+                idx: start,
+                msg: "Unmatched open close paren".to_string(),
+            });
+        };
+        self.last_three.push(MetaToken::CloseParen(paren));
+        Ok(())
+    }
+    #[inline]
+    /// Handle the book keeping when we find a `{`
+    fn handle_close_brace_books(&mut self, start: usize) -> Res<()> {
+        if let Some(open) = self.brace_stack.pop() {
+            let close = MetaToken::CloseBrace(open);
+            self.last_three.push(close);
+            Ok(())
+        } else {
+            self.error(RawError {
+                idx: start,
+                msg: "unmatched close brace".to_string(),
+            })
+        }
+    }
     /// Detect if the `/` is the beginning of
     /// a regex or is division
     ///
     /// [see this for more details](https://github.com/sweet-js/sweet-core/wiki/design)
     fn is_regex_start(&self) -> bool {
-        if let Some(ref last_token) = self.last_three.last() {
+        if let Some(ref last_token) = self.last_three.one() {
             match last_token {
-                MetaToken::Keyword(k) => match k {
-                    Keyword::This => false,
+                MetaToken::Keyword(k, _) => match k {
+                    RawKeyword::This => false,
                     _ => true,
                 },
                 MetaToken::Punct(p) => match p {
                     Punct::CloseBracket => false,
-                    Punct::CloseParen => self.check_for_conditional(),
-                    Punct::CloseBrace => self.check_for_func(),
                     _ => true,
                 },
+                MetaToken::CloseParen(open) => open.conditional,
+                MetaToken::CloseBrace(close) => {
+                    if close.is_block {
+                        if let Some(open) = &close.paren {
+                            !open.func_expr
+                        } else {
+                            true
+                        }
+                    } else {
+                        false
+                    }
+                }
+                MetaToken::OpenParen(_) | MetaToken::OpenBrace(_, _) => true,
                 _ => false,
             }
         } else {
             true
         }
     }
-
-    /// Check if just passed a conditional expression
+    /// Check a token for the conditional keywords
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_conditional(&self) -> bool {
-        if let Some(ref before) = self.before_last_open.last() {
-            match before {
-                MetaToken::Keyword(k) => match k {
-                    Keyword::If | Keyword::For | Keyword::While | Keyword::With => true,
-                    _ => false,
-                },
+    fn check_token_for_conditional(tok: MetaToken) -> bool {
+        if let MetaToken::Keyword(k, _) = tok {
+            match k {
+                RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
                 _ => false,
             }
         } else {
-            true
+            false
         }
     }
-    /// Check if we just passed a function expression
+    /// Check if a token indicates beginning of a
+    /// function expression
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_func(&self) -> bool {
-        if let Some(ref before) = self.before_last_open.last() {
-            if before == &MetaToken::Ident {
-                if let Some(ref three) = self.before_last_open.three() {
-                    return Self::check_for_expression(three);
-                }
-            } else if before == &MetaToken::Keyword(Keyword::Function) {
-                if let Some(ref two) = self.before_last_open.two() {
-                    return Self::check_for_expression(two);
-                } else {
-                    return false;
-                }
+    fn check_for_expression(token: MetaToken) -> bool {
+        if Self::is_op(token) {
+            true
+        } else {
+            match token {
+                MetaToken::Keyword(RawKeyword::Return, _)
+                | MetaToken::Keyword(RawKeyword::Case, _) => true,
+                _ => false,
             }
         }
-        true
     }
-    /// Check if a token is the beginning of an expression
+    /// Determine if a token is a punctuation or keyword
+    /// that indicates an operation
     ///
     /// > used in determining if we are at a regex or not
-    fn check_for_expression(token: &MetaToken) -> bool {
-        match token {
-            MetaToken::Punct(p) => match p {
-                Punct::OpenParen => true,
-                Punct::OpenBrace => true,
-                Punct::OpenBracket => true,
-                Punct::Equal => true,
-                Punct::PlusEqual => true,
-                Punct::DashEqual => true,
-                Punct::AsteriskEqual => true,
-                Punct::DoubleAsteriskEqual => true,
-                Punct::ForwardSlashEqual => true,
-                Punct::PercentEqual => true,
-                Punct::DoubleLessThanEqual => true,
-                Punct::DoubleGreaterThanEqual => true,
-                Punct::TripleGreaterThanEqual => true,
-                Punct::AmpersandEqual => true,
-                Punct::PipeEqual => true,
-                Punct::CaretEqual => true,
-                Punct::Comma => true,
-                Punct::Plus => true,
-                Punct::Dash => true,
-                Punct::Asterisk => true,
-                Punct::DoubleAsterisk => true,
-                Punct::ForwardSlash => true,
-                Punct::Percent => true,
-                Punct::DoublePlus => true,
-                Punct::DoubleDash => true,
-                Punct::DoubleLessThan => true,
-                Punct::DoubleGreaterThan => true,
-                Punct::TripleGreaterThan => true,
-                Punct::Ampersand => true,
-                Punct::Pipe => true,
-                Punct::Caret => true,
-                Punct::Bang => true,
-                Punct::Tilde => true,
-                Punct::DoubleAmpersand => true,
-                Punct::DoublePipe => true,
-                Punct::QuestionMark => true,
-                Punct::Colon => true,
-                Punct::TripleEqual => true,
-                Punct::DoubleEqual => true,
-                Punct::GreaterThanEqual => true,
-                Punct::LessThanEqual => true,
-                Punct::LessThan => true,
-                Punct::GreaterThan => true,
-                Punct::BangEqual => true,
-                Punct::BangDoubleEqual => true,
+    fn is_op(tok: MetaToken) -> bool {
+        match tok {
+            MetaToken::Punct(ref p) => match p {
+                Punct::Equal
+                | Punct::PlusEqual
+                | Punct::DashEqual
+                | Punct::AsteriskEqual
+                | Punct::ForwardSlashEqual
+                | Punct::PercentEqual
+                | Punct::DoubleLessThanEqual
+                | Punct::DoubleGreaterThanEqual
+                | Punct::TripleGreaterThanEqual
+                | Punct::AmpersandEqual
+                | Punct::PipeEqual
+                | Punct::CaretEqual
+                | Punct::Comma
+                | Punct::Plus
+                | Punct::Dash
+                | Punct::Asterisk
+                | Punct::ForwardSlash
+                | Punct::Percent
+                | Punct::DoubleLessThan
+                | Punct::DoubleGreaterThan
+                | Punct::TripleGreaterThan
+                | Punct::Ampersand
+                | Punct::Pipe
+                | Punct::Caret
+                | Punct::DoubleAmpersand
+                | Punct::DoublePipe
+                | Punct::QuestionMark
+                | Punct::Colon
+                | Punct::TripleEqual
+                | Punct::DoubleEqual
+                | Punct::GreaterThanEqual
+                | Punct::LessThanEqual
+                | Punct::LessThan
+                | Punct::GreaterThan
+                | Punct::BangEqual
+                | Punct::BangDoubleEqual
+                | Punct::DoublePlus
+                | Punct::DoubleDash
+                | Punct::Tilde
+                | Punct::Bang => true,
                 _ => false,
             },
-            MetaToken::Keyword(k) => match k {
-                Keyword::In => true,
-                Keyword::TypeOf => true,
-                Keyword::InstanceOf => true,
-                Keyword::New => true,
-                Keyword::Return => true,
-                Keyword::Case => true,
-                Keyword::Delete => true,
-                Keyword::Throw => true,
-                Keyword::Void => true,
+            MetaToken::Keyword(k, _) => match k {
+                RawKeyword::InstanceOf
+                | RawKeyword::In
+                | RawKeyword::Delete
+                | RawKeyword::Void
+                | RawKeyword::TypeOf
+                | RawKeyword::Throw
+                | RawKeyword::New => true,
                 _ => false,
             },
             _ => false,
         }
     }
-
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())
@@ -601,9 +796,21 @@ impl<'b> Scanner<'b> {
         if ct != 0 {
             self.line_cursor = len;
             self.new_line_count += ct;
+            self.at_first_on_line = true;
         } else {
             self.line_cursor += len;
         }
+    }
+    #[inline]
+    fn at_first_on_line(&self, token_start: usize) -> bool {
+        trace!("at_first_on_line");
+        if self.line_cursor <= 1 {
+            return true;
+        }
+        let start = token_start.saturating_sub(self.line_cursor - 1);
+        let prefix = &self.original[start..token_start];
+        trace!("prefix: {:?}", prefix);
+        prefix.chars().all(|c| c.is_whitespace())
     }
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
@@ -612,6 +819,7 @@ impl<'b> Scanner<'b> {
         Err(Error { line, column, msg })
     }
 }
+
 #[inline]
 fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
@@ -635,7 +843,8 @@ pub struct ScannerState {
     pub new_line_count: usize,
     pub line_cursor: usize,
     pub last_three: LookBehind,
-    pub paren_three: LookBehind,
+    pub paren_stack: Vec<Paren>,
+    pub at_first_on_line: bool,
 }
 
 #[cfg(test)]
@@ -656,14 +865,14 @@ function thing() {
                 content: "/usr/bin/env node",
                 tail_content: None,
             }),
-            Token::String(StringLit::Single("use strict")),
+            Token::String(StringLit::single("use strict", false)),
             Token::Punct(Punct::SemiColon),
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Ident("thing".into()),
             Token::Punct(Punct::OpenParen),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::OpenBrace),
-            Token::Keyword(Keyword::Let),
+            Token::Keyword(Keyword::Let("let".into())),
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal),
             Token::Number("0".into()),
@@ -672,7 +881,7 @@ function thing() {
             Token::Punct(Punct::Period),
             Token::Ident("log".into()),
             Token::Punct(Punct::OpenParen),
-            Token::String(StringLit::Single("stuff")),
+            Token::String(StringLit::single("stuff", false)),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::SemiColon),
             Token::Punct(Punct::CloseBrace),
@@ -694,17 +903,17 @@ this.y = 0;
         );
         let expected = vec![
             Token::Punct(Punct::OpenParen), //"("
-            Token::Keyword(Keyword::Function),
+            Token::Keyword(Keyword::Function("function".into())),
             Token::Punct(Punct::OpenParen),  //"("
             Token::Punct(Punct::CloseParen), //")"
             Token::Punct(Punct::OpenBrace),  //"{"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal), //"="
             Token::Number("100".into()),
             Token::Punct(Punct::SemiColon), //";"
-            Token::Keyword(Keyword::This),
+            Token::Keyword(Keyword::This("this".into())),
             Token::Punct(Punct::Period), //"."
             Token::Ident("y".into()),
             Token::Punct(Punct::Equal), //"="
@@ -767,11 +976,16 @@ this.y = 0;
         while let Some(item) = s.next() {
             let item = item.unwrap();
             let from_stream = &js[item.span.start..item.span.end];
+            if item.token.is_regex() {
+                println!("{:?} - {:?}", from_stream, item.token);
+            }
             let token = item.token.to_string();
 
-            if from_stream != token {
-                panic!("token mismatch {:?} \n{}\n{}\n", item, from_stream, token);
-            }
+            assert_eq!(
+                from_stream, token,
+                "token mismatch {:?} \n{}\n{}\n",
+                item, from_stream, token
+            );
         }
     }
 
@@ -782,6 +996,24 @@ this.y = 0;
         let mut s = Scanner::new(js);
         let r = s.next().unwrap().unwrap();
         assert_eq!(r.token, Token::RegEx(regex));
+    }
+    #[test]
+    fn regex_replace() {
+        let expect = vec![
+            Token::Ident("ident".into()),
+            Token::Punct(Punct::Period),
+            Token::Ident("replace".into()),
+            Token::Punct(Punct::OpenParen),
+            Token::RegEx(RegEx::from_parts("%(\\d)", Some("g"))),
+            Token::Punct(Punct::Comma),
+            Token::String(StringLit::single("", false)),
+            Token::Punct(Punct::CloseParen),
+        ];
+        let js = r#"ident.replace(/%(\d)/g, '')"#;
+        let s = Scanner::new(js);
+        for (i, (exp, item)) in expect.iter().zip(s).enumerate() {
+            assert_eq!((i, exp), (i, &item.unwrap().token));
+        }
     }
 
     #[test]
@@ -840,5 +1072,107 @@ f`;
             let item = lhs.expect("error parsing item");
             assert_eq!((i, item.location), (i, *rhs))
         }
+    }
+
+    #[test]
+    fn position_display() {
+        assert_eq!(format!("{}", Position::new(1, 25)), "1:25".to_string(),);
+        assert_eq!(format!("{}", Position::new(25, 0)), "25:0".to_string(),);
+    }
+    #[test]
+    fn position_ord() {
+        assert!(
+            Position::new(1, 25) < Position::new(2, 25),
+            "line 1 not less than line 2"
+        );
+        assert!(
+            Position::new(2, 25) > Position::new(1, 25),
+            "line 2 not greater than line 1"
+        );
+        assert!(
+            Position::new(1, 1) < Position::new(1, 5),
+            "same line, col 1 not less than col 5"
+        );
+        assert!(
+            Position::new(1, 5) > Position::new(1, 1),
+            "same line, col 5 not greater than col 1"
+        );
+    }
+
+    #[test]
+    fn skip_comments() {
+        let js = "#! /bin/node;
+'use strict';
+// comment 1
+let x = 1;
+/*
+Lots of information
+in a multi line comment
+let q = 0;
+*/
+let y = 1;
+// more than one
+/* comment type */
+<!-- could be skipped -->
+ley z = 9;";
+        let mut s = Scanner::new(js);
+        for i in 0..4 {
+            s.skip_comments().unwrap();
+            assert!(
+                !s.next().unwrap().unwrap().token.is_comment(),
+                " failed to skip comment on iter {}",
+                i
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_regex_flags_for_error() {
+        let mut s = Scanner::new("let x = /asdf");
+        let _let = s.next();
+        let _x = s.next();
+        let _eq = s.next();
+        let re = s.next().unwrap();
+        assert!(re.is_err(), "regex was not an error");
+    }
+
+    #[test]
+    fn template_with_middle() {
+        let mut s = Scanner::new("`asdf${0}qwerty${1}poiuy`");
+        let _head = s.next().unwrap().unwrap();
+        let _zero = s.next().unwrap().unwrap();
+        let middle = s.next().unwrap().unwrap();
+        assert!(middle.token.is_template_body(), "middle was not a template");
+        let _one = s.next().unwrap().unwrap();
+        let _tail = s.next().unwrap().unwrap();
+    }
+
+    #[test]
+    #[should_panic = "Unmatched open close paren"]
+    fn unmatched_close_paren_error() {
+        Scanner::new(")").next().unwrap().unwrap();
+    }
+    #[test]
+    #[should_panic = "unmatched close brace"]
+    fn unmatched_close_brace_error() {
+        Scanner::new("}").next().unwrap().unwrap();
+    }
+    #[test]
+    fn this_over_number() {
+        let mut s = Scanner::new("this / 100");
+        let _this = s.next().unwrap().unwrap();
+        let div = s.next().unwrap().unwrap();
+        assert!(
+            div.token.matches_punct(Punct::ForwardSlash),
+            "regex with leading this"
+        );
+        let _one_hundred = s.next().unwrap().unwrap();
+    }
+    #[test]
+    fn keyword_regex() {
+        let mut s = Scanner::new("break /a/");
+        let _break = s.next().unwrap().unwrap();
+        let re = s.next().unwrap().unwrap();
+        assert!(re.token.is_regex(), "regex was not a regex");
     }
 }

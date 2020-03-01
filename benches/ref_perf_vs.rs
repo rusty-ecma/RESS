@@ -189,7 +189,7 @@ fn keywords(c: &mut Criterion) {
     c.bench_function("keywords", |b| {
         b.iter(|| {
             for key in KEYWORDS {
-                black_box(Tokenizer::new(key).next().unwrap());
+                black_box(Tokenizer::new(key).next(true).unwrap());
             }
         })
     });
@@ -199,7 +199,7 @@ fn punct(c: &mut Criterion) {
     c.bench_function("punct", |b| {
         b.iter(|| {
             for punct in PUNCTS {
-                black_box(Tokenizer::new(punct).next().unwrap());
+                black_box(Tokenizer::new(punct).next(true).unwrap());
             }
         })
     });
@@ -209,7 +209,7 @@ fn strings(c: &mut Criterion) {
     c.bench_function("strings", |b| {
         b.iter(|| {
             for s in STRINGS {
-                black_box(Tokenizer::new(s).next().unwrap());
+                black_box(Tokenizer::new(s).next(true).unwrap());
             }
         })
     });
@@ -219,7 +219,7 @@ fn comments(c: &mut Criterion) {
     c.bench_function("comments", |b| {
         b.iter(|| {
             for c in COMMENTS {
-                black_box(Tokenizer::new(c).next().unwrap());
+                black_box(Tokenizer::new(c).next(true).unwrap());
             }
         })
     });
@@ -229,7 +229,7 @@ fn numbers(c: &mut Criterion) {
     c.bench_function("numbers", |b| {
         b.iter(|| {
             for n in NUMBERS {
-                black_box(Tokenizer::new(n).next().unwrap());
+                black_box(Tokenizer::new(n).next(true).unwrap());
             }
         })
     });
@@ -250,15 +250,15 @@ fn templates(c: &mut Criterion) {
         b.iter(|| {
             for s in TEMPLATE_CONTINUATIONS {
                 let mut t = Tokenizer::new(&s);
-                let _ = t.next().unwrap();
-                black_box(t.next().unwrap());
+                let _ = t.next(true).unwrap();
+                black_box(t.next(true).unwrap());
             }
         })
     });
     c.bench_function("TEMPLATE_STARTS", |b| {
         b.iter(|| {
             for s in TEMPLATE_STARTS {
-                black_box(Tokenizer::new(s).next().unwrap());
+                black_box(Tokenizer::new(s).next(true).unwrap());
             }
         })
     });
@@ -268,7 +268,7 @@ fn bools(c: &mut Criterion) {
     c.bench_function("bools", |b| {
         b.iter(|| {
             for b in BOOLS {
-                black_box(Tokenizer::new(b).next().unwrap());
+                black_box(Tokenizer::new(b).next(true).unwrap());
             }
         })
     });
@@ -278,7 +278,7 @@ fn null(c: &mut Criterion) {
     c.bench_function("null", |b| {
         b.iter(|| {
             for b in NULL {
-                black_box(Tokenizer::new(b).next().unwrap());
+                black_box(Tokenizer::new(b).next(true).unwrap());
             }
         })
     });
@@ -288,7 +288,7 @@ fn idents(c: &mut Criterion) {
     c.bench_function("idents", |b| {
         b.iter(|| {
             for i in IDENTS {
-                black_box(Tokenizer::new(i).next().unwrap());
+                black_box(Tokenizer::new(i).next(true).unwrap());
             }
         })
     });
@@ -298,7 +298,7 @@ pub fn token(c: &mut Criterion) {
     c.bench_function("token", |b| {
         b.iter(|| {
             for s in TOKENS.iter() {
-                black_box(Tokenizer::new(s).next().unwrap());
+                black_box(Tokenizer::new(s).next(true).unwrap());
             }
         })
     });

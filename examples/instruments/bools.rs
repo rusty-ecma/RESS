@@ -5,9 +5,9 @@ use ress::Tokenizer;
 
 fn main() {
     for _ in 0..1000 {
-        let t = Tokenizer::new("true").next().unwrap();
+        let t = Tokenizer::new("true").next(true).unwrap();
         core::mem::forget(t);
-        let f = Tokenizer::new("false").next().unwrap();
+        let f = Tokenizer::new("false").next(true).unwrap();
         core::mem::forget(f);
     }
 }

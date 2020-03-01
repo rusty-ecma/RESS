@@ -18,6 +18,7 @@ struct Opts {
 }
 
 fn main() {
+    let _ = pretty_env_logger::try_init();
     let opts: Opts = Docopt::new(USAGE)
         .and_then(|d| d.deserialize())
         .unwrap_or_else(|e| {
@@ -26,15 +27,18 @@ fn main() {
         });
     let js = read_to_string(opts.arg_in_path).expect("Failed to read file");
     let mut counts = get_initial_counts();
+    let mut total = 0;
 
     for maybe in Scanner::new(&js) {
         let item = maybe.expect("failed to scan token");
         let key = token_type_str(&item.token);
         counts.entry(key).and_modify(|c| *c += 1);
+        total += 1;
     }
     for (key, value) in counts {
         println!("{}: {}", key, value);
     }
+    println!("total: {}", total);
 }
 
 fn token_type_str(tok: &Token<&str>) -> &'static str {

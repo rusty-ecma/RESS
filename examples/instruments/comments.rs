@@ -14,7 +14,7 @@ multi-line comment*/",
 fn main() {
     for _ in 0..1000 {
         for c in COMMENTS {
-            let d = Tokenizer::new(c).next().unwrap();
+            let d = Tokenizer::new(c).next(true).unwrap();
             core::mem::forget(d);
         }
     }

@@ -1,7 +1,7 @@
 pub mod prelude {
     pub use super::{
         Boolean, Comment, CommentExt, Ident, IdentExt, Keyword, Number, NumberExt, Punct, RegEx,
-        RegExExt, StringLit, StringLitExt, Template, TemplateExt, Token, TokenExt,
+        RegExExt, StringLit, StringLitExt, Template, TemplateExt, TemplateLiteral, Token, TokenExt,
     };
 }
 
@@ -17,7 +17,7 @@ pub enum Token<T> {
     /// or a function/method name
     Ident(Ident<T>),
     /// A word that has been reserved to not be used as an identifier
-    Keyword(Keyword),
+    Keyword(Keyword<T>),
     /// A `null` literal value
     Null,
     /// A number, this includes integers (`1`), decimals (`0.1`),
@@ -112,7 +112,7 @@ pub trait TokenExt {
 
     fn matches_ident_str(&self, name: &str) -> bool;
 
-    fn matches_keyword(&self, keyword: Keyword) -> bool;
+    fn matches_keyword<T>(&self, keyword: Keyword<T>) -> bool;
 
     fn matches_keyword_str(&self, name: &str) -> bool;
 
@@ -279,7 +279,7 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
     }
 
     fn is_html(&self) -> bool {
-        self.kind == CommentKind::Multi
+        self.kind == CommentKind::Html
     }
 
     fn is_hashbang(&self) -> bool {
@@ -289,9 +289,9 @@ impl<'a> CommentExt<&'a str> for Comment<&'a str> {
 impl CommentExt<String> for Comment<String> {
     fn from_parts(content: String, kind: CommentKind, tail_content: Option<String>) -> Self {
         Comment {
-            content: content,
+            content,
             kind,
-            tail_content: tail_content,
+            tail_content,
         }
     }
 
@@ -379,6 +379,7 @@ pub trait NumberExt {
     fn is_oct(&self) -> bool;
     fn is_dec(&self) -> bool;
     fn has_exponent(&self) -> bool;
+    fn is_big_int(&self) -> bool;
 }
 
 impl<'a> NumberExt for Number<&'a str> {
@@ -389,6 +390,8 @@ impl<'a> NumberExt for Number<&'a str> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
+        } else if self.0.ends_with('n') {
+            NumberKind::BigInt
         } else {
             NumberKind::Dec
         }
@@ -411,6 +414,9 @@ impl<'a> NumberExt for Number<&'a str> {
             NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
+    }
+    fn is_big_int(&self) -> bool {
+        self.kind() == NumberKind::BigInt
     }
 }
 impl NumberExt for Number<String> {
@@ -421,6 +427,8 @@ impl NumberExt for Number<String> {
             NumberKind::Bin
         } else if self.0.starts_with("0o") {
             NumberKind::Oct
+        } else if self.0.ends_with('n') {
+            NumberKind::BigInt
         } else {
             NumberKind::Dec
         }
@@ -443,6 +451,9 @@ impl NumberExt for Number<String> {
             NumberKind::Dec => self.0.contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
+    }
+    fn is_big_int(&self) -> bool {
+        self.kind() == NumberKind::BigInt
     }
 }
 
@@ -514,8 +525,13 @@ impl RegExExt<String> for RegEx<String> {
 /// A single or double quoted string
 /// literal
 pub enum StringLit<T> {
-    Single(T),
-    Double(T),
+    Single(InnerString<T>),
+    Double(InnerString<T>),
+}
+#[derive(Debug, PartialEq, Clone)]
+pub struct InnerString<T> {
+    pub content: T,
+    pub contains_octal_escape: bool,
 }
 
 impl<'a> ToString for RegEx<&'a str> {
@@ -531,11 +547,12 @@ impl<'a> ToString for RegEx<&'a str> {
 /// Extension methods for allowing StringLit
 /// to work with both &str and String
 pub trait StringLitExt<T> {
-    fn single(content: T) -> StringLit<T>;
-    fn double(content: T) -> StringLit<T>;
+    fn single(content: T, found_octal_escape: bool) -> StringLit<T>;
+    fn double(content: T, found_octal_escape: bool) -> StringLit<T>;
     fn is_single(&self) -> bool;
     fn is_double(&self) -> bool;
     fn no_quote(&self) -> T;
+    fn has_octal_escape(&self) -> bool;
 }
 
 impl<T> ToString for StringLit<T>
@@ -544,18 +561,24 @@ where
 {
     fn to_string(&self) -> String {
         match self {
-            StringLit::Single(ref s) => format!(r#"'{}'"#, s),
-            StringLit::Double(ref s) => format!(r#""{}""#, s),
+            StringLit::Single(ref s) => format!(r#"'{}'"#, s.content),
+            StringLit::Double(ref s) => format!(r#""{}""#, s.content),
         }
     }
 }
 
 impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
-    fn single(content: &'a str) -> Self {
-        StringLit::Single(content)
+    fn single(content: &'a str, oct: bool) -> Self {
+        StringLit::Single(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
-    fn double(content: &'a str) -> Self {
-        StringLit::Double(content)
+    fn double(content: &'a str, oct: bool) -> Self {
+        StringLit::Double(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
     fn is_single(&self) -> bool {
         match self {
@@ -571,17 +594,29 @@ impl<'a> StringLitExt<&'a str> for StringLit<&'a str> {
     }
     fn no_quote(&self) -> &'a str {
         match self {
-            StringLit::Single(ref inner) => inner,
-            StringLit::Double(ref inner) => inner,
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => inner.content,
+        }
+    }
+    fn has_octal_escape(&self) -> bool {
+        match self {
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => {
+                inner.contains_octal_escape
+            }
         }
     }
 }
 impl StringLitExt<String> for StringLit<String> {
-    fn single(content: String) -> Self {
-        StringLit::Single(content)
+    fn single(content: String, oct: bool) -> Self {
+        StringLit::Single(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
-    fn double(content: String) -> Self {
-        StringLit::Double(content)
+    fn double(content: String, oct: bool) -> Self {
+        StringLit::Double(InnerString {
+            content,
+            contains_octal_escape: oct,
+        })
     }
     fn is_single(&self) -> bool {
         match self {
@@ -597,8 +632,15 @@ impl StringLitExt<String> for StringLit<String> {
     }
     fn no_quote(&self) -> String {
         match self {
-            StringLit::Single(ref inner) => inner.clone(),
-            StringLit::Double(ref inner) => inner.clone(),
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => inner.content.clone(),
+        }
+    }
+
+    fn has_octal_escape(&self) -> bool {
+        match self {
+            StringLit::Single(ref inner) | StringLit::Double(ref inner) => {
+                inner.contains_octal_escape
+            }
         }
     }
 }
@@ -610,18 +652,61 @@ impl StringLitExt<String> for StringLit<String> {
 /// which allows for interpolating any js expression between `${`
 /// and `}`
 pub enum Template<T> {
-    NoSub(T),
-    Head(T),
-    Middle(T),
-    Tail(T),
+    NoSub(TemplateLiteral<T>),
+    Head(TemplateLiteral<T>),
+    Middle(TemplateLiteral<T>),
+    Tail(TemplateLiteral<T>),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TemplateLiteral<T> {
+    pub content: T,
+    pub contains_octal_escape: bool,
+    pub contains_invalid_unicode_escape: bool,
+    pub contains_invalid_hex_escape: bool,
+}
+impl<T> TemplateLiteral<T> {
+    pub fn new(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
+    ) -> Self {
+        Self {
+            content,
+            contains_octal_escape,
+            contains_invalid_unicode_escape,
+            contains_invalid_hex_escape,
+        }
+    }
 }
 /// Extension methods for allowing Template
 /// to work with both &str and String
 pub trait TemplateExt<T> {
-    fn no_sub_template(content: T) -> Template<T>;
-    fn template_head(content: T) -> Template<T>;
-    fn template_middle(content: T) -> Template<T>;
-    fn template_tail(content: T) -> Template<T>;
+    fn no_sub_template(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
+    ) -> Template<T>;
+    fn template_head(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
+    ) -> Template<T>;
+    fn template_middle(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
+    ) -> Template<T>;
+    fn template_tail(
+        content: T,
+        contains_octal_escape: bool,
+        contains_invalid_unicode_escape: bool,
+        contains_invalid_hex_escape: bool,
+    ) -> Template<T>;
     fn is_head(&self) -> bool;
     fn is_middle(&self) -> bool;
     fn is_tail(&self) -> bool;
@@ -629,17 +714,17 @@ pub trait TemplateExt<T> {
 }
 
 impl<'a> TemplateExt<&'a str> for Template<&'a str> {
-    fn no_sub_template(content: &'a str) -> Self {
-        Template::NoSub(content)
+    fn no_sub_template(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_head(content: &'a str) -> Self {
-        Template::Head(content)
+    fn template_head(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_middle(content: &'a str) -> Self {
-        Template::Middle(content)
+    fn template_middle(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_tail(content: &'a str) -> Self {
-        Template::Tail(content)
+    fn template_tail(content: &'a str, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct, uni, hex))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -667,17 +752,17 @@ impl<'a> TemplateExt<&'a str> for Template<&'a str> {
     }
 }
 impl TemplateExt<String> for Template<String> {
-    fn no_sub_template(content: String) -> Self {
-        Template::NoSub(content)
+    fn no_sub_template(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::NoSub(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_head(content: String) -> Self {
-        Template::Head(content)
+    fn template_head(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Head(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_middle(content: String) -> Self {
-        Template::Middle(content)
+    fn template_middle(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Middle(TemplateLiteral::new(content, oct, uni, hex))
     }
-    fn template_tail(content: String) -> Self {
-        Template::Tail(content)
+    fn template_tail(content: String, oct: bool, uni: bool, hex: bool) -> Self {
+        Template::Tail(TemplateLiteral::new(content, oct, uni, hex))
     }
     fn is_head(&self) -> bool {
         match self {
@@ -711,10 +796,10 @@ where
 {
     fn to_string(&self) -> String {
         match self {
-            Template::NoSub(ref c) => format!("`{}`", c),
-            Template::Head(ref c) => format!("`{}${{", c),
-            Template::Middle(ref c) => format!("}}{}${{", c),
-            Template::Tail(ref c) => format!("}}{}`", c),
+            Template::NoSub(ref t) => format!("`{}`", t.content),
+            Template::Head(ref t) => format!("`{}${{", t.content),
+            Template::Middle(ref t) => format!("}}{}${{", t.content),
+            Template::Tail(ref t) => format!("}}{}`", t.content),
         }
     }
 }
@@ -802,12 +887,13 @@ impl<'a> Into<bool> for &'a Boolean {
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-/// The 4 kinds of numbers
+/// The 5 kinds of numbers
 pub enum NumberKind {
     Dec,
     Hex,
     Bin,
     Oct,
+    BigInt,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -1001,7 +1087,7 @@ pub enum CommentKind {
     Hashbang,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, Clone)]
 /// A JS Keyword
 ///
 /// # Standard
@@ -1048,122 +1134,174 @@ pub enum CommentKind {
 /// interface
 /// private (40)
 /// public
-pub enum Keyword {
-    Await,
-    Break,
-    Case,
-    Catch,
-    Class,
-    Const,
-    Continue,
-    Debugger,
-    Default,
-    Delete, //10
-    Do,
-    Else,
-    Enum,
-    Export,
-    Finally,
-    For,
-    Function,
-    If,
-    Implements,
-    Import,
-    In,
-    InstanceOf,
-    Interface,
-    Let,
-    New,
-    Package,
-    Private,
-    Protected,
-    Public,
-    Return,
-    Static,
-    Super,
-    Switch,
-    This,
-    Throw,
-    Try,
-    TypeOf,
-    Var,
-    Void,
-    While,
-    With,
-    Yield,
+pub enum Keyword<T> {
+    Await(T),
+    Break(T),
+    Case(T),
+    Catch(T),
+    Class(T),
+    Const(T),
+    Continue(T),
+    Debugger(T),
+    Default(T),
+    Delete(T),
+    Do(T),
+    Else(T),
+    Enum(T),
+    Export(T),
+    Extends(T),
+    Finally(T),
+    For(T),
+    Function(T),
+    If(T),
+    Implements(T),
+    Import(T),
+    In(T),
+    InstanceOf(T),
+    Interface(T),
+    Let(T),
+    New(T),
+    Package(T),
+    Private(T),
+    Protected(T),
+    Public(T),
+    Return(T),
+    Static(T),
+    Super(T),
+    Switch(T),
+    This(T),
+    Throw(T),
+    Try(T),
+    TypeOf(T),
+    Var(T),
+    Void(T),
+    While(T),
+    With(T),
+    Yield(T),
 }
 
-impl Keyword {
-    /// convert a &str into a Keyword
-    pub fn from(s: &str) -> Option<Self> {
-        Some(match s {
-            "await" => Keyword::Await,
-            "break" => Keyword::Break,
-            "case" => Keyword::Case,
-            "catch" => Keyword::Catch,
-            "class" => Keyword::Class,
-            "const" => Keyword::Const,
-            "continue" => Keyword::Continue,
-            "debugger" => Keyword::Debugger,
-            "default" => Keyword::Default,
-            "delete" => Keyword::Delete,
-            "do" => Keyword::Do,
-            "else" => Keyword::Else,
-            "finally" => Keyword::Finally,
-            "for" => Keyword::For,
-            "function" => Keyword::Function,
-            "if" => Keyword::If,
-            "instanceof" => Keyword::InstanceOf,
-            "in" => Keyword::In,
-            "new" => Keyword::New,
-            "return" => Keyword::Return,
-            "switch" => Keyword::Switch,
-            "this" => Keyword::This,
-            "throw" => Keyword::Throw,
-            "try" => Keyword::Try,
-            "typeof" => Keyword::TypeOf,
-            "var" => Keyword::Var,
-            "void" => Keyword::Void,
-            "while" => Keyword::While,
-            "with" => Keyword::With,
-            "export" => Keyword::Export,
-            "import" => Keyword::Import,
-            "super" => Keyword::Super,
-            "enum" => Keyword::Enum,
-            "implements" => Keyword::Implements,
-            "interface" => Keyword::Interface,
-            "package" => Keyword::Package,
-            "private" => Keyword::Private,
-            "protected" => Keyword::Protected,
-            "public" => Keyword::Public,
-            "static" => Keyword::Static,
-            "yield" => Keyword::Yield,
-            "let" => Keyword::Let,
-            _ => return None,
-        })
+impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
+    fn eq(&self, other: &Keyword<T>) -> bool {
+        use Keyword::*;
+        match (self, other) {
+            (Await(_), Await(_))
+            | (Break(_), Break(_))
+            | (Case(_), Case(_))
+            | (Catch(_), Catch(_))
+            | (Class(_), Class(_))
+            | (Const(_), Const(_))
+            | (Continue(_), Continue(_))
+            | (Debugger(_), Debugger(_))
+            | (Default(_), Default(_))
+            | (Delete(_), Delete(_))
+            | (Do(_), Do(_))
+            | (Else(_), Else(_))
+            | (Enum(_), Enum(_))
+            | (Export(_), Export(_))
+            | (Extends(_), Extends(_))
+            | (Finally(_), Finally(_))
+            | (For(_), For(_))
+            | (Function(_), Function(_))
+            | (If(_), If(_))
+            | (Implements(_), Implements(_))
+            | (Import(_), Import(_))
+            | (In(_), In(_))
+            | (InstanceOf(_), InstanceOf(_))
+            | (Interface(_), Interface(_))
+            | (Let(_), Let(_))
+            | (New(_), New(_))
+            | (Package(_), Package(_))
+            | (Private(_), Private(_))
+            | (Protected(_), Protected(_))
+            | (Public(_), Public(_))
+            | (Return(_), Return(_))
+            | (Static(_), Static(_))
+            | (Super(_), Super(_))
+            | (Switch(_), Switch(_))
+            | (This(_), This(_))
+            | (Throw(_), Throw(_))
+            | (Try(_), Try(_))
+            | (TypeOf(_), TypeOf(_))
+            | (Var(_), Var(_))
+            | (Void(_), Void(_))
+            | (While(_), While(_))
+            | (With(_), With(_))
+            | (Yield(_), Yield(_)) => true,
+            _ => false,
+        }
     }
 }
 
-impl ::std::string::ToString for Keyword {
+impl Keyword<()> {
+    pub fn with_str(self, s: &str) -> Keyword<&str> {
+        match self {
+            Keyword::Await(_) => Keyword::Await(s),
+            Keyword::Break(_) => Keyword::Break(s),
+            Keyword::Case(_) => Keyword::Case(s),
+            Keyword::Catch(_) => Keyword::Catch(s),
+            Keyword::Class(_) => Keyword::Class(s),
+            Keyword::Const(_) => Keyword::Const(s),
+            Keyword::Continue(_) => Keyword::Continue(s),
+            Keyword::Debugger(_) => Keyword::Debugger(s),
+            Keyword::Default(_) => Keyword::Default(s),
+            Keyword::Delete(_) => Keyword::Delete(s),
+            Keyword::Do(_) => Keyword::Do(s),
+            Keyword::Else(_) => Keyword::Else(s),
+            Keyword::Enum(_) => Keyword::Enum(s),
+            Keyword::Export(_) => Keyword::Export(s),
+            Keyword::Extends(_) => Keyword::Extends(s),
+            Keyword::Finally(_) => Keyword::Finally(s),
+            Keyword::For(_) => Keyword::For(s),
+            Keyword::Function(_) => Keyword::Function(s),
+            Keyword::If(_) => Keyword::If(s),
+            Keyword::Implements(_) => Keyword::Implements(s),
+            Keyword::Import(_) => Keyword::Import(s),
+            Keyword::In(_) => Keyword::In(s),
+            Keyword::InstanceOf(_) => Keyword::InstanceOf(s),
+            Keyword::Interface(_) => Keyword::Interface(s),
+            Keyword::Let(_) => Keyword::Let(s),
+            Keyword::New(_) => Keyword::New(s),
+            Keyword::Package(_) => Keyword::Package(s),
+            Keyword::Private(_) => Keyword::Private(s),
+            Keyword::Protected(_) => Keyword::Protected(s),
+            Keyword::Public(_) => Keyword::Public(s),
+            Keyword::Return(_) => Keyword::Return(s),
+            Keyword::Static(_) => Keyword::Static(s),
+            Keyword::Super(_) => Keyword::Super(s),
+            Keyword::Switch(_) => Keyword::Switch(s),
+            Keyword::This(_) => Keyword::This(s),
+            Keyword::Throw(_) => Keyword::Throw(s),
+            Keyword::Try(_) => Keyword::Try(s),
+            Keyword::TypeOf(_) => Keyword::TypeOf(s),
+            Keyword::Var(_) => Keyword::Var(s),
+            Keyword::Void(_) => Keyword::Void(s),
+            Keyword::While(_) => Keyword::While(s),
+            Keyword::With(_) => Keyword::With(s),
+            Keyword::Yield(_) => Keyword::Yield(s),
+        }
+    }
+}
+
+impl<T> ::std::string::ToString for Keyword<T> {
     /// Convert a keyword into a string
     fn to_string(&self) -> String {
         self.as_str().into()
     }
 }
 
-impl Keyword {
+impl<T> Keyword<T> {
     /// Is this keyword one of the future reserved words
     ///
     /// - enum
     /// - export
     /// - implements
     /// - super
-    pub fn is_future_reserved(self) -> bool {
+    pub fn is_future_reserved(&self) -> bool {
         match self {
-            Keyword::Enum => true,
-            Keyword::Export => true,
-            Keyword::Implements => true,
-            Keyword::Super => true,
+            Keyword::Enum(_) => true,
+            Keyword::Export(_) => true,
+            Keyword::Implements(_) => true,
+            Keyword::Super(_) => true,
             _ => false,
         }
     }
@@ -1180,17 +1318,17 @@ impl Keyword {
     /// - static
     /// - yield
     /// - let
-    pub fn is_strict_reserved(self) -> bool {
+    pub fn is_strict_reserved(&self) -> bool {
         match self {
-            Keyword::Implements => true,
-            Keyword::Interface => true,
-            Keyword::Package => true,
-            Keyword::Private => true,
-            Keyword::Protected => true,
-            Keyword::Public => true,
-            Keyword::Static => true,
-            Keyword::Yield => true,
-            Keyword::Let => true,
+            Keyword::Implements(_) => true,
+            Keyword::Interface(_) => true,
+            Keyword::Package(_) => true,
+            Keyword::Private(_) => true,
+            Keyword::Protected(_) => true,
+            Keyword::Public(_) => true,
+            Keyword::Static(_) => true,
+            Keyword::Yield(_) => true,
+            Keyword::Let(_) => true,
             _ => false,
         }
     }
@@ -1222,83 +1360,188 @@ impl Keyword {
     /// - void
     /// - while
     /// - with
-    pub fn is_reserved(self) -> bool {
+    pub fn is_reserved(&self) -> bool {
         match self {
-            Keyword::Break => true,
-            Keyword::Case => true,
-            Keyword::Catch => true,
-            Keyword::Continue => true,
-            Keyword::Debugger => true,
-            Keyword::Default => true,
-            Keyword::Delete => true,
-            Keyword::Do => true,
-            Keyword::Else => true,
-            Keyword::Finally => true,
-            Keyword::For => true,
-            Keyword::Function => true,
-            Keyword::If => true,
-            Keyword::InstanceOf => true,
-            Keyword::In => true,
-            Keyword::New => true,
-            Keyword::Return => true,
-            Keyword::Switch => true,
-            Keyword::This => true,
-            Keyword::Throw => true,
-            Keyword::Try => true,
-            Keyword::TypeOf => true,
-            Keyword::Var => true,
-            Keyword::Void => true,
-            Keyword::While => true,
-            Keyword::With => true,
+            Keyword::Break(_)
+            | Keyword::Case(_)
+            | Keyword::Catch(_)
+            | Keyword::Class(_)
+            | Keyword::Continue(_)
+            | Keyword::Debugger(_)
+            | Keyword::Default(_)
+            | Keyword::Delete(_)
+            | Keyword::Do(_)
+            | Keyword::Else(_)
+            | Keyword::Export(_)
+            | Keyword::Extends(_)
+            | Keyword::Finally(_)
+            | Keyword::For(_)
+            | Keyword::Function(_)
+            | Keyword::If(_)
+            | Keyword::Import(_)
+            | Keyword::In(_)
+            | Keyword::InstanceOf(_)
+            | Keyword::New(_)
+            | Keyword::Return(_)
+            | Keyword::Switch(_)
+            | Keyword::Super(_)
+            | Keyword::This(_)
+            | Keyword::Throw(_)
+            | Keyword::Try(_)
+            | Keyword::TypeOf(_)
+            | Keyword::Var(_)
+            | Keyword::Void(_)
+            | Keyword::While(_)
+            | Keyword::With(_) => true,
             _ => false,
         }
     }
 
     pub fn as_str(&self) -> &str {
         match self {
-            Keyword::Await => "await",
-            Keyword::Break => "break",
-            Keyword::Case => "case",
-            Keyword::Catch => "catch",
-            Keyword::Class => "class",
-            Keyword::Const => "const",
-            Keyword::Continue => "continue",
-            Keyword::Debugger => "debugger",
-            Keyword::Default => "default",
-            Keyword::Import => "import",
-            Keyword::Delete => "delete",
-            Keyword::Do => "do",
-            Keyword::Else => "else",
-            Keyword::Enum => "enum",
-            Keyword::Export => "export",
-            Keyword::Finally => "finally",
-            Keyword::For => "for",
-            Keyword::Function => "function",
-            Keyword::If => "if",
-            Keyword::In => "in",
-            Keyword::Implements => "implements",
-            Keyword::InstanceOf => "instanceof",
-            Keyword::Interface => "interface",
-            Keyword::Let => "let",
-            Keyword::New => "new",
-            Keyword::Package => "package",
-            Keyword::Private => "private",
-            Keyword::Protected => "protected",
-            Keyword::Public => "public",
-            Keyword::Static => "static",
-            Keyword::Return => "return",
-            Keyword::Super => "super",
-            Keyword::Switch => "switch",
-            Keyword::This => "this",
-            Keyword::Throw => "throw",
-            Keyword::Try => "try",
-            Keyword::TypeOf => "typeof",
-            Keyword::Var => "var",
-            Keyword::Void => "void",
-            Keyword::While => "while",
-            Keyword::With => "with",
-            Keyword::Yield => "yield",
+            Keyword::Await(_) => "await",
+            Keyword::Break(_) => "break",
+            Keyword::Case(_) => "case",
+            Keyword::Catch(_) => "catch",
+            Keyword::Class(_) => "class",
+            Keyword::Const(_) => "const",
+            Keyword::Continue(_) => "continue",
+            Keyword::Debugger(_) => "debugger",
+            Keyword::Default(_) => "default",
+            Keyword::Import(_) => "import",
+            Keyword::Delete(_) => "delete",
+            Keyword::Do(_) => "do",
+            Keyword::Else(_) => "else",
+            Keyword::Enum(_) => "enum",
+            Keyword::Export(_) => "export",
+            Keyword::Extends(_) => "extends",
+            Keyword::Finally(_) => "finally",
+            Keyword::For(_) => "for",
+            Keyword::Function(_) => "function",
+            Keyword::If(_) => "if",
+            Keyword::In(_) => "in",
+            Keyword::Implements(_) => "implements",
+            Keyword::InstanceOf(_) => "instanceof",
+            Keyword::Interface(_) => "interface",
+            Keyword::Let(_) => "let",
+            Keyword::New(_) => "new",
+            Keyword::Package(_) => "package",
+            Keyword::Private(_) => "private",
+            Keyword::Protected(_) => "protected",
+            Keyword::Public(_) => "public",
+            Keyword::Static(_) => "static",
+            Keyword::Return(_) => "return",
+            Keyword::Super(_) => "super",
+            Keyword::Switch(_) => "switch",
+            Keyword::This(_) => "this",
+            Keyword::Throw(_) => "throw",
+            Keyword::Try(_) => "try",
+            Keyword::TypeOf(_) => "typeof",
+            Keyword::Var(_) => "var",
+            Keyword::Void(_) => "void",
+            Keyword::While(_) => "while",
+            Keyword::With(_) => "with",
+            Keyword::Yield(_) => "yield",
         }
+    }
+
+    pub fn to_empty(&self) -> Keyword<()> {
+        match self {
+            Keyword::Await(_) => Keyword::Await(()),
+            Keyword::Break(_) => Keyword::Break(()),
+            Keyword::Case(_) => Keyword::Case(()),
+            Keyword::Catch(_) => Keyword::Catch(()),
+            Keyword::Class(_) => Keyword::Class(()),
+            Keyword::Const(_) => Keyword::Const(()),
+            Keyword::Continue(_) => Keyword::Continue(()),
+            Keyword::Debugger(_) => Keyword::Debugger(()),
+            Keyword::Default(_) => Keyword::Default(()),
+            Keyword::Import(_) => Keyword::Import(()),
+            Keyword::Delete(_) => Keyword::Delete(()),
+            Keyword::Do(_) => Keyword::Do(()),
+            Keyword::Else(_) => Keyword::Else(()),
+            Keyword::Enum(_) => Keyword::Enum(()),
+            Keyword::Export(_) => Keyword::Export(()),
+            Keyword::Extends(_) => Keyword::Extends(()),
+            Keyword::Finally(_) => Keyword::Finally(()),
+            Keyword::For(_) => Keyword::For(()),
+            Keyword::Function(_) => Keyword::Function(()),
+            Keyword::If(_) => Keyword::If(()),
+            Keyword::In(_) => Keyword::In(()),
+            Keyword::Implements(_) => Keyword::Implements(()),
+            Keyword::InstanceOf(_) => Keyword::InstanceOf(()),
+            Keyword::Interface(_) => Keyword::Interface(()),
+            Keyword::Let(_) => Keyword::Let(()),
+            Keyword::New(_) => Keyword::New(()),
+            Keyword::Package(_) => Keyword::Package(()),
+            Keyword::Private(_) => Keyword::Private(()),
+            Keyword::Protected(_) => Keyword::Protected(()),
+            Keyword::Public(_) => Keyword::Public(()),
+            Keyword::Static(_) => Keyword::Static(()),
+            Keyword::Return(_) => Keyword::Return(()),
+            Keyword::Super(_) => Keyword::Super(()),
+            Keyword::Switch(_) => Keyword::Switch(()),
+            Keyword::This(_) => Keyword::This(()),
+            Keyword::Throw(_) => Keyword::Throw(()),
+            Keyword::Try(_) => Keyword::Try(()),
+            Keyword::TypeOf(_) => Keyword::TypeOf(()),
+            Keyword::Var(_) => Keyword::Var(()),
+            Keyword::Void(_) => Keyword::Void(()),
+            Keyword::While(_) => Keyword::While(()),
+            Keyword::With(_) => Keyword::With(()),
+            Keyword::Yield(_) => Keyword::Yield(()),
+        }
+    }
+}
+
+impl<'a> Keyword<&'a str> {
+    pub fn has_unicode_escape(&self) -> bool {
+        match self {
+            Keyword::Await(s) => s,
+            Keyword::Break(s) => s,
+            Keyword::Case(s) => s,
+            Keyword::Catch(s) => s,
+            Keyword::Class(s) => s,
+            Keyword::Const(s) => s,
+            Keyword::Continue(s) => s,
+            Keyword::Debugger(s) => s,
+            Keyword::Default(s) => s,
+            Keyword::Import(s) => s,
+            Keyword::Delete(s) => s,
+            Keyword::Do(s) => s,
+            Keyword::Else(s) => s,
+            Keyword::Enum(s) => s,
+            Keyword::Export(s) => s,
+            Keyword::Extends(s) => s,
+            Keyword::Finally(s) => s,
+            Keyword::For(s) => s,
+            Keyword::Function(s) => s,
+            Keyword::If(s) => s,
+            Keyword::In(s) => s,
+            Keyword::Implements(s) => s,
+            Keyword::InstanceOf(s) => s,
+            Keyword::Interface(s) => s,
+            Keyword::Let(s) => s,
+            Keyword::New(s) => s,
+            Keyword::Package(s) => s,
+            Keyword::Private(s) => s,
+            Keyword::Protected(s) => s,
+            Keyword::Public(s) => s,
+            Keyword::Static(s) => s,
+            Keyword::Return(s) => s,
+            Keyword::Super(s) => s,
+            Keyword::Switch(s) => s,
+            Keyword::This(s) => s,
+            Keyword::Throw(s) => s,
+            Keyword::Try(s) => s,
+            Keyword::TypeOf(s) => s,
+            Keyword::Var(s) => s,
+            Keyword::Void(s) => s,
+            Keyword::While(s) => s,
+            Keyword::With(s) => s,
+            Keyword::Yield(s) => s,
+        }
+        .contains("\\u")
     }
 }
 
@@ -1504,7 +1747,7 @@ impl<'a> TokenExt for Token<&'a str> {
             _ => false,
         }
     }
-    fn matches_keyword(&self, keyword: Keyword) -> bool {
+    fn matches_keyword<T>(&self, keyword: Keyword<T>) -> bool {
         match self {
             Token::Keyword(k) => k == &keyword,
             _ => false,
@@ -1546,8 +1789,8 @@ impl<'a> TokenExt for Token<&'a str> {
     fn matches_string_content(&self, content: &str) -> bool {
         match self {
             Token::String(ref lit) => match lit {
-                StringLit::Single(s) => content == *s,
-                StringLit::Double(s) => content == *s,
+                StringLit::Single(s) => content == s.content,
+                StringLit::Double(s) => content == s.content,
             },
             _ => false,
         }

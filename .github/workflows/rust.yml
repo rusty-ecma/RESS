@@ -1,0 +1,51 @@
+name: Rust
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setup Node.js for use with actions
+      uses: actions/setup-node@v1.1.0
+    - name: install js test libs from npm
+      run: npm install
+    - name: Build
+      run: cargo build
+    - name: get moz_central files
+      run: curl https://hg.mozilla.org/mozilla-central/archive/tip.zip/js/src/jit-test/tests/ --output moz_central.zip
+    - name: unzip moz_central
+      run: unzip -qq moz_central -d moz_central
+    - name: Run tests
+      run: cargo test --features moz_central
+      if: success()
+    - name: Run Major Libs example
+      run: cargo run --example major_libs
+      if: success()
+    - name: Check syntax
+      run: cargo fmt --all -- --check
+      if: success()
+    - name: Get tarpaulin install script
+      run: bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
+      if: success()
+    - name: Run tarpaulin and upload to CodeCov.io
+      run: cargo tarpaulin --out Xml && bash <(curl -s https://codecov.io/bash)
+      env: 
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        RUST_LOG: trace
+      if: success()
+    - name: Cache node_modules
+      uses: actions/cache@v1.0.3
+      with:
+        path: ./node_modules
+        key: ${{ runner.os }}.node_modules
+    - name: before cargo cache
+      run: rm -rf ~/.cargo/registry
+    - name: Cache cargo directory
+      uses: actions/cache@v1.0.3
+      with:
+        key: ${{ runner.os }}.cargo
+        path: ~/.cargo

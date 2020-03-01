@@ -2,8 +2,6 @@
 #![feature(test)]
 extern crate ress;
 extern crate test;
-#[macro_use]
-extern crate lazy_static;
 
 #[macro_use]
 extern crate criterion;
@@ -15,146 +13,56 @@ use ress::Scanner;
 use std::fs::read_to_string;
 use std::path::PathBuf;
 
-lazy_static! {
-    static ref NG: String = get_js(Lib::Angular).unwrap();
-    static ref NG_MIN: String = get_min_js(Lib::Angular).unwrap();
-    static ref JQ: String = get_js(Lib::Jquery).unwrap();
-    static ref JQ_MIN: String = get_min_js(Lib::Jquery).unwrap();
-    static ref REACT: String = get_js(Lib::React).unwrap();
-    static ref REACT_MIN: String = get_min_js(Lib::React).unwrap();
-    static ref REACT_DOM: String = get_js(Lib::ReactDom).unwrap();
-    static ref REACT_DOM_MIN: String = get_min_js(Lib::ReactDom).unwrap();
-    static ref VUE: String = get_js(Lib::Vue).unwrap();
-    static ref VUE_MIN: String = get_min_js(Lib::Vue).unwrap();
-    static ref EV5: String = get_js(Lib::EveryEs5).unwrap();
-    static ref EV2015: String = get_js(Lib::EveryEs2015Script).unwrap();
-    static ref EVMOD: String = get_js(Lib::EveryEs2015Mod).unwrap();
-}
-
 fn angular(c: &mut Criterion) {
-    c.bench_function("angular", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&NG) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Angular, "angular", false);
 }
 
 fn angular_min(c: &mut Criterion) {
-    c.bench_function("angular_min", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&NG_MIN) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Angular, "angular_min", true);
 }
 
 fn jq(c: &mut Criterion) {
-    c.bench_function("jq", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&JQ) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Jquery, "jq", false);
 }
 
 fn jq_min(c: &mut Criterion) {
-    c.bench_function("jq_min", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&JQ_MIN) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Jquery, "jq_min", true);
 }
 
 fn react(c: &mut Criterion) {
-    c.bench_function("react", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&REACT) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::React, "react", false);
 }
 
 fn react_min(c: &mut Criterion) {
-    c.bench_function("react_min", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&REACT_MIN) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::React, "react_min", true);
 }
 
 fn react_dom(c: &mut Criterion) {
-    c.bench_function("react_dom", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&REACT_DOM) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::ReactDom, "react_dom", false);
 }
 
 fn react_dom_min(c: &mut Criterion) {
-    c.bench_function("react_dom_min", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&REACT_DOM_MIN) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::ReactDom, "react_dom_min", true);
 }
 
 fn vue(c: &mut Criterion) {
-    c.bench_function("vue", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&VUE) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Vue, "vue", false);
 }
 
 fn vue_min(c: &mut Criterion) {
-    c.bench_function("vue_min", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&VUE_MIN) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::Vue, "vue_min", true);
 }
 
 fn everything_es5(c: &mut Criterion) {
-    c.bench_function("everything_es5", |b| {
-        b.iter(|| {
-            black_box(Scanner::new(&EV5).collect::<Vec<_>>());
-        })
-    });
+    run_bench(c, Lib::EveryEs5, "everything_es5", false);
 }
 
 fn everything_es2015_s(c: &mut Criterion) {
-    c.bench_function("everything_es2015_s", |b| {
-        b.iter(|| {
-            black_box(Scanner::new(&EV2015).collect::<Vec<_>>());
-        })
-    });
+    run_bench(c, Lib::EveryEs2015Script, "everything_es2015_s", false);
 }
 
 fn everything_es2015_m(c: &mut Criterion) {
-    c.bench_function("everything_es2015_m", |b| {
-        b.iter(|| {
-            for i in Scanner::new(&EVMOD) {
-                black_box(i.unwrap());
-            }
-        })
-    });
+    run_bench(c, Lib::EveryEs2015Mod, "everything_es2015_m", false);
 }
 
 enum Lib {
@@ -231,6 +139,30 @@ fn npm_install() {
             )
         );
     }
+}
+
+#[inline(always)]
+fn run_bench(c: &mut Criterion, lib: Lib, name: &str, min: bool) {
+    let js = if min {
+        get_min_js(lib).unwrap()
+    } else {
+        get_js(lib).unwrap()
+    };
+    run_bench_(c, &js, name)
+}
+
+#[inline(always)]
+fn run_bench_(c: &mut Criterion, js: &str, name: &str) {
+    let mut group = c.benchmark_group(name);
+    group.throughput(criterion::Throughput::Bytes(js.len() as u64));
+    group.bench_function(name, |b| {
+        b.iter(|| {
+            for i in Scanner::new(&js) {
+                black_box(i.unwrap());
+            }
+        })
+    });
+    group.finish();
 }
 
 criterion_group!(

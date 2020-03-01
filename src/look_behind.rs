@@ -1,6 +1,12 @@
-use crate::tokenizer::RawToken;
-use crate::tokens::{Keyword, Punct};
+use crate::tokenizer::RawKeyword;
+use crate::tokens::Punct;
+use std::rc::Rc;
 
+/// A 2 element buffer of
+/// MetaTokens, this will use a
+/// "ring buffer"-esque scheme
+/// for automatically overwriting
+/// any element after 2
 #[derive(Clone, Debug)]
 pub struct LookBehind {
     list: [Option<MetaToken>; 3],
@@ -12,56 +18,127 @@ impl LookBehind {
     pub const fn new() -> Self {
         Self {
             list: [None, None, None],
-            pointer: 0,
+            pointer: 2, // force the first pointer value to be 0
         }
     }
     #[inline]
-    pub fn push(&mut self, tok: &RawToken) {
-        if self.pointer >= 2 {
-            self.pointer = 0;
-        } else {
-            self.pointer += 1;
-        }
-        self.list[self.pointer as usize] = Some(tok.into());
+    pub fn push(&mut self, token: MetaToken) {
+        self.pointer = wrapping_add(self.pointer, 1, 2);
+        self.list[self.pointer as usize] = Some(token)
     }
     #[inline]
-    pub fn last(&self) -> &Option<MetaToken> {
+    pub fn one(&self) -> &Option<MetaToken> {
         &self.list[self.pointer as usize]
     }
     #[inline]
     pub fn two(&self) -> &Option<MetaToken> {
-        if self.pointer == 0 {
-            &self.list[2]
-        } else {
-            &self.list[(self.pointer - 1) as usize]
-        }
+        let idx = wrapping_sub(self.pointer, 1, 2) as usize;
+        &self.list[idx]
     }
     #[inline]
     pub fn three(&self) -> &Option<MetaToken> {
-        if self.pointer == 2 {
-            &self.list[0]
-        } else {
-            &self.list[(self.pointer + 1) as usize]
-        }
+        let idx = wrapping_sub(self.pointer, 2, 2) as usize;
+        &self.list[idx]
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
-#[repr(u8)]
+
+#[inline]
+pub fn wrapping_sub(lhs: u8, rhs: u8, max: u8) -> u8 {
+    if lhs >= rhs {
+        lhs - rhs
+    } else {
+        let diff = rhs - lhs;
+        (max + 1) - diff
+    }
+}
+#[inline]
+pub fn wrapping_add(lhs: u8, rhs: u8, max: u8) -> u8 {
+    let maybe = lhs + rhs;
+    if maybe > max {
+        let diff = maybe - max;
+        diff.saturating_sub(1)
+    } else {
+        maybe
+    }
+}
+
+/// Token classes needed for look behind
+///
+/// All variants will carry their line number
+///
+#[derive(Debug, Clone, Copy)]
 pub enum MetaToken {
-    Keyword(Keyword),
+    Keyword(RawKeyword, u32),
     Punct(Punct),
+    OpenParen(Paren),
+    CloseParen(Paren),
+    OpenBrace(Brace, u32),
+    CloseBrace(Brace),
     Ident,
     Other,
 }
+#[derive(Debug, Clone, Copy)]
+pub struct Paren {
+    pub func_expr: bool,
+    pub conditional: bool,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct Brace {
+    pub is_block: bool,
+    pub paren: Option<Paren>,
+}
 
-impl From<&RawToken> for MetaToken {
-    fn from(other: &RawToken) -> Self {
+impl MetaToken {
+    pub fn line_number(self) -> u32 {
+        match self {
+            MetaToken::Keyword(_, line) | MetaToken::OpenBrace(_, line) => line,
+            _ => 0,
+        }
+    }
+}
+
+impl PartialEq for MetaToken {
+    fn eq(&self, other: &MetaToken) -> bool {
+        match (self, other) {
+            (MetaToken::Keyword(lhs, _), MetaToken::Keyword(rhs, _)) => lhs == rhs,
+            (MetaToken::Punct(lhs), MetaToken::Punct(rhs)) => lhs == rhs,
+            (MetaToken::Ident, MetaToken::Ident) | (MetaToken::Other, MetaToken::Other) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<T> From<(&crate::Token<T>, u32)> for MetaToken {
+    fn from((other, line): (&crate::Token<T>, u32)) -> Self {
         match other {
-            RawToken::Keyword(k) => MetaToken::Keyword(*k),
-            RawToken::Punct(p) => MetaToken::Punct(*p),
-            RawToken::Ident => MetaToken::Ident,
+            crate::Token::Keyword(k) => MetaToken::Keyword(k.into(), line),
+            crate::Token::Punct(p) => MetaToken::Punct(*p),
+            crate::Token::Ident(_) => MetaToken::Ident,
             _ => MetaToken::Other,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OpenBrace {
+    pub look_behind: LookBehind,
+    pub parent: Option<Rc<OpenBrace>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CloseBrace {
+    pub open: Rc<OpenBrace>,
+}
+
+#[derive(Debug, Clone)]
+pub struct CloseParen {
+    pub open: LookBehind,
+}
+
+impl std::ops::Deref for OpenBrace {
+    type Target = LookBehind;
+    fn deref(&self) -> &Self::Target {
+        &self.look_behind
     }
 }
 
@@ -71,46 +148,32 @@ mod test {
     use crate::tokens::Punct;
 
     #[test]
-    fn six() {
-        let first = RawToken::EoF;
-        let second = RawToken::Ident;
-        let third = RawToken::Keyword(Keyword::Function);
-        let fourth = RawToken::Punct(Punct::Ampersand);
-        let fifth = RawToken::Punct(Punct::Bang);
-        let sixth = RawToken::Punct(Punct::Caret);
+    fn wrapping_collection() {
+        let first = MetaToken::Other;
+        let second = MetaToken::Ident;
+        let third = MetaToken::Keyword(RawKeyword::Function, 1);
+        let fourth = MetaToken::Punct(Punct::Ampersand);
+        let fifth = MetaToken::Punct(Punct::Bang);
+        let sixth = MetaToken::Punct(Punct::Caret);
+        let seventh = MetaToken::Punct(Punct::Pipe);
+        let eighth = MetaToken::Punct(Punct::Tilde);
         let mut l = LookBehind::new();
-        l.push(&first);
-        test(&l, Some((&first).into()), None, None);
-        l.push(&second);
-        test(&l, Some((&second).into()), Some((&first).into()), None);
-        l.push(&third);
-        test(
-            &l,
-            Some((&third).into()),
-            Some((&second).into()),
-            Some((&first).into()),
-        );
-        l.push(&fourth);
-        test(
-            &l,
-            Some((&fourth).into()),
-            Some((&third).into()),
-            Some((&second).into()),
-        );
-        l.push(&fifth);
-        test(
-            &l,
-            Some((&fifth).into()),
-            Some((&fourth).into()),
-            Some((&third).into()),
-        );
-        l.push(&sixth);
-        test(
-            &l,
-            Some((&sixth).into()),
-            Some((&fifth).into()),
-            Some((&fourth).into()),
-        );
+        l.push(first);
+        test(&l, Some(first), None, None);
+        l.push(second);
+        test(&l, Some(second), Some(first), None);
+        l.push(third);
+        test(&l, Some(third), Some(second), Some(first));
+        l.push(fourth);
+        test(&l, Some(fourth), Some(third), Some(second));
+        l.push(fifth);
+        test(&l, Some(fifth), Some(fourth), Some(third));
+        l.push(sixth);
+        test(&l, Some(sixth), Some(fifth), Some(fourth));
+        l.push(seventh);
+        test(&l, Some(seventh), Some(sixth), Some(fifth));
+        l.push(eighth);
+        test(&l, Some(eighth), Some(seventh), Some(sixth));
     }
 
     fn test(
@@ -120,8 +183,18 @@ mod test {
         third: Option<MetaToken>,
     ) {
         println!("{:?}", l);
-        assert_eq!(l.last(), &first);
-        assert_eq!(l.two(), &second);
-        assert_eq!(l.three(), &third);
+        assert_eq!(l.one(), &first, "one didn't match");
+        assert_eq!(l.two(), &second, "two didn't match");
+        assert_eq!(l.three(), &third, "three didn't match");
+    }
+
+    #[test]
+    fn wrapping() {
+        assert_eq!(wrapping_sub(4, 1, 4), 3);
+        assert_eq!(wrapping_sub(1, 1, 4), 0);
+        assert_eq!(wrapping_sub(0, 1, 4), 4);
+        assert_eq!(wrapping_add(0, 1, 4), 1);
+        assert_eq!(wrapping_add(4, 1, 4), 0);
+        assert_eq!(wrapping_add(0, 6, 4), 1)
     }
 }

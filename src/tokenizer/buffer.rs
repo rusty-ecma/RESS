@@ -1,16 +1,16 @@
-use super::unicode::is_other_whitespace;
 use std::char;
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
     pub len: usize,
 }
-/// Re-implementation of
-/// the std::str::Chars logic
 const CONT_MASK: u8 = 0b0011_1111;
 const TAG_CONT_U8: u8 = 0b1000_0000;
+/// Re-implementation of
+/// the std::str::Chars logic
 impl<'a> JSBuffer<'a> {
     #[inline]
+    #[allow(clippy::all)]
     pub fn next_char(&mut self) -> Option<char> {
         if self.at_end() {
             return None;
@@ -44,6 +44,7 @@ impl<'a> JSBuffer<'a> {
         char::from_u32(ch)
     }
     #[inline]
+    #[allow(clippy::all)]
     pub fn prev_char(&mut self) -> Option<char> {
         // Decode UTF-8
         if self.idx == 0 {
@@ -92,10 +93,12 @@ impl<'a> JSBuffer<'a> {
         self.buffer[self.idx]
     }
     #[inline]
+    #[allow(clippy::all)]
     fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 {
         (ch << 6) | (byte & CONT_MASK) as u32
     }
     #[inline]
+    #[allow(clippy::all)]
     fn utf8_first_byte(byte: u8, width: u32) -> u32 {
         (byte & (0x7F >> width)) as u32
     }
@@ -113,6 +116,8 @@ impl<'a> JSBuffer<'a> {
             len: buffer.len(),
         }
     }
+    /// Check if the buffer is at or past the
+    /// end of the bytes provided
     #[inline]
     pub fn at_end(&self) -> bool {
         self.idx >= self.len
@@ -128,7 +133,7 @@ impl<'a> JSBuffer<'a> {
         }
         end <= self.len && &self.buffer[self.idx..end] == s
     }
-
+    /// Check if the next byte matches a single byte provided
     #[inline]
     pub fn look_ahead_byte_matches(&self, b: u8) -> bool {
         if self.at_end() {
@@ -146,32 +151,53 @@ impl<'a> JSBuffer<'a> {
             let _ = self.next_char();
         }
     }
+    /// Skip a single byte
+    /// note: this can cause the buffer to become unaligned
+    /// be sure to always know the character you are skipping
+    /// is 1 byte wide or use `skip` instead when unsure
+    #[inline]
+    pub fn skip_bytes(&mut self, count: usize) {
+        self.idx += count;
+    }
+
     /// check if current char is a valid
     /// js whitespace character
     pub fn at_whitespace(&mut self) -> bool {
         if self.at_end() {
             return false;
         }
-        self.buffer[self.idx] == 9
-            || self.buffer[self.idx] == 10
-            || self.buffer[self.idx] == 11
-            || self.buffer[self.idx] == 12
-            || self.buffer[self.idx] == 13
-            || self.buffer[self.idx] == 32
-            || {
-                let c = if let Some(c) = self.next_char() {
-                    let _ = self.prev_char();
-                    c
-                } else {
-                    return false;
-                };
-                c == '\u{00A0}'
-                    || c == '\u{FEFF}'
-                    || c == '\u{2028}'
-                    || c == '\u{2029}'
-                    || is_other_whitespace(c)
-            }
+        self.buffer[self.idx] == 9 //\t
+            || self.buffer[self.idx] == 10 // \n
+            || self.buffer[self.idx] == 11 // \u{000b}
+            || self.buffer[self.idx] == 12 // \f
+            || self.buffer[self.idx] == 13 // \r
+            || self.buffer[self.idx] == 32 // ' '
+            || (self.buffer[self.idx] == 194 && self.idx + 1 < self.len && self.buffer[self.idx+1] == 160)
+            || (self.buffer[self.idx] >= 226 && self.buffer[self.idx] <= 239 && self.len > self.idx + 2 && {
+                match &self.buffer[self.idx..self.idx+3] {
+                    [239, 187, 191] //"\u{feff}",
+                    | [226, 128, 168] //"\u{2028}",
+                    | [226, 128, 169] //"\u{2029}",
+                    | [226, 128, 128] //"\u{2000}",
+                    | [226, 128, 129] //"\u{2001}",
+                    | [226, 128, 130] //"\u{2002}",
+                    | [226, 128, 131] //"\u{2003}",
+                    | [226, 128, 132] //"\u{2004}",
+                    | [226, 128, 133] //"\u{2005}",
+                    | [226, 128, 134] //"\u{2006}",
+                    | [226, 128, 135] //"\u{2007}",
+                    | [226, 128, 136] //"\u{2008}",
+                    | [226, 128, 137] //"\u{2009}",
+                    | [226, 128, 138] //"\u{200a}",
+                    | [226, 128, 175] //"\u{202f}",
+                    | [226, 129, 159] //"\u{205f}",
+                    | [227, 128, 128] => true,  //"\u{3000}",
+                    _ => false,
+                }
+            } )
     }
+    /// Check of the look ahead character is
+    /// a valid js new line character
     #[inline]
     pub fn at_new_line(&mut self) -> bool {
         if self.at_end() {
@@ -187,7 +213,7 @@ impl<'a> JSBuffer<'a> {
         } else if byte == 13 {
             true
         } else if byte < 226 {
-            return false;
+            false
         } else if byte == 226 {
             self.look_ahead_matches("\u{2028}".as_bytes())
                 || self.look_ahead_matches("\u{2029}".as_bytes())
@@ -195,17 +221,63 @@ impl<'a> JSBuffer<'a> {
             false
         }
     }
+    /// check if the look ahead character is `0` or `1`
+    #[inline]
+    pub fn at_binary(&self) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'1'
+    }
+    /// check if the look ahead character is a number
+    /// between `0` and `9`, inclusive
     #[inline]
     pub fn at_decimal(&self) -> bool {
-        self.at_simple_number(10)
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'9'
     }
+    /// check if the look ahead character is a number
+    /// between `0` and `7`, inclusive
     #[inline]
     pub fn at_octal(&self) -> bool {
-        self.at_simple_number(8)
+        if self.at_end() {
+            return false;
+        }
+        self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'7'
     }
+    /// check if the look ahead character is a number
+    /// between `0` and `9` or `a` and `f` or `A` and `F`, inclusive
     #[inline]
-    fn at_simple_number(&self, radix: u8) -> bool {
-        !self.at_end() && self.buffer[self.idx] > 47 && self.buffer[self.idx] < 47 + radix + 1
+    pub fn at_hex(&self) -> bool {
+        if self.at_end() {
+            return false;
+        }
+        (self.buffer[self.idx] >= b'0' && self.buffer[self.idx] <= b'9')
+            || (self.buffer[self.idx] >= b'a' && self.buffer[self.idx] <= b'f')
+            || (self.buffer[self.idx] >= b'A' && self.buffer[self.idx] <= b'F')
+    }
+    /// Peek forward 1 char with out updating the
+    /// `idx` to this new position.
+    ///
+    /// note: this will still cost the same amount
+    /// of work as `next_char` but cleans up the
+    /// book keeping for you
+    #[inline]
+    pub fn peek_char(&mut self) -> Option<char> {
+        let ch = self.next_char()?;
+        self.skip_back_bytes(ch.len_utf8());
+        Some(ch)
+    }
+    /// Skip backwards a number of bytes
+    /// note: this can cause the buffer to become unaligned
+    /// be sure to always know the character you are skipping
+    /// is [count] bytes wide or use `skip` instead when unsure
+    /// the right width is skipped
+    #[inline]
+    pub fn skip_back_bytes(&mut self, count: usize) {
+        self.idx -= count;
     }
 }
 
@@ -218,6 +290,44 @@ impl<'a> From<&'a str> for JSBuffer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    #[test]
+    fn at_whitespace() {
+        let whitespaces = &[
+            9,  // \t
+            10, // \n
+            11, // \u{000b}
+            12, // \f
+            13, // \r
+            32, // ' '
+            194, 160, //\u{00A0}
+            239, 187, 191, // \u{FEFF}
+            226, 128, 168, // \u{2028}
+            226, 128, 169, // \u{2029}
+            226, 128, 128, // \u{2000}
+            226, 128, 129, // \u{2001}
+            226, 128, 130, // \u{2002}
+            226, 128, 131, // \u{2003}
+            226, 128, 132, // \u{2004}
+            226, 128, 133, // \u{2005}
+            226, 128, 134, // \u{2006}
+            226, 128, 135, // \u{2007}
+            226, 128, 136, // \u{2008}
+            226, 128, 137, // \u{2009}
+            226, 128, 138, // \u{200A}
+            226, 128, 175, // \u{202F}
+            226, 129, 159, // \u{205F}
+            227, 128, 128, // \u{3000}
+        ];
+        let mut buf = JSBuffer::new(whitespaces);
+        while !buf.at_end() {
+            assert!(
+                buf.at_whitespace(),
+                "buffer was not at whitespace {}",
+                buf.idx
+            );
+            buf.skip(1);
+        }
+    }
     #[test]
     fn at_oct_number() {
         let s = "012345678";
@@ -249,13 +359,14 @@ mod test {
         assert!(b.next_char().unwrap() == 'k');
         assert!(b.next_char().unwrap() == 'ł');
         assert!(b.next_char().unwrap() == '둘');
-
+        assert!(b.next_char().is_none());
         assert!(b.prev_char().unwrap() == '둘');
         assert!(b.prev_char().unwrap() == 'ł');
         assert!(b.prev_char().unwrap() == 'k');
         assert!(b.prev_char().unwrap() == '🐁');
         assert!(b.prev_char().unwrap() == '🦡');
         assert!(b.prev_char().unwrap() == '🦜');
+        assert!(b.prev_char().is_none());
     }
 
     #[test]
