@@ -1,4 +1,5 @@
 #![allow(clippy::all)]
+use unicode_xid::UnicodeXID;
 
 /// wrap the `unic_ucd_ident`'s function
 /// first short-circuiting around the ascii
@@ -22,7 +23,7 @@ pub(crate) fn is_id_start(c: char) -> bool {
     {
         true
     } else {
-        unic_ucd_ident::is_id_start(c)
+        UnicodeXID::is_xid_start(c)
     }
 }
 /// wrap the `unic_ucd_ident`'s function
@@ -61,6 +62,6 @@ pub(crate) fn is_id_continue(c: char) -> bool {
     {
         true
     } else {
-        unic_ucd_ident::is_id_continue(c)
+        UnicodeXID::is_xid_continue(c)
     }
 }

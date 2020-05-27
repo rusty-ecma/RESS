@@ -1533,7 +1533,8 @@ mod test {
             r#"ﬁⅷ"#,
             r#"ユニコード"#,
             r#"x‌‍"#,
-            r#"q\u309C"#,
+            r#"\u08BE"#,
+            r#"\u{8be}"#,
         ];
         for i in IDENTS {
             let mut t = Tokenizer::new(dbg!(i));
