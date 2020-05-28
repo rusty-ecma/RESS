@@ -272,6 +272,21 @@ fn var_escaped_cr() {
     run_failure(js);
 }
 
+#[test]
+fn long_comment() {
+    let _ = pretty_env_logger::try_init();
+    let inner = "\n* <!-- I should not be a unique comment -->\n*\n";
+    let js = format!("/*{}*/", inner);
+    compare(
+        &js,
+        &[Token::Comment(Comment {
+            kind: ress::tokens::CommentKind::Multi,
+            content: inner,
+            tail_content: None,
+        })],
+    )
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));

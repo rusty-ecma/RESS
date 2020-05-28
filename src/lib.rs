@@ -90,12 +90,11 @@ impl ::std::cmp::PartialOrd for Position {
 }
 impl std::cmp::Ord for Position {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        if self.line < other.line {
-            std::cmp::Ordering::Less
-        } else if self.line > other.line {
-            std::cmp::Ordering::Greater
-        } else {
-            self.column.cmp(&other.column)
+        use std::cmp::Ordering::*;
+        match self.line.cmp(&other.line) {
+            Less => Less,
+            Greater => Greater,
+            _ => self.column.cmp(&other.column),
         }
     }
 }
@@ -332,19 +331,23 @@ impl<'b> Scanner<'b> {
                     kind,
                     new_line_count,
                     last_len,
+                    end_index,
                 } => {
                     len = last_len;
                     new_lines = new_line_count;
                     match kind {
                         tokens::CommentKind::Multi => {
-                            let start_content = s.trim_start_matches("/*");
+                            dbg!(&end_index);
                             let (tail_content, tail_start) =
-                                if let Some(tail_start) = start_content.find("-->") {
-                                    (Some(&start_content[tail_start + 3..]), tail_start)
+                                if let Some(tail_start) = dbg!(s[end_index..].find("-->")) {
+                                    let actual_start = end_index + tail_start;
+                                    (Some(&s[actual_start + 3..]), actual_start)
                                 } else {
-                                    (None, start_content.len())
+                                    (None, s.len())
                                 };
-                            let content = start_content[..tail_start].trim_end_matches("*/");
+                            let content = s[..tail_start]
+                                .trim_start_matches("/*")
+                                .trim_end_matches("*/");
                             Token::Comment(Comment {
                                 kind: tokens::CommentKind::Multi,
                                 content,

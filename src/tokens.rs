@@ -536,7 +536,7 @@ pub struct InnerString<T> {
 
 impl<'a> ToString for RegEx<&'a str> {
     fn to_string(&self) -> String {
-        let f = if let Some(ref f) = self.flags {
+        let f = if let Some(f) = self.flags {
             f.to_string()
         } else {
             String::new()

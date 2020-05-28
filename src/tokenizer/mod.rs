@@ -385,9 +385,7 @@ impl<'a> Tokenizer<'a> {
                         });
                     }
                 } else if escaped && c.is_digit(8) {
-                    if c != '0' {
-                        found_octal_escape = true;
-                    } else if self.stream.at_decimal() {
+                    if c != '0' || self.stream.at_decimal() {
                         found_octal_escape = true;
                     }
                     1
@@ -694,7 +692,7 @@ impl<'a> Tokenizer<'a> {
                     break;
                 }
             }
-            self.gen_comment(CommentKind::Hashbang, 0, 0)
+            self.gen_comment(CommentKind::Hashbang, 0, 0, self.local_index())
         } else {
             self.gen_punct(Punct::Hash)
         }
@@ -805,14 +803,7 @@ impl<'a> Tokenizer<'a> {
                                 found_invalid_unicode = true;
                             }
                         } else if ch.is_digit(16) {
-                            for _ in 0..3 {
-                                if self.stream.at_hex() {
-                                    self.stream.skip_bytes(1);
-                                } else {
-                                    found_invalid_unicode = true;
-                                    break;
-                                }
-                            }
+                            found_invalid_unicode = self.escaped_with_hex4(ch).is_err();
                         } else {
                             found_invalid_unicode = true;
                         };
@@ -823,7 +814,7 @@ impl<'a> Tokenizer<'a> {
                         });
                     }
                 } else if self.look_ahead_byte_matches('x') {
-                    let _ = self.stream.skip_bytes(1);
+                    self.stream.skip_bytes(1);
                     last_len = last_len.saturating_add(1);
                     for _ in 0..2 {
                         if self.stream.at_hex() {
@@ -910,23 +901,26 @@ impl<'a> Tokenizer<'a> {
                 break;
             }
         }
-        self.gen_comment(kind, 0, 0)
+        self.gen_comment(kind, 0, 0, self.local_index())
     }
     /// parse a multi-line comment after finding `/*`
     #[inline]
     fn multi_comment(&mut self, allow_html_comment_close: bool) -> Res<RawItem> {
         trace!(
-            "multi_comment ({}, {})",
+            "multi_comment ({}, {}) allow_html_comment_close: {}",
             self.current_start,
-            self.stream.idx
+            self.stream.idx,
+            allow_html_comment_close
         );
         let mut new_line_count = 0usize;
         let mut last_len = 2usize; // we already skipped the /*
         let mut found_end = false;
+        let mut end_idx = None;
         while let Some(c) = self.stream.next_char() {
             if c == '*' && self.look_ahead_byte_matches('/') {
                 self.stream.skip_bytes(1);
                 found_end = true;
+                end_idx = Some(self.local_index());
                 last_len = last_len.saturating_add(2);
                 break;
             } else if c == '\r' {
@@ -942,16 +936,17 @@ impl<'a> Tokenizer<'a> {
                 last_len = last_len.saturating_add(1);
             }
         }
-        if (new_line_count > 0 || allow_html_comment_close) && self.look_ahead_matches("-->") {
-            self.stream.skip_bytes(3);
-
-            while !self.stream.at_end() && !self.at_new_line() {
-                self.stream.skip_bytes(1);
-                last_len = last_len.saturating_add(1);
-            }
-        }
         if found_end {
-            self.gen_comment(CommentKind::Multi, new_line_count, last_len)
+            if (new_line_count > 0 || allow_html_comment_close) && self.look_ahead_matches("-->") {
+                self.stream.skip_bytes(3);
+
+                while !self.stream.at_end() && !self.at_new_line() {
+                    self.stream.skip_bytes(1);
+                    last_len = last_len.saturating_add(1);
+                }
+            }
+            let end_idx = end_idx.unwrap_or_else(|| self.local_index());
+            self.gen_comment(CommentKind::Multi, new_line_count, last_len, end_idx)
         } else {
             Err(RawError {
                 idx: self.current_start,
@@ -963,22 +958,22 @@ impl<'a> Tokenizer<'a> {
     #[inline]
     fn html_comment(&mut self) -> Res<RawItem> {
         trace!("html_comment ({}, {})", self.current_start, self.stream.idx);
-        let mut found_end = false;
+        let mut end_idx = None;
         while !self.stream.at_end() {
             if self.stream.at_new_line() {
-                found_end = true;
+                end_idx = Some(self.local_index());
                 break;
             }
 
             if self.look_ahead_matches("-->") {
-                found_end = true;
                 self.stream.skip_bytes(3);
+                end_idx = Some(self.local_index());
             } else {
                 self.stream.skip_bytes(1);
             }
         }
-        if found_end {
-            return self.gen_comment(CommentKind::Html, 0, 0);
+        if let Some(end_idx) = end_idx {
+            return self.gen_comment(CommentKind::Html, 0, 0, end_idx);
         }
         Err(RawError {
             msg: "unterminated html comment".to_string(),
@@ -1313,6 +1308,7 @@ impl<'a> Tokenizer<'a> {
         kind: CommentKind,
         new_line_count: usize,
         last_len: usize,
+        end_index: usize,
     ) -> Res<RawItem> {
         trace!(
             "gen_comment {:?} {}, {} ({}, {})",
@@ -1326,6 +1322,7 @@ impl<'a> Tokenizer<'a> {
             kind,
             new_line_count,
             last_len,
+            end_index,
         })
     }
     /// Convience method for wrapping a `RawToken` in a `RawItem`
@@ -1369,6 +1366,11 @@ impl<'a> Tokenizer<'a> {
     fn at_new_line(&mut self) -> bool {
         trace!("at_new_line ({}, {})", self.current_start, self.stream.idx);
         self.stream.at_new_line()
+    }
+    /// Get the current position inside of this token
+    #[inline]
+    fn local_index(&self) -> usize {
+        dbg!(self.stream.idx - self.current_start)
     }
     /// Carrage Return is always a special case so that
     /// must be handled inline
@@ -1887,6 +1889,7 @@ mod test {
             "<!-- This is an HTML comment --> with a trailer",
             "/*multi-line comment */-->with a trailer",
             "/*\nmulti-line\rweird\u{2028}new\u{2029}lines\r\n*/",
+            "/*multi-line with embedded html <!-- this is not a unique comment -->*/",
         ];
         for c in COMMENTS {
             let mut t = Tokenizer::new(c);

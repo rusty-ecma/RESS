@@ -57,6 +57,7 @@ pub enum RawToken {
         kind: CommentKind,
         new_line_count: usize,
         last_len: usize,
+        end_index: usize,
     },
 }
 
