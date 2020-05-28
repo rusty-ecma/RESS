@@ -337,9 +337,8 @@ impl<'b> Scanner<'b> {
                     new_lines = new_line_count;
                     match kind {
                         tokens::CommentKind::Multi => {
-                            dbg!(&end_index);
                             let (tail_content, tail_start) =
-                                if let Some(tail_start) = dbg!(s[end_index..].find("-->")) {
+                                if let Some(tail_start) = s[end_index..].find("-->") {
                                     let actual_start = end_index + tail_start;
                                     (Some(&s[actual_start + 3..]), actual_start)
                                 } else {

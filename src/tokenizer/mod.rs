@@ -1370,7 +1370,7 @@ impl<'a> Tokenizer<'a> {
     /// Get the current position inside of this token
     #[inline]
     fn local_index(&self) -> usize {
-        dbg!(self.stream.idx - self.current_start)
+        self.stream.idx - self.current_start
     }
     /// Carrage Return is always a special case so that
     /// must be handled inline
