@@ -1741,8 +1741,7 @@ mod test {
     }
     #[test]
     fn invalid_octal_unicode_template() {
-        let escaped =
-            "(x=>{
+        let escaped = "(x=>{
 
             })`\\u0g`;";
         let mut t = Tokenizer::new(escaped);
@@ -1755,7 +1754,12 @@ mod test {
         let _close_paren = t.next(true).unwrap();
 
         let temp = t.next(true).unwrap();
-        if let RawToken::Template { kind, found_invalid_unicode_escape, ..} = &temp.ty {
+        if let RawToken::Template {
+            kind,
+            found_invalid_unicode_escape,
+            ..
+        } = &temp.ty
+        {
             assert_eq!(&TemplateKind::NoSub, kind);
             assert!(*found_invalid_unicode_escape);
         } else {
