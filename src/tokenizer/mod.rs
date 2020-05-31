@@ -803,7 +803,14 @@ impl<'a> Tokenizer<'a> {
                                 found_invalid_unicode = true;
                             }
                         } else if ch.is_digit(16) {
-                            found_invalid_unicode = self.escaped_with_hex4(ch).is_err();
+                            for _ in 0..3 {
+                                if self.stream.at_hex() {
+                                    self.stream.skip_bytes(1);
+                                } else {
+                                    found_invalid_unicode = true;
+                                    break;
+                                }
+                            }
                         } else {
                             found_invalid_unicode = true;
                         };
@@ -1731,6 +1738,30 @@ mod test {
         let end = t.next(true).unwrap();
         check_temp(&end.ty, TemplateKind::Tail);
         assert!(t.stream.at_end());
+    }
+    #[test]
+    fn invalid_octal_unicode_template() {
+        let escaped =
+            "(x=>{
+
+            })`\\u0g`;";
+        let mut t = Tokenizer::new(escaped);
+        let _open_paren = t.next(true).unwrap();
+        let _x = t.next(true).unwrap();
+        let _arrow = t.next(true).unwrap();
+        let _open_brace = t.next(true).unwrap();
+        t.skip_whitespace();
+        let _close_brace = t.next(true).unwrap();
+        let _close_paren = t.next(true).unwrap();
+
+        let temp = t.next(true).unwrap();
+        if let RawToken::Template { kind, found_invalid_unicode_escape, ..} = &temp.ty {
+            assert_eq!(&TemplateKind::NoSub, kind);
+            assert!(*found_invalid_unicode_escape);
+        } else {
+            unreachable!()
+        }
+        let _semi = t.next(true).unwrap();
     }
 
     fn check_temp(temp: &RawToken, expected_kind: TemplateKind) {
