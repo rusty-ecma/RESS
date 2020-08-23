@@ -287,9 +287,34 @@ fn long_comment() {
     )
 }
 
+#[test]
+fn regex_column() {
+    compare_with_position(
+        "'abc'.match(/abc/);",
+        &[
+            (Token::String(StringLit::single("abc", false)), 1, 1),
+            (Token::Punct(Punct::Period), 1, 6),
+            (Token::Ident("match".into()), 1, 7),
+            (Token::Punct(Punct::OpenParen), 1, 12),
+            (Token::RegEx(RegEx::from_parts("abc", None)), 1, 13),
+            (Token::Punct(Punct::CloseParen), 1, 18),
+            (Token::Punct(Punct::SemiColon), 1, 19),
+        ],
+    );
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));
+    }
+}
+
+fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) {
+    let scanner = Scanner::new(js).map(|r| r.unwrap());
+    for (i, (r, ex)) in scanner.zip(expectation.iter()).enumerate() {
+        assert_eq!((i, &r.token), (i, &ex.0));
+        assert_eq!((i, r.location.start.line), (i, ex.1));
+        assert_eq!((i, r.location.start.column), (i, ex.2));
     }
 }
 

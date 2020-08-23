@@ -301,7 +301,7 @@ impl<'b> Scanner<'b> {
             };
             match next.ty {
                 RawToken::RegEx(body_end) => {
-                    self.line_cursor = self.line_cursor.saturating_add(len);
+                    self.line_cursor = self.line_cursor.saturating_add(next.end - next.start);
                     let flags = if next.end > body_end {
                         Some(&self.original[body_end..next.end])
                     } else {
