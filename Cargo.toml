@@ -16,8 +16,7 @@ appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github
 
 [dependencies]
 log = "0.4"
-# unicode-xid = "0.2"
-unicode-xid = { git = "https://github.com/FreeMasen/unicode-xid" }
+unicode-xid = "0.2"
 
 [dev-dependencies]
 walkdir = "2"
