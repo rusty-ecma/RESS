@@ -21,6 +21,7 @@
 extern crate log;
 
 pub mod error;
+mod manual_scanner;
 mod tokenizer;
 pub mod tokens;
 pub use crate::tokenizer::Tokenizer;
@@ -35,9 +36,10 @@ pub mod prelude {
     pub use super::ScannerState;
     pub use super::SourceLocation;
 }
-use crate::tokenizer::{RawKeyword, RawToken};
+use crate::tokenizer::RawKeyword;
 use crate::tokens::prelude::*;
 use error::{Error, RawError};
+pub use manual_scanner::{ManualScanner, ScannerState as ManualState};
 
 type Res<T> = Result<T, Error>;
 mod look_behind;
@@ -120,6 +122,9 @@ impl Span {
     pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
+    pub const fn len(self) -> usize {
+        self.end - self.start
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -176,37 +181,25 @@ where
 /// to tokenize any JS text into a stream of
 /// `Item`s.
 pub struct Scanner<'a> {
-    pub stream: Tokenizer<'a>,
-    pub eof: bool,
-    pub pending_new_line: bool,
+    manual_scanner: ManualScanner<'a>,
     original: &'a str,
     errored: bool,
-    new_line_count: usize,
-    line_cursor: usize,
     last_three: LookBehind,
     brace_stack: Vec<Brace>,
     paren_stack: Vec<Paren>,
-    at_first_on_line: bool,
 }
 
 impl<'a> Scanner<'a> {
     /// Create a new `Scanner` by providing the
     /// JS text
     pub fn new(text: &'a str) -> Self {
-        let mut stream = Tokenizer::new(text);
-        let (new_line_count, line_cursor) = stream.skip_whitespace();
         Self {
-            stream,
-            eof: false,
-            pending_new_line: false,
+            manual_scanner: ManualScanner::new(text),
             original: text,
             errored: false,
-            new_line_count,
-            line_cursor: usize::max(line_cursor, 1),
             last_three: LookBehind::new(),
             paren_stack: Vec::new(),
             brace_stack: Vec::new(),
-            at_first_on_line: true,
         }
     }
 }
@@ -232,40 +225,27 @@ impl<'b> Scanner<'b> {
     /// next valid js token
     pub fn skip_comments(&mut self) -> Res<()> {
         debug!(target: "ress", "skipping comments");
-        let mut new_cursor = self.stream.stream.idx;
-        while let Some(item) = self.next() {
-            if let Token::Comment(_) = item?.token {
-                new_cursor = self.stream.stream.idx;
-            } else {
-                break;
-            }
-        }
-        debug!(target: "ress", "skipped {} bytes worth of comments", new_cursor.saturating_sub(self.stream.stream.idx));
-        self.stream.stream.idx = new_cursor;
-        Ok(())
+        self.manual_scanner.skip_comments()
     }
     /// Get a copy of the scanner's current state
     pub fn get_state(&self) -> ScannerState {
         ScannerState {
-            cursor: self.stream.stream.idx,
-            curly_stack: self.stream.curly_stack.clone(),
-            new_line_count: self.new_line_count,
-            line_cursor: self.line_cursor,
+            manual_state: self.manual_scanner.get_state(),
             last_three: self.last_three.clone(),
             paren_stack: self.paren_stack.clone(),
-            at_first_on_line: self.at_first_on_line,
         }
     }
     /// Set the scanner's current state to the state provided
     #[inline]
     pub fn set_state(&mut self, state: ScannerState) {
-        self.stream.stream.idx = state.cursor;
-        self.stream.curly_stack = state.curly_stack;
-        self.new_line_count = state.new_line_count;
-        self.line_cursor = state.line_cursor;
-        self.last_three = state.last_three;
-        self.paren_stack = state.paren_stack;
-        self.at_first_on_line = state.at_first_on_line;
+        let ScannerState {
+            manual_state,
+            last_three,
+            paren_stack,
+        } = state;
+        self.last_three = last_three;
+        self.paren_stack = paren_stack;
+        self.manual_scanner.set_state(manual_state);
     }
     #[inline]
     /// The implementation of `Scanner::next` that includes
@@ -275,227 +255,34 @@ impl<'b> Scanner<'b> {
         if self.errored {
             return None;
         }
-        if self.eof {
+        if self.manual_scanner.eof {
             debug!("end of iterator, returning None");
             return None;
         };
-        let prev_cursor = self.stream.stream.idx;
-        let prev_lines = self.new_line_count;
-        let prev_line_cursor = self.line_cursor;
-        let mut next = match self.stream.next(self.at_first_on_line) {
+        let state = self.manual_scanner.get_state();
+        let next = match self.manual_scanner.next_token()? {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
-                return Some(self.error(e));
+                return Some(Err(e));
             }
         };
-
-        let mut len = next.end - next.start;
-        let ret = if next.ty.is_div_punct() && self.is_regex_start() {
-            next = match self.stream.next_regex(len) {
-                Ok(t) => t,
-                Err(e) => {
-                    self.errored = true;
-                    return Some(self.error(e));
+        
+        let ret = if next.token.is_div_punct() && self.is_regex_start() {
+            self.manual_scanner.next_regex(next.span.len())?
+        } else {
+            Ok(next)
+        };
+        if advance_cursor {
+            if let Ok(i) = &ret {
+                if let Err(e) = self.keep_books(&i) {
+                    return Some(Err(e))
                 }
-            };
-            match next.ty {
-                RawToken::RegEx(body_end) => {
-                    self.line_cursor = self.line_cursor.saturating_add(next.end - next.start);
-                    let flags = if next.end > body_end {
-                        Some(&self.original[body_end..next.end])
-                    } else {
-                        None
-                    };
-                    Item::new_(
-                        Token::RegEx(RegEx {
-                            body: &self.original[next.start + 1..body_end - 1],
-                            flags,
-                        }),
-                        next.start,
-                        next.end,
-                        prev_lines + 1,
-                        prev_line_cursor,
-                        prev_lines + 1,
-                        self.line_cursor,
-                    )
-                }
-                _ => unreachable!("non-regex from next_regex"),
             }
         } else {
-            let mut new_lines = 0;
-            let s = &self.original[next.start..next.end];
-            let token = match next.ty {
-                RawToken::Boolean(b) => Token::Boolean(b.into()),
-                RawToken::Comment {
-                    kind,
-                    new_line_count,
-                    last_len,
-                    end_index,
-                } => {
-                    len = last_len;
-                    new_lines = new_line_count;
-                    match kind {
-                        tokens::CommentKind::Multi => {
-                            let (tail_content, tail_start) =
-                                if let Some(tail_start) = s[end_index..].find("-->") {
-                                    let actual_start = end_index + tail_start;
-                                    (Some(&s[actual_start + 3..]), actual_start)
-                                } else {
-                                    (None, s.len())
-                                };
-                            let content = s[..tail_start]
-                                .trim_start_matches("/*")
-                                .trim_end_matches("*/");
-                            Token::Comment(Comment {
-                                kind: tokens::CommentKind::Multi,
-                                content,
-                                tail_content,
-                            })
-                        }
-                        tokens::CommentKind::Single => {
-                            Token::Comment(Comment::new_single_line(s.trim_start_matches("//")))
-                        }
-                        tokens::CommentKind::Html => {
-                            let start_idx = if s.starts_with("<!--") { 4 } else { 0 };
-                            let (content, tail) = if let Some(idx) = s.rfind("-->") {
-                                let actual_end = idx.saturating_add(3);
-                                if actual_end < next.end {
-                                    let tail = &s[actual_end..];
-                                    let tail = if tail == "" { None } else { Some(tail) };
-                                    (&s[start_idx..idx], tail)
-                                } else {
-                                    (&s[start_idx..], None)
-                                }
-                            } else {
-                                (&s[start_idx..], None)
-                            };
-                            if start_idx == 0 && !self.at_first_on_line(next.start) {
-                                self.errored = true;
-                                return Some(Err(Error {
-                                    line: self.new_line_count,
-                                    column: self.line_cursor,
-                                    msg: "--> comments must either be a part of a full HTML comment or the first item on a new line".to_string()
-                                }));
-                            }
-                            Token::Comment(Comment::new_html(content, tail))
-                        }
-                        tokens::CommentKind::Hashbang => {
-                            Token::Comment(Comment::new_hashbang(&s[2..]))
-                        }
-                    }
-                }
-                RawToken::EoF => {
-                    self.eof = true;
-                    return Some(Ok(Item::new_(
-                        Token::EoF,
-                        self.original.len(),
-                        self.original.len(),
-                        prev_lines.saturating_add(1),
-                        prev_line_cursor,
-                        self.new_line_count.saturating_add(1),
-                        self.line_cursor,
-                    )));
-                }
-                RawToken::Ident => Token::Ident(Ident::from(s)),
-                RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
-                RawToken::Null => Token::Null,
-                RawToken::Number(_) => Token::Number(Number::from(s)),
-                RawToken::Punct(p) => Token::Punct(p),
-                RawToken::RegEx(_) => unreachable!("Regex from next"),
-                RawToken::String {
-                    kind,
-                    new_line_count,
-                    last_len,
-                    found_octal_escape,
-                } => {
-                    len = last_len;
-                    new_lines = new_line_count;
-                    let s = &s[1..s.len() - 1];
-                    match kind {
-                        tokenizer::StringKind::Double => {
-                            Token::String(StringLit::double(s, found_octal_escape))
-                        }
-                        tokenizer::StringKind::Single => {
-                            Token::String(StringLit::single(s, found_octal_escape))
-                        }
-                    }
-                }
-                RawToken::Template {
-                    kind,
-                    new_line_count,
-                    last_len,
-                    has_octal_escape,
-                    found_invalid_unicode_escape,
-                    found_invalid_hex_escape,
-                } => {
-                    len = last_len;
-                    new_lines = new_line_count;
-                    match kind {
-                        tokenizer::TemplateKind::Head => {
-                            let s = &s[1..s.len() - 2];
-                            Token::Template(Template::template_head(
-                                s,
-                                has_octal_escape,
-                                found_invalid_unicode_escape,
-                                found_invalid_hex_escape,
-                            ))
-                        }
-                        tokenizer::TemplateKind::Body => {
-                            let s = &s[1..s.len() - 2];
-                            Token::Template(Template::template_middle(
-                                s,
-                                has_octal_escape,
-                                found_invalid_unicode_escape,
-                                found_invalid_hex_escape,
-                            ))
-                        }
-                        tokenizer::TemplateKind::Tail => {
-                            let s = &s[1..s.len() - 1];
-                            Token::Template(Template::template_tail(
-                                s,
-                                has_octal_escape,
-                                found_invalid_unicode_escape,
-                                found_invalid_hex_escape,
-                            ))
-                        }
-                        tokenizer::TemplateKind::NoSub => {
-                            let s = &s[1..s.len() - 1];
-                            Token::Template(Template::no_sub_template(
-                                s,
-                                has_octal_escape,
-                                found_invalid_unicode_escape,
-                                found_invalid_hex_escape,
-                            ))
-                        }
-                    }
-                }
-            };
-            self.at_first_on_line = self.at_first_on_line && token.is_multi_line_comment();
-            self.bump_line_cursors(new_lines, len);
-            Item::new_(
-                token,
-                next.start,
-                next.end,
-                prev_lines.saturating_add(1),
-                prev_line_cursor,
-                self.new_line_count.saturating_add(1),
-                self.line_cursor,
-            )
-        };
-
-        if !advance_cursor {
-            self.stream.stream.idx = prev_cursor;
-            self.new_line_count = prev_lines;
-            self.line_cursor = prev_line_cursor;
-        } else if let Err(e) = self.keep_books(&ret) {
-            self.errored = true;
-            return Some(Err(e));
+            self.manual_scanner.set_state(state);
         }
-        let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
-        self.bump_line_cursors(new_line_count, leading_whitespace);
-        self.pending_new_line = new_line_count > 0;
-        Some(Ok(ret))
+        Some(ret)
     }
     #[inline]
     /// Evaluate the token for possible regex
@@ -510,11 +297,11 @@ impl<'b> Scanner<'b> {
                 Punct::CloseBrace => self.handle_close_brace_books(item.span.start)?,
                 _ => self
                     .last_three
-                    .push((&item.token, self.new_line_count as u32).into()),
+                    .push((&item.token, self.manual_scanner.new_line_count as u32).into()),
             }
         } else if !item.token.is_comment() {
             self.last_three
-                .push((&item.token, self.new_line_count as u32).into());
+                .push((&item.token, self.manual_scanner.new_line_count as u32).into());
         }
         Ok(())
     }
@@ -593,7 +380,7 @@ impl<'b> Scanner<'b> {
         let brace = look_behind::Brace { is_block, paren };
         self.brace_stack.push(brace);
         self.last_three
-            .push(MetaToken::OpenBrace(brace, self.new_line_count as u32));
+            .push(MetaToken::OpenBrace(brace, self.manual_scanner.new_line_count as u32));
     }
     #[inline]
     /// Handle the book keeping when we find a `(`
@@ -750,15 +537,11 @@ impl<'b> Scanner<'b> {
     }
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
-        Some(self.str_for(span)?.to_string())
+        self.manual_scanner.string_for(span)
     }
     /// Get a &str for any given span
     pub fn str_for(&self, span: &Span) -> Option<&'b str> {
-        if self.original.len() < span.start || self.original.len() < span.end {
-            None
-        } else {
-            Some(&self.original[span.start..span.end])
-        }
+        self.manual_scanner.str_for(span)
     }
     /// Get the line/column pair for any given byte index
     pub fn position_for(&self, idx: usize) -> (usize, usize) {
@@ -792,28 +575,7 @@ impl<'b> Scanner<'b> {
         }
         (line_ct, byte_position)
     }
-    #[inline]
-    /// Helper to handle new lines
-    fn bump_line_cursors(&mut self, ct: usize, len: usize) {
-        if ct != 0 {
-            self.line_cursor = len;
-            self.new_line_count += ct;
-            self.at_first_on_line = true;
-        } else {
-            self.line_cursor += len;
-        }
-    }
-    #[inline]
-    fn at_first_on_line(&self, token_start: usize) -> bool {
-        trace!("at_first_on_line");
-        if self.line_cursor <= 1 {
-            return true;
-        }
-        let start = token_start.saturating_sub(self.line_cursor - 1);
-        let prefix = &self.original[start..token_start];
-        trace!("prefix: {:?}", prefix);
-        prefix.chars().all(|c| c.is_whitespace())
-    }
+
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
         let RawError { idx, msg } = raw_error;
@@ -840,13 +602,9 @@ pub enum OpenCurlyKind {
 /// for the scanner, used to
 /// cache and reset a `Scanner`
 pub struct ScannerState {
-    pub cursor: usize,
-    pub curly_stack: Vec<OpenCurlyKind>,
-    pub new_line_count: usize,
-    pub line_cursor: usize,
+    pub manual_state: ManualState,
     pub last_three: LookBehind,
     pub paren_stack: Vec<Paren>,
-    pub at_first_on_line: bool,
 }
 
 #[cfg(test)]
@@ -1175,6 +933,6 @@ ley z = 9;";
         let mut s = Scanner::new("break /a/");
         let _break = s.next().unwrap().unwrap();
         let re = s.next().unwrap().unwrap();
-        assert!(re.token.is_regex(), "regex was not a regex");
+        assert!(re.token.is_regex(), "regex was not a regex: {:?}", re);
     }
 }

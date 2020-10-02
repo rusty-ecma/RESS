@@ -1545,6 +1545,16 @@ impl<'a> Keyword<&'a str> {
     }
 }
 
+impl<'a> Token<&'a str> {
+    pub fn is_div_punct(&self) -> bool {
+        match self {
+            Token::Punct(Punct::ForwardSlashEqual)
+            | Token::Punct(Punct::ForwardSlash) => true,
+            _ => false,
+        }
+    }
+}
+
 impl<'a> TokenExt for Token<&'a str> {
     fn is_boolean(&self) -> bool {
         match self {
