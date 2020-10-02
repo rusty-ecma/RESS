@@ -1548,8 +1548,7 @@ impl<'a> Keyword<&'a str> {
 impl<'a> Token<&'a str> {
     pub fn is_div_punct(&self) -> bool {
         match self {
-            Token::Punct(Punct::ForwardSlashEqual)
-            | Token::Punct(Punct::ForwardSlash) => true,
+            Token::Punct(Punct::ForwardSlashEqual) | Token::Punct(Punct::ForwardSlash) => true,
             _ => false,
         }
     }

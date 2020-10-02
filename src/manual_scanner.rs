@@ -1,9 +1,11 @@
-
-use crate::{Span, tokenizer::{self, Tokenizer}};
-use crate::tokenizer::RawToken;
-use crate::Item;
-use crate::tokens::{self, prelude::*};
 use crate::error::{Error, RawError};
+use crate::tokenizer::RawToken;
+use crate::tokens::{self, prelude::*};
+use crate::Item;
+use crate::{
+    tokenizer::{self, Tokenizer},
+    Span,
+};
 
 type Res<T> = Result<T, Error>;
 type Ret<'a> = Option<Res<Item<Token<&'a str>>>>;
@@ -250,7 +252,7 @@ impl<'b> ManualScanner<'b> {
         Some(Ok(ret))
     }
     /// Get the next token as a regular expression. The previous token
-    /// should have been `/` or `/=`, 
+    /// should have been `/` or `/=`,
     pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<Token<&'b str>>>> {
         let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
         let next = match dbg!(self.stream.next_regex(prev_len)) {
@@ -285,7 +287,7 @@ impl<'b> ManualScanner<'b> {
             _ => {
                 todo!();
                 // Some(self.error(todo!()))
-            },
+            }
         };
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
@@ -294,11 +296,13 @@ impl<'b> ManualScanner<'b> {
     }
 
     fn capture_cursors(&self) -> (usize, usize, usize) {
-        (self.stream.stream.idx,
-        self.new_line_count,
-        self.line_cursor)
+        (
+            self.stream.stream.idx,
+            self.new_line_count,
+            self.line_cursor,
+        )
     }
-    
+
     /// Get a string for any given span
     pub fn string_for(&self, span: &Span) -> Option<String> {
         Some(self.str_for(span)?.to_string())

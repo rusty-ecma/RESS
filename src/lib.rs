@@ -267,7 +267,7 @@ impl<'b> Scanner<'b> {
                 return Some(Err(e));
             }
         };
-        
+
         let ret = if next.token.is_div_punct() && self.is_regex_start() {
             self.manual_scanner.next_regex(next.span.len())?
         } else {
@@ -276,7 +276,7 @@ impl<'b> Scanner<'b> {
         if advance_cursor {
             if let Ok(i) = &ret {
                 if let Err(e) = self.keep_books(&i) {
-                    return Some(Err(e))
+                    return Some(Err(e));
                 }
             }
         } else {
@@ -379,8 +379,10 @@ impl<'b> Scanner<'b> {
         };
         let brace = look_behind::Brace { is_block, paren };
         self.brace_stack.push(brace);
-        self.last_three
-            .push(MetaToken::OpenBrace(brace, self.manual_scanner.new_line_count as u32));
+        self.last_three.push(MetaToken::OpenBrace(
+            brace,
+            self.manual_scanner.new_line_count as u32,
+        ));
     }
     #[inline]
     /// Handle the book keeping when we find a `(`
