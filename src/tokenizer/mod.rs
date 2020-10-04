@@ -1,11 +1,13 @@
 use crate::tokens::{CommentKind, NumberKind, Punct};
 use crate::{is_line_term, OpenCurlyKind};
 mod buffer;
+
 mod tokens;
 mod unicode;
 pub use self::tokens::{RawKeyword, RawToken, StringKind, TemplateKind};
 use crate::error::RawError;
 pub(crate) type Res<T> = Result<T, RawError>;
+pub use buffer::JSBuffer;
 use log::trace;
 mod keyword_trie;
 

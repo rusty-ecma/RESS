@@ -7,9 +7,10 @@
 //! around [`Scanner::collect()`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect).
 //!
 //! The `Scanner` will provide a stream of `Item`s, and `Item` is
-//! has 3 properties a [`Token`][token], a [`Span`][span], and a [`SourceLocation`][location]. The `Span` is a
-//! representation of where the `Item` exists in the original source while the `Token`
-//! provides details about what JavaScript token it represents.
+//! has 3 properties a [`Token`][token], a [`Span`][span], and a
+//! [`SourceLocation`][location]. The `Span` is a representation of where the
+//! `Item` exists in the original source while the `Token` provides details
+//! about what JavaScript token it represents.
 //!
 //! [token]: ./enum.Token
 //! [span]: ./struct.Span
@@ -24,20 +25,15 @@ pub mod error;
 mod manual_scanner;
 mod tokenizer;
 pub mod tokens;
-pub use crate::tokenizer::Tokenizer;
+pub use crate::tokenizer::{JSBuffer, Tokenizer};
 
 pub mod prelude {
-    pub use super::tokenize;
-    pub use super::tokens::prelude::*;
-    pub use super::Item;
-    pub use super::OpenCurlyKind;
-    pub use super::Position;
-    pub use super::Scanner;
-    pub use super::ScannerState;
-    pub use super::SourceLocation;
+    pub use super::{
+        tokenize, tokens::prelude::*, Item, OpenCurlyKind, Position, Scanner, ScannerState,
+        SourceLocation,
+    };
 }
-use crate::tokenizer::RawKeyword;
-use crate::tokens::prelude::*;
+use crate::{tokenizer::RawKeyword, tokens::prelude::*};
 use error::{Error, RawError};
 pub use manual_scanner::{ManualScanner, ScannerState as ManualState};
 
@@ -116,12 +112,14 @@ pub struct Span {
     pub end: usize,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl Span {
     /// Create a new Span from its parts
     #[inline]
     pub const fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
+    #[inline]
     pub const fn len(self) -> usize {
         self.end - self.start
     }
@@ -129,7 +127,6 @@ impl Span {
 
 #[derive(Clone, Debug, PartialEq)]
 /// A single token with additional metadata
-///
 pub struct Item<T> {
     pub token: T,
     pub span: Span,
@@ -580,9 +577,14 @@ impl<'b> Scanner<'b> {
 
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
-        let RawError { idx, msg } = raw_error;
-        let (line, column) = self.position_for(idx);
-        Err(Error { line, column, msg })
+        let RawError { idx, msg } = &raw_error;
+        let (line, column) = self.position_for(*idx);
+        Err(Error {
+            line,
+            column,
+            msg: msg.clone(),
+            idx: *idx,
+        })
     }
 }
 
@@ -611,8 +613,7 @@ pub struct ScannerState {
 
 #[cfg(test)]
 mod test {
-    use super::tokens::*;
-    use super::*;
+    use super::{tokens::*, *};
     #[test]
     fn tokenizer() {
         let js = "#!/usr/bin/env node
@@ -665,17 +666,17 @@ this.y = 0;
         );
         let expected = vec![
             Token::Punct(Punct::OpenParen), //"("
-            Token::Keyword(Keyword::Function("function".into())),
+            Token::Keyword(Keyword::Function("function")),
             Token::Punct(Punct::OpenParen),  //"("
             Token::Punct(Punct::CloseParen), //")"
             Token::Punct(Punct::OpenBrace),  //"{"
-            Token::Keyword(Keyword::This("this".into())),
+            Token::Keyword(Keyword::This("this")),
             Token::Punct(Punct::Period), //"."
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal), //"="
             Token::Number("100".into()),
             Token::Punct(Punct::SemiColon), //";"
-            Token::Keyword(Keyword::This("this".into())),
+            Token::Keyword(Keyword::This("this")),
             Token::Punct(Punct::Period), //"."
             Token::Ident("y".into()),
             Token::Punct(Punct::Equal), //"="

@@ -84,3 +84,7 @@ harness = false
 [[bench]]
 name = "ref_perf_vs"
 harness = false
+
+[[bench]]
+name = "chars_vs_jsbuffer"
+harness = false

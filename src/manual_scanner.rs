@@ -1,10 +1,8 @@
-use crate::error::{Error, RawError};
-use crate::tokenizer::RawToken;
-use crate::tokens::{self, prelude::*};
-use crate::Item;
 use crate::{
-    tokenizer::{self, Tokenizer},
-    Span,
+    error::{Error, RawError},
+    tokenizer::{self, RawToken, Tokenizer},
+    tokens::{self, prelude::*},
+    Item, Span,
 };
 
 type Res<T> = Result<T, Error>;
@@ -138,7 +136,10 @@ impl<'b> ManualScanner<'b> {
                                 return Some(Err(Error {
                                     line: self.new_line_count,
                                     column: self.line_cursor,
-                                    msg: "--> comments must either be a part of a full HTML comment or the first item on a new line".to_string()
+                                    msg: "--> comments must either be a part of a full HTML \
+                                          comment or the first item on a new line"
+                                        .to_string(),
+                                    idx: start_idx,
                                 }));
                             }
                             Token::Comment(Comment::new_html(content, tail))
@@ -255,7 +256,7 @@ impl<'b> ManualScanner<'b> {
     /// should have been `/` or `/=`,
     pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<Token<&'b str>>>> {
         let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
-        let next = match dbg!(self.stream.next_regex(prev_len)) {
+        let next = match self.stream.next_regex(prev_len) {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
@@ -371,9 +372,14 @@ impl<'b> ManualScanner<'b> {
     }
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
-        let RawError { idx, msg } = raw_error;
-        let (line, column) = self.position_for(idx);
-        Err(Error { line, column, msg })
+        let RawError { idx, msg } = &raw_error;
+        let (line, column) = self.position_for(*idx);
+        Err(Error {
+            line,
+            column,
+            msg: msg.clone(),
+            idx: *idx,
+        })
     }
 }
 

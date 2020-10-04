@@ -22,7 +22,7 @@ use docopt::Docopt;
 use ress::prelude::*;
 type RefToken<'a> = Token<&'a str>;
 
-const USAGE: &'static str = "
+const USAGE: &str = "
 clear-comments
 
 Usage:
@@ -113,7 +113,7 @@ fn main() {
             new_line = true;
         }
         if new_line {
-            out.write(format!("\n{}", "    ".repeat(indent)).as_bytes())
+            out.write_all(format!("\n{}", "    ".repeat(indent)).as_bytes())
                 .expect("error writing indent");
             new_line = false;
             in_if = false;
@@ -125,9 +125,9 @@ fn main() {
         }
 
         if space_before(&last_token, &token) {
-            out.write(" ".as_bytes()).expect("error writing space");
+            out.write_all(b" ").expect("error writing space");
         }
-        out.write(&(token_to_string(&token)).as_bytes())
+        out.write_all(&(token_to_string(&token)).as_bytes())
             .expect("Error writing token");
         last_token = token;
     }
@@ -248,24 +248,24 @@ fn space_before(last_token: &RefToken, token: &RefToken) -> bool {
 
 fn token_to_string(t: &RefToken) -> String {
     match t {
-        &Token::Boolean(ref t) => if t == &Boolean::True { "true" } else { "false" }.to_string(),
-        &Token::Comment(ref comment) => {
+        Token::Boolean(ref t) => if t == &Boolean::True { "true" } else { "false" }.to_string(),
+        Token::Comment(ref comment) => {
             if comment.is_multi_line() {
                 format!("/*\n{}\n*/", comment.content)
             } else {
                 format!("//{}", comment.content)
             }
         }
-        &Token::Ident(ref name) => name.to_string(),
-        &Token::Keyword(ref key) => key.to_string(),
-        &Token::Null => "null".to_string(),
-        &Token::Number(ref number) => number.to_string(),
-        &Token::Punct(ref p) => p.to_string(),
-        &Token::RegEx(ref regex) => match regex.flags {
+        Token::Ident(ref name) => name.to_string(),
+        Token::Keyword(ref key) => key.to_string(),
+        Token::Null => "null".to_string(),
+        Token::Number(ref number) => number.to_string(),
+        Token::Punct(ref p) => p.to_string(),
+        Token::RegEx(ref regex) => match regex.flags {
             Some(ref f) => format!("/{}/{}", regex.body, f),
             None => format!("/{}/", regex.body),
         },
-        &Token::String(ref s) => format!("{}", s.to_string()),
+        Token::String(ref s) => s.to_string(),
         _ => String::new(),
     }
 }
