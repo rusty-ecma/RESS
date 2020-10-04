@@ -735,8 +735,8 @@ this.y = 0;
     #[test]
     fn spans() {
         let js = include_str!("../node_modules/esprima/dist/esprima.js");
-        let mut s = Scanner::new(js);
-        while let Some(item) = s.next() {
+        let s = Scanner::new(js);
+        for item in s {
             let item = item.unwrap();
             let from_stream = &js[item.span.start..item.span.end];
             if item.token.is_regex() {
