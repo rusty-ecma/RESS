@@ -182,7 +182,7 @@ fn report(bytes: usize, elapsed: Duration, method: &str, name: &str) {
 fn get_size(b: usize) -> String {
     let mut size = b as f32;
     let mut i = 0;
-    while size > 1000.0{
+    while size > 1000.0 {
         if i > 4 {
             break;
         }
