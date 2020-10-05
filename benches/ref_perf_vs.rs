@@ -1,7 +1,5 @@
 #![cfg(test)]
-#![feature(test)]
 extern crate ress;
-extern crate test;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]

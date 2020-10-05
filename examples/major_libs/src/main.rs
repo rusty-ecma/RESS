@@ -182,11 +182,11 @@ fn report(bytes: usize, elapsed: Duration, method: &str, name: &str) {
 fn get_size(b: usize) -> String {
     let mut size = b as f32;
     let mut i = 0;
-    while size > 1000 as f32 {
+    while size > 1000.0 {
         if i > 4 {
             break;
         }
-        size = size / 1000.0;
+        size /= 1000.0;
         i += 1;
     }
     let bytes = match i {
@@ -219,13 +219,13 @@ enum Lib {
 impl Lib {
     fn path(&self) -> String {
         match self {
-            &Lib::Jquery => "node_modules/jquery/dist/jquery.js".into(),
-            &Lib::Angular => "node_modules/angular/angular.js".into(),
-            &Lib::React => "node_modules/react/umd/react.development.js".into(),
-            &Lib::ReactDom => "node_modules/react-dom/umd/react-dom.development.js".into(),
-            &Lib::Vue => "node_modules/vue/dist/vue.js".into(),
-            &Lib::Moment => "node_modules/moment/moment.js".into(),
-            &Lib::Dexie => "node_modules/dexie/dist/dexie.js".into(),
+            Lib::Jquery => "node_modules/jquery/dist/jquery.js".into(),
+            Lib::Angular => "node_modules/angular/angular.js".into(),
+            Lib::React => "node_modules/react/umd/react.development.js".into(),
+            Lib::ReactDom => "node_modules/react-dom/umd/react-dom.development.js".into(),
+            Lib::Vue => "node_modules/vue/dist/vue.js".into(),
+            Lib::Moment => "node_modules/moment/moment.js".into(),
+            Lib::Dexie => "node_modules/dexie/dist/dexie.js".into(),
         }
     }
 }

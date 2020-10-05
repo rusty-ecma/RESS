@@ -3,6 +3,7 @@ pub struct Error {
     pub line: usize,
     pub column: usize,
     pub msg: String,
+    pub idx: usize,
 }
 
 impl ::std::error::Error for Error {}
@@ -13,7 +14,7 @@ impl ::std::fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RawError {
     pub idx: usize,
     pub msg: String,

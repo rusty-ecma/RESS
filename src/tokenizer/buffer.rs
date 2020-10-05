@@ -1,4 +1,5 @@
 use std::char;
+#[derive(Clone)]
 pub struct JSBuffer<'a> {
     pub buffer: &'a [u8],
     pub idx: usize,
@@ -10,7 +11,6 @@ const TAG_CONT_U8: u8 = 0b1000_0000;
 /// the std::str::Chars logic
 impl<'a> JSBuffer<'a> {
     #[inline]
-    #[allow(clippy::all)]
     pub fn next_char(&mut self) -> Option<char> {
         if self.at_end() {
             return None;
@@ -44,7 +44,6 @@ impl<'a> JSBuffer<'a> {
         char::from_u32(ch)
     }
     #[inline]
-    #[allow(clippy::all)]
     pub fn prev_char(&mut self) -> Option<char> {
         // Decode UTF-8
         if self.idx == 0 {
@@ -290,6 +289,44 @@ impl<'a> From<&'a str> for JSBuffer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn ascii_chars() {
+        let mut bytes = Vec::new();
+        for i in 0..=255u8 {
+            if i.is_ascii() {
+                bytes.push(i);
+            }
+        }
+        let mut buf = JSBuffer::new(&bytes);
+        for &byte in &bytes {
+            let ch = buf.next_char().unwrap();
+            assert_eq!(ch, byte as char);
+        }
+    }
+    #[test]
+    fn non_ascii_chars() {
+        let mut s = String::new();
+        eprintln!("collecting u32 chars");
+        for (i, v) in (0x7FF..=0x10FFFF).enumerate() {
+            if let Some(ch) = char::from_u32(v) {
+                s.push(ch);
+            }
+            if i % 100 == 0 {
+                eprintln!("{}", (v as f32 / (0x10FFFF - 0x7FF) as f32) * 100.0);
+            }
+        }
+        eprintln!("creating buffer");
+        let mut buf = JSBuffer::new(s.as_bytes());
+        for (i, c1) in s.char_indices() {
+            let c2 = buf.next_char().unwrap();
+            assert_eq!(
+                c1, c2,
+                "failed at character {}:\n{} vs {}\n{:08b}\n{:08b}",
+                i, c1 as u32, c2 as u32, c1 as u32, c2 as u32
+            );
+        }
+    }
     #[test]
     fn at_whitespace() {
         let whitespaces = &[
@@ -373,10 +410,8 @@ mod test {
     fn at_end() {
         let js = "'things and stuff'";
         let mut buf = JSBuffer::from(js);
-        let mut i = 0;
-        for c in js.chars() {
+        for (i, c) in js.char_indices() {
             assert!(c == buf.next_char().unwrap());
-            i += 1;
             if i < js.len() - 1 {
                 assert!(!buf.at_end());
             }

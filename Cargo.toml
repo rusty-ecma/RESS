@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.9.1"
+version = "0.10.0"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A sanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -83,4 +83,8 @@ harness = false
 
 [[bench]]
 name = "ref_perf_vs"
+harness = false
+
+[[bench]]
+name = "chars_vs_jsbuffer"
 harness = false

@@ -308,7 +308,7 @@ fn compare(js: &str, expectation: &[Token<&str>]) {
         assert_eq!((i, &par), (i, ex));
     }
 }
-
+#[track_caller]
 fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) {
     let scanner = Scanner::new(js).map(|r| r.unwrap());
     for (i, (r, ex)) in scanner.zip(expectation.iter()).enumerate() {
