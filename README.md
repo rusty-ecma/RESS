@@ -1,8 +1,7 @@
 # RESS
 > Rusty EcmaScript Scanner
 
-[![travis](https://img.shields.io/travis/FreeMasen/RESS.svg)](https://travis-ci.org/FreeMasen/RESS)
-[![appveyor](https://img.shields.io/appveyor/ci/FreeMasen/RESS.svg)](https://ci.appveyor.com/project/FreeMasen/sitebuilder)
+[![Github Actions](https://img.shields.io/github/workflow/status/rusty-ecma/RESS/Rust)](https://travis-ci.org/FreeMasen/RESS)
 [![crates.io](https://img.shields.io/crates/v/ress.svg)](https://crates.io/crates/ress)
 [![last commit master](https://img.shields.io/github/last-commit/FreeMasen/RESS.svg)](https://github.com/FreeMasen/RESS/commits/master)
 
@@ -36,16 +35,14 @@ Note: the EcmaScript spec allows for 4 new line characters, only two of which ar
 Here is an example that check some JS text for the existence of a semicolon and panics if one is found.
 
 ```rust
-extern crate ress;
-
-use ress::{Scanner};
+use ress::Scanner;
 
 static JS: &str = include_str!("index.js");
 
 fn main() {
     let s = Scanner::new(JS);
-    for token in s {
-        let token = token.unwrap().token;
+    for item in s {
+        let token = item.unwrap().token;
         if token.matches_punct_str(";") {
             panic!("A semi-colon!? Heathen!");
         }
@@ -54,6 +51,35 @@ fn main() {
 }
 ```
 By far the most important part of `Item` is the `Token` enum, which will represent the 11 different types of token's supported by the [ECMAScript specification](https://tc39.es/ecma262/#sec-ecmascript-language-lexical-grammar).
+
+In Javascript [it is hard to know if a forward slash means divide or is the start of a regular expression](https://github.com/rusty-ecma/RESS/blob/master/regex.md).
+The above `Scanner` will detect RegEx automatically by keeping track of the previously
+parsed tokens, this makes things very connivent, however if you are parsing Javascript
+into an AST, you likely already need to keep track of the same information. In that
+case, you may not want to pay the performance cost of that automatic RegEx detection,
+in that case you would want to reach for the `ManualScanner`. Instead of exposing
+the basic `Iterator` interface, it exposes two primary methods for driving the scanner
+`next_token` and `next_regex`. The first of those will always return a `/` or `/=` when
+encountering a regular expression, the latter will fail if the next token isn't
+a regular expression.
+
+```rust
+use ress::{ManualScanner, prelude::*};
+
+fn main() {
+    let mut s = ManualScanner::new("let x = /[a-z]+/g");
+    while let Some(Ok(item)) = s.next_token() {
+        if item.token.matches_punct(Punct::ForwardSlash)
+        || item.token.matches_punct(Punct::ForwardSlashEqual) {
+            // it could be a 1 or 2 length prefix
+            let regex = s.next_regex(1).unwrap().unwrap();
+            println!("{:?}", regex);
+        } else {
+            println!("{:?}", item);
+        }
+    }
+}
+```
 
 ### ES Tokens
 - Boolean Literal
