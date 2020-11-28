@@ -590,8 +590,14 @@ mod test {
         check_keyword("function", Token::Keyword(Keyword::Function("function")));
         check_keyword("if", Token::Keyword(Keyword::If("if")));
         check_keyword("in", Token::Keyword(Keyword::In("in")));
-        check_keyword("implements", Token::Keyword(Keyword::Implements("implements")));
-        check_keyword("instanceof", Token::Keyword(Keyword::InstanceOf("instanceof")));
+        check_keyword(
+            "implements",
+            Token::Keyword(Keyword::Implements("implements")),
+        );
+        check_keyword(
+            "instanceof",
+            Token::Keyword(Keyword::InstanceOf("instanceof")),
+        );
         check_keyword("interface", Token::Keyword(Keyword::Interface("interface")));
         check_keyword("let", Token::Keyword(Keyword::Let("let")));
         check_keyword("new", Token::Keyword(Keyword::New("new")));
