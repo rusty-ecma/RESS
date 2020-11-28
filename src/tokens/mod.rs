@@ -66,18 +66,20 @@ pub enum Token<T> {
     Comment(Comment<T>),
 }
 
-impl<T> PartialEq<str> for Token<T>
+impl<T> PartialEq<&str> for Token<T>
 where
     T: AsRef<str>,
 {
-    fn eq(&self, other: &str) -> bool {
+    fn eq(&self, other: &&str) -> bool {
         match self {
-            Token::Keyword(k) => k.as_str() == other,
-            Token::Null => other == "null",
+            Token::Boolean(b) => b.eq(*other),
+            Token::EoF => (*other).eq(""),
+            Token::Ident(s) => s.eq(other),
+            Token::Keyword(k) => k.as_str().eq(*other),
+            Token::Null => (*other).eq("null"),
             Token::Number(n) => n.eq(other),
-            Token::Punct(p) => p == other,
-            Token::String(s) => s.as_ref() == other,
-            Token::Boolean(b) => b == other,
+            Token::Punct(p) => p.eq(*other),
+            Token::String(s) => s.as_ref().eq(*other),
             _ => false,
         }
     }
@@ -526,5 +528,227 @@ impl<'a> Token<&'a str> {
             self,
             Token::Punct(Punct::ForwardSlashEqual) | Token::Punct(Punct::ForwardSlash)
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn booleans() {
+        let t = Token::<&str>::Boolean(Boolean::True);
+        let f = Token::<&str>::Boolean(Boolean::False);
+        assert!(t.is_boolean());
+        assert!(f.is_boolean());
+        assert!(t.is_boolean_true());
+        assert!(!f.is_boolean_true());
+        assert_eq!(t, true);
+        assert_eq!(t, "true");
+        assert_eq!(f, false);
+        assert_eq!(f, "false");
+    }
+
+    #[test]
+    fn comments() {
+        let c1 = Token::Comment(Comment::new_single_line("comment"));
+        assert!(c1.is_comment());
+        assert!(c1.is_single_line_comment());
+        assert!(!c1.is_multi_line_comment());
+        let c2 = Token::Comment(Comment::new_multi_line("comment\ncomment"));
+        assert!(c2.is_comment());
+        assert!(!c2.is_single_line_comment());
+        assert!(c2.is_multi_line_comment());
+    }
+    #[test]
+    fn idents() {
+        let i = Token::Ident(Ident::from("asdf"));
+        assert!(i.is_ident());
+        assert!(i.matches_ident_str("asdf"));
+        assert!(i == "asdf");
+    }
+    #[test]
+    fn keywords() {
+        check_keyword("await", Token::Keyword(Keyword::Await("await")));
+        check_keyword("break", Token::Keyword(Keyword::Break("break")));
+        check_keyword("case", Token::Keyword(Keyword::Case("case")));
+        check_keyword("catch", Token::Keyword(Keyword::Catch("catch")));
+        check_keyword("class", Token::Keyword(Keyword::Class("class")));
+        check_keyword("const", Token::Keyword(Keyword::Const("const")));
+        check_keyword("continue", Token::Keyword(Keyword::Continue("continue")));
+        check_keyword("debugger", Token::Keyword(Keyword::Debugger("debugger")));
+        check_keyword("default", Token::Keyword(Keyword::Default("default")));
+        check_keyword("import", Token::Keyword(Keyword::Import("import")));
+        check_keyword("delete", Token::Keyword(Keyword::Delete("delete")));
+        check_keyword("do", Token::Keyword(Keyword::Do("do")));
+        check_keyword("else", Token::Keyword(Keyword::Else("else")));
+        check_keyword("enum", Token::Keyword(Keyword::Enum("enum")));
+        check_keyword("export", Token::Keyword(Keyword::Export("export")));
+        check_keyword("extends", Token::Keyword(Keyword::Extends("extends")));
+        check_keyword("finally", Token::Keyword(Keyword::Finally("finally")));
+        check_keyword("for", Token::Keyword(Keyword::For("for")));
+        check_keyword("function", Token::Keyword(Keyword::Function("function")));
+        check_keyword("if", Token::Keyword(Keyword::If("if")));
+        check_keyword("in", Token::Keyword(Keyword::In("in")));
+        check_keyword("implements", Token::Keyword(Keyword::Implements("implements")));
+        check_keyword("instanceof", Token::Keyword(Keyword::InstanceOf("instanceof")));
+        check_keyword("interface", Token::Keyword(Keyword::Interface("interface")));
+        check_keyword("let", Token::Keyword(Keyword::Let("let")));
+        check_keyword("new", Token::Keyword(Keyword::New("new")));
+        check_keyword("package", Token::Keyword(Keyword::Package("package")));
+        check_keyword("private", Token::Keyword(Keyword::Private("private")));
+        check_keyword("protected", Token::Keyword(Keyword::Protected("protected")));
+        check_keyword("public", Token::Keyword(Keyword::Public("public")));
+        check_keyword("return", Token::Keyword(Keyword::Return("return")));
+        check_keyword("static", Token::Keyword(Keyword::Static("static")));
+        check_keyword("super", Token::Keyword(Keyword::Super("super")));
+        check_keyword("switch", Token::Keyword(Keyword::Switch("switch")));
+        check_keyword("this", Token::Keyword(Keyword::This("this")));
+        check_keyword("throw", Token::Keyword(Keyword::Throw("throw")));
+        check_keyword("try", Token::Keyword(Keyword::Try("try")));
+        check_keyword("typeof", Token::Keyword(Keyword::TypeOf("typeof")));
+        check_keyword("var", Token::Keyword(Keyword::Var("var")));
+        check_keyword("void", Token::Keyword(Keyword::Void("void")));
+        check_keyword("while", Token::Keyword(Keyword::While("while")));
+        check_keyword("with", Token::Keyword(Keyword::With("with")));
+        check_keyword("yield", Token::Keyword(Keyword::Yield("yield")));
+    }
+
+    fn check_keyword(s: &str, tok: Token<&str>) {
+        assert!(tok.is_keyword());
+        assert!(tok.matches_keyword(Keyword::new(s)), "{:?} vs {:?}", s, tok);
+        assert!(tok.matches_keyword_str(s));
+        assert_eq!(tok, s);
+    }
+    #[test]
+    fn numbers() {
+        let int = "1234";
+        let tok = Token::Number(Number::from(int));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(int));
+        assert_eq!(tok, int);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let flt = "1.334";
+        let tok = Token::Number(Number::from(flt));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(flt));
+        assert_eq!(tok, flt);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let hex = "0x3";
+        let tok = Token::Number(Number::from(hex));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(hex));
+        assert_eq!(tok, hex);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(tok.is_hex_literal());
+        let hex2 = "0X3";
+        let tok = Token::Number(Number::from(hex2));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(hex2));
+        assert_eq!(tok, hex2);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(tok.is_hex_literal());
+        let oct = "0o4";
+        let tok = Token::Number(Number::from(oct));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(oct));
+        assert_eq!(tok, oct);
+        assert!(tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let oct2 = "0O3";
+        let tok = Token::Number(Number::from(oct2));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(oct2));
+        assert_eq!(tok, oct2);
+        assert!(tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let bin = "0b0";
+        let tok = Token::Number(Number::from(bin));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(bin));
+        assert_eq!(tok, bin);
+        assert!(!tok.is_oct_literal());
+        assert!(tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let bin2 = "0B1";
+        let tok = Token::Number(Number::from(bin2));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(bin2));
+        assert_eq!(tok, bin2);
+        assert!(!tok.is_oct_literal());
+        assert!(tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let exp = "1.22e2";
+        let tok = Token::Number(Number::from(exp));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(exp));
+        assert_eq!(tok, exp);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+        let exp2 = "1.3E8";
+        let tok = Token::Number(Number::from(exp2));
+        assert!(tok.is_number());
+        assert!(tok.matches_number_str(exp2));
+        assert_eq!(tok, exp2);
+        assert!(!tok.is_oct_literal());
+        assert!(!tok.is_bin_literal());
+        assert!(!tok.is_hex_literal());
+    }
+
+    #[test]
+    fn regexes() {
+        let r = Token::RegEx(RegEx::from_parts("asdf", None));
+        assert!(r.is_regex());
+    }
+
+    #[test]
+    fn strings() {
+        let s1 = Token::String(StringLit::single("content", false));
+        assert!(s1.is_string());
+        assert!(s1.is_single_quoted_string());
+        assert!(!s1.is_double_quoted_string());
+        assert_eq!(s1, "content");
+        let s2 = Token::String(StringLit::double("content", false));
+        assert!(s2.is_string());
+        assert!(!s2.is_single_quoted_string());
+        assert!(s2.is_double_quoted_string());
+        assert_eq!(s2, "content");
+    }
+
+    #[test]
+    fn templates() {
+        let t = Token::Template(Template::no_sub_template("asdf", false, false, false));
+        assert!(t.is_template());
+        assert!(t.is_template_head());
+        assert!(!t.is_template_body());
+        assert!(t.is_template_tail());
+        assert!(t.is_template_no_sub());
+        let t = Token::Template(Template::template_head("asdf", false, false, false));
+        assert!(t.is_template());
+        assert!(t.is_template_head());
+        assert!(!t.is_template_body());
+        assert!(!t.is_template_tail());
+        assert!(!t.is_template_no_sub());
+        let t = Token::Template(Template::template_middle("asdf", false, false, false));
+        assert!(t.is_template());
+        assert!(!t.is_template_head());
+        assert!(t.is_template_body());
+        assert!(!t.is_template_tail());
+        assert!(!t.is_template_no_sub());
+        let t = Token::Template(Template::template_tail("asdf", false, false, false));
+        assert!(t.is_template());
+        assert!(!t.is_template_head());
+        assert!(!t.is_template_body());
+        assert!(t.is_template_tail());
+        assert!(!t.is_template_no_sub());
     }
 }

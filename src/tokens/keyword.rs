@@ -459,6 +459,55 @@ impl<T> Keyword<T> {
 }
 
 impl<'a> Keyword<&'a str> {
+    #[cfg(test)]
+    pub fn new(s: &str) -> Self {
+        match s {
+            "await" => Keyword::Await("await"),
+            "break" => Keyword::Break("break"),
+            "case" => Keyword::Case("case"),
+            "catch" => Keyword::Catch("catch"),
+            "class" => Keyword::Class("class"),
+            "const" => Keyword::Const("const"),
+            "continue" => Keyword::Continue("continue"),
+            "debugger" => Keyword::Debugger("debugger"),
+            "default" => Keyword::Default("default"),
+            "import" => Keyword::Import("import"),
+            "delete" => Keyword::Delete("delete"),
+            "do" => Keyword::Do("do"),
+            "else" => Keyword::Else("else"),
+            "enum" => Keyword::Enum("enum"),
+            "export" => Keyword::Export("export"),
+            "extends" => Keyword::Extends("extends"),
+            "finally" => Keyword::Finally("finally"),
+            "for" => Keyword::For("for"),
+            "function" => Keyword::Function("function"),
+            "if" => Keyword::If("if"),
+            "in" => Keyword::In("in"),
+            "implements" => Keyword::Implements("implements"),
+            "instanceof" => Keyword::InstanceOf("instanceof"),
+            "interface" => Keyword::Interface("interface"),
+            "let" => Keyword::Let("let"),
+            "new" => Keyword::New("new"),
+            "package" => Keyword::Package("package"),
+            "private" => Keyword::Private("private"),
+            "protected" => Keyword::Protected("protected"),
+            "public" => Keyword::Public("public"),
+            "static" => Keyword::Static("static"),
+            "return" => Keyword::Return("return"),
+            "super" => Keyword::Super("super"),
+            "switch" => Keyword::Switch("switch"),
+            "this" => Keyword::This("this"),
+            "throw" => Keyword::Throw("throw"),
+            "try" => Keyword::Try("try"),
+            "typeof" => Keyword::TypeOf("typeof"),
+            "var" => Keyword::Var("var"),
+            "void" => Keyword::Void("void"),
+            "while" => Keyword::While("while"),
+            "with" => Keyword::With("with"),
+            "yield" => Keyword::Yield("yield"),
+            _ => panic!("Invalid keyword..."),
+        }
+    }
     pub fn has_unicode_escape(&self) -> bool {
         match self {
             Keyword::Await(s) => s,
