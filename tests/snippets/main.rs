@@ -266,6 +266,19 @@ fn star_only_regex() {
 }
 
 #[test]
+fn leading_space_regex() {
+
+    let js = r"/ \{[\s\S]*$/";
+    compare(
+        &js,
+        &[Token::RegEx(RegEx {
+            body: r" \{[\s\S]*$".into(),
+            flags: None,
+        })],
+    )
+}
+
+#[test]
 #[should_panic]
 fn var_escaped_cr() {
     let js = r"var\u000Dx;";

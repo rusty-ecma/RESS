@@ -10,10 +10,6 @@ repository = "https://github.com/rusty-ecma/ress"
 readme = "./README.md"
 edition = "2018"
 
-[badges]
-travis-ci = { repository = "FreeMasen/RESS", branch = "master" }
-appveyor = { repository = "FreeMasen/RESS", branch = "master", service = "github" }
-
 [dependencies]
 log = "0.4"
 unicode-xid = "0.2"

@@ -6,12 +6,13 @@ use crate::{
 };
 
 type Res<T> = Result<T, Error>;
-type Ret<'a> = Option<Res<Item<Token<&'a str>>>>;
+type Ret<'a> = Option<Res<Item<&'a str>>>;
 
 pub struct ManualScanner<'a> {
     pub stream: Tokenizer<'a>,
     pub eof: bool,
     pub pending_new_line: bool,
+    pub last_skipped_whitespace: usize,
     original: &'a str,
     errored: bool,
     pub new_line_count: usize,
@@ -32,6 +33,7 @@ impl<'b> ManualScanner<'b> {
             new_line_count,
             line_cursor: usize::max(line_cursor, 1),
             at_first_on_line: true,
+            last_skipped_whitespace: line_cursor,
         }
     }
 
@@ -250,12 +252,14 @@ impl<'b> ManualScanner<'b> {
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
         self.pending_new_line = new_line_count > 0;
+        self.last_skipped_whitespace = leading_whitespace;
         Some(Ok(ret))
     }
     /// Get the next token as a regular expression. The previous token
     /// should have been `/` or `/=`,
-    pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<Token<&'b str>>>> {
+    pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<&'b str>>> {
         let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
+        self.stream.stream.skip_back_bytes(self.last_skipped_whitespace);
         let next = match self.stream.next_regex(prev_len) {
             Ok(n) => n,
             Err(e) => {

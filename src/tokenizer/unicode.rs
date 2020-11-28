@@ -41,7 +41,9 @@ pub(crate) fn is_id_continue(c: char) -> bool {
         true
     } else if c < '\u{AA}' {
         false
-    } else if c == '\u{2118}'
+    } else if c == '\u{200C}'
+        || c == '\u{200D}'
+        || c == '\u{2118}'
         || c == '\u{212E}'
         || c == '\u{309B}'
         || c == '\u{309C}'
