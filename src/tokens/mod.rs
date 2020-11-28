@@ -93,10 +93,7 @@ impl<T> PartialEq<bool> for Token<T> {
     }
 }
 
-impl<T> Token<T>
-where
-    T: AsRef<str>,
-{
+impl<T> Token<T> {
     pub fn is_boolean(&self) -> bool {
         matches!(self, Token::Boolean(_))
     }
@@ -130,36 +127,14 @@ where
             _ => false,
         }
     }
-    pub fn is_restricted(&self) -> bool {
-        match self {
-            Token::Ident(ref i) => i.as_ref() == "arguments" || i.as_ref() == "eval",
-            _ => false,
-        }
-    }
+    
     pub fn is_null(&self) -> bool {
         matches!(self, Token::Null)
     }
     pub fn is_number(&self) -> bool {
         matches!(self, Token::Number(_))
     }
-    pub fn is_hex_literal(&self) -> bool {
-        match self {
-            Token::Number(ref n) => n.is_hex(),
-            _ => false,
-        }
-    }
-    pub fn is_bin_literal(&self) -> bool {
-        match self {
-            Token::Number(ref n) => n.is_bin(),
-            _ => false,
-        }
-    }
-    pub fn is_oct_literal(&self) -> bool {
-        match self {
-            Token::Number(ref n) => n.is_oct(),
-            _ => false,
-        }
-    }
+    
     pub fn is_punct(&self) -> bool {
         matches!(self, Token::Punct(_))
     }
@@ -247,12 +222,7 @@ where
             _ => false,
         }
     }
-    pub fn matches_ident_str(&self, name: &str) -> bool {
-        match self {
-            Token::Ident(i) => i.eq(name),
-            _ => false,
-        }
-    }
+    
     pub fn matches_keyword<K>(&self, keyword: Keyword<K>) -> bool {
         match self {
             Token::Keyword(k) => k.eq(&keyword),
@@ -265,12 +235,7 @@ where
             _ => false,
         }
     }
-    pub fn matches_number_str(&self, number: &str) -> bool {
-        match self {
-            Token::Number(n) => n.eq(number),
-            _ => false,
-        }
-    }
+    
     pub fn matches_punct(&self, p: Punct) -> bool {
         match self {
             Token::Punct(m) => m == &p,
@@ -282,13 +247,60 @@ where
             Token::Punct(ref p) => p.matches_str(s),
             _ => false,
         }
+    }   
+}
+
+impl<T> Token<T>
+where
+    T: AsRef<str>,
+{
+    pub fn is_restricted(&self) -> bool {
+        match self {
+            Token::Ident(ref i) => i.as_ref() == "arguments" || i.as_ref() == "eval",
+            _ => false,
+        }
     }
+
+    pub fn is_hex_literal(&self) -> bool {
+        match self {
+            Token::Number(ref n) => n.is_hex(),
+            _ => false,
+        }
+    }
+    pub fn is_bin_literal(&self) -> bool {
+        match self {
+            Token::Number(ref n) => n.is_bin(),
+            _ => false,
+        }
+    }
+    pub fn is_oct_literal(&self) -> bool {
+        match self {
+            Token::Number(ref n) => n.is_oct(),
+            _ => false,
+        }
+    }
+
+    pub fn matches_ident_str(&self, name: &str) -> bool {
+        match self {
+            Token::Ident(i) => i.eq(name),
+            _ => false,
+        }
+    }
+
+    pub fn matches_number_str(&self, number: &str) -> bool {
+        match self {
+            Token::Number(n) => n.eq(number),
+            _ => false,
+        }
+    }
+
     pub fn matches_comment_str(&self, comment: &str) -> bool {
         match self {
             Token::Comment(t) => t.content.as_ref() == comment,
             _ => false,
         }
     }
+
     pub fn matches_string_content(&self, content: &str) -> bool {
         match self {
             Token::String(ref lit) => match lit {

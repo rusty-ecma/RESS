@@ -133,10 +133,7 @@ pub struct Item<T> {
     pub location: SourceLocation,
 }
 
-impl<T> Item<T>
-where
-    T: AsRef<str>,
-{
+impl<T> Item<T> {
     pub fn new(token: Token<T>, span: Span, location: SourceLocation) -> Self {
         Self {
             token,
