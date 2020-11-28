@@ -267,7 +267,6 @@ fn star_only_regex() {
 
 #[test]
 fn leading_space_regex() {
-
     let js = r"/ \{[\s\S]*$/";
     compare(
         &js,

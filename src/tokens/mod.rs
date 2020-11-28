@@ -127,14 +127,14 @@ impl<T> Token<T> {
             _ => false,
         }
     }
-    
+
     pub fn is_null(&self) -> bool {
         matches!(self, Token::Null)
     }
     pub fn is_number(&self) -> bool {
         matches!(self, Token::Number(_))
     }
-    
+
     pub fn is_punct(&self) -> bool {
         matches!(self, Token::Punct(_))
     }
@@ -184,7 +184,7 @@ impl<T> Token<T> {
         }
     }
     pub fn is_literal(&self) -> bool {
-        matches!(self, 
+        matches!(self,
                 Token::Boolean(_)
                 | Token::String(_)
                 | Token::Null
@@ -222,7 +222,7 @@ impl<T> Token<T> {
             _ => false,
         }
     }
-    
+
     pub fn matches_keyword<K>(&self, keyword: Keyword<K>) -> bool {
         match self {
             Token::Keyword(k) => k.eq(&keyword),
@@ -235,7 +235,7 @@ impl<T> Token<T> {
             _ => false,
         }
     }
-    
+
     pub fn matches_punct(&self, p: Punct) -> bool {
         match self {
             Token::Punct(m) => m == &p,
@@ -247,7 +247,7 @@ impl<T> Token<T> {
             Token::Punct(ref p) => p.matches_str(s),
             _ => false,
         }
-    }   
+    }
 }
 
 impl<T> Token<T>
@@ -304,12 +304,8 @@ where
     pub fn matches_string_content(&self, content: &str) -> bool {
         match self {
             Token::String(ref lit) => match lit {
-                StringLit::Single(s) => {
-                    content == s.content.as_ref()
-                },
-                StringLit::Double(s) => {
-                    content == s.content.as_ref()
-                },
+                StringLit::Single(s) => content == s.content.as_ref(),
+                StringLit::Double(s) => content == s.content.as_ref(),
             },
             _ => false,
         }
