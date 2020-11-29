@@ -45,12 +45,12 @@ use look_behind::{Brace, LookBehind, MetaToken, Paren};
 /// a convince function for collecting a scanner into
 /// a `Vec<Token>`
 pub fn tokenize(text: &str) -> Res<Vec<Token<&str>>> {
-    let mut ret = Vec::new();
-    for i in Scanner::new(text) {
-        let inner = i?.token;
-        ret.push(inner);
-    }
-    Ok(ret)
+    Scanner::new(text)
+        .map(|i| {
+            let t = i?.token;
+            Ok(t)
+        })
+        .collect()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -128,16 +128,13 @@ impl Span {
 #[derive(Clone, Debug, PartialEq)]
 /// A single token with additional metadata
 pub struct Item<T> {
-    pub token: T,
+    pub token: Token<T>,
     pub span: Span,
     pub location: SourceLocation,
 }
 
-impl<T> Item<T>
-where
-    T: TokenExt,
-{
-    pub fn new(token: T, span: Span, location: SourceLocation) -> Self {
+impl<T> Item<T> {
+    pub fn new(token: Token<T>, span: Span, location: SourceLocation) -> Self {
         Self {
             token,
             span,
@@ -145,7 +142,7 @@ where
         }
     }
     fn new_(
-        token: T,
+        token: Token<T>,
         span_start: usize,
         span_end: usize,
         loc_start_line: usize,
@@ -163,10 +160,10 @@ where
         }
     }
     pub fn is_string(&self) -> bool {
-        self.token.is_string()
+        matches!(self.token, Token::String(_))
     }
     pub fn is_eof(&self) -> bool {
-        self.token.is_eof()
+        matches!(self.token, Token::EoF)
     }
     pub fn is_template(&self) -> bool {
         self.token.is_template_head()
@@ -174,6 +171,7 @@ where
             || self.token.is_template_tail()
     }
 }
+
 /// The primary interface of this crate used
 /// to tokenize any JS text into a stream of
 /// `Item`s.
@@ -202,7 +200,7 @@ impl<'a> Scanner<'a> {
 }
 
 impl<'a> Iterator for Scanner<'a> {
-    type Item = Res<Item<Token<&'a str>>>;
+    type Item = Res<Item<&'a str>>;
     fn next(&mut self) -> Option<Self::Item> {
         self.get_next_token(true)
     }
@@ -215,7 +213,7 @@ impl<'b> Scanner<'b> {
     /// returned value will not be a borrowed `Item`. Since
     /// there isn't a borrow happening this essentially duplicates
     /// the cost of calling `next`.
-    pub fn look_ahead(&mut self) -> Option<Res<Item<Token<&'b str>>>> {
+    pub fn look_ahead(&mut self) -> Option<Res<Item<&'b str>>> {
         self.get_next_token(false)
     }
     /// Skip any upcoming comments to get the
@@ -248,7 +246,7 @@ impl<'b> Scanner<'b> {
     /// The implementation of `Scanner::next` that includes
     /// the flag for advancing, meaning the `look_ahead` method
     /// can also use this implementation
-    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<Token<&'b str>>>> {
+    fn get_next_token(&mut self, advance_cursor: bool) -> Option<Res<Item<&'b str>>> {
         if self.errored {
             return None;
         }
@@ -285,7 +283,7 @@ impl<'b> Scanner<'b> {
     /// Evaluate the token for possible regex
     /// start and handle updating the
     /// `self.last_three`, `self.paren_stack` and `self.brace_stack`
-    fn keep_books(&mut self, item: &Item<Token<&'b str>>) -> Res<()> {
+    fn keep_books(&mut self, item: &Item<&'b str>) -> Res<()> {
         if let Token::Punct(ref p) = &item.token {
             match p {
                 Punct::OpenParen => self.handle_open_paren_books(),
@@ -478,59 +476,59 @@ impl<'b> Scanner<'b> {
     /// > used in determining if we are at a regex or not
     fn is_op(tok: MetaToken) -> bool {
         match tok {
-            MetaToken::Punct(ref p) => match p {
+            MetaToken::Punct(ref p) => matches!(
+                p,
                 Punct::Equal
-                | Punct::PlusEqual
-                | Punct::DashEqual
-                | Punct::AsteriskEqual
-                | Punct::ForwardSlashEqual
-                | Punct::PercentEqual
-                | Punct::DoubleLessThanEqual
-                | Punct::DoubleGreaterThanEqual
-                | Punct::TripleGreaterThanEqual
-                | Punct::AmpersandEqual
-                | Punct::PipeEqual
-                | Punct::CaretEqual
-                | Punct::Comma
-                | Punct::Plus
-                | Punct::Dash
-                | Punct::Asterisk
-                | Punct::ForwardSlash
-                | Punct::Percent
-                | Punct::DoubleLessThan
-                | Punct::DoubleGreaterThan
-                | Punct::TripleGreaterThan
-                | Punct::Ampersand
-                | Punct::Pipe
-                | Punct::Caret
-                | Punct::DoubleAmpersand
-                | Punct::DoublePipe
-                | Punct::QuestionMark
-                | Punct::Colon
-                | Punct::TripleEqual
-                | Punct::DoubleEqual
-                | Punct::GreaterThanEqual
-                | Punct::LessThanEqual
-                | Punct::LessThan
-                | Punct::GreaterThan
-                | Punct::BangEqual
-                | Punct::BangDoubleEqual
-                | Punct::DoublePlus
-                | Punct::DoubleDash
-                | Punct::Tilde
-                | Punct::Bang => true,
-                _ => false,
-            },
-            MetaToken::Keyword(k, _) => match k {
+                    | Punct::PlusEqual
+                    | Punct::DashEqual
+                    | Punct::AsteriskEqual
+                    | Punct::ForwardSlashEqual
+                    | Punct::PercentEqual
+                    | Punct::DoubleLessThanEqual
+                    | Punct::DoubleGreaterThanEqual
+                    | Punct::TripleGreaterThanEqual
+                    | Punct::AmpersandEqual
+                    | Punct::PipeEqual
+                    | Punct::CaretEqual
+                    | Punct::Comma
+                    | Punct::Plus
+                    | Punct::Dash
+                    | Punct::Asterisk
+                    | Punct::ForwardSlash
+                    | Punct::Percent
+                    | Punct::DoubleLessThan
+                    | Punct::DoubleGreaterThan
+                    | Punct::TripleGreaterThan
+                    | Punct::Ampersand
+                    | Punct::Pipe
+                    | Punct::Caret
+                    | Punct::DoubleAmpersand
+                    | Punct::DoublePipe
+                    | Punct::QuestionMark
+                    | Punct::Colon
+                    | Punct::TripleEqual
+                    | Punct::DoubleEqual
+                    | Punct::GreaterThanEqual
+                    | Punct::LessThanEqual
+                    | Punct::LessThan
+                    | Punct::GreaterThan
+                    | Punct::BangEqual
+                    | Punct::BangDoubleEqual
+                    | Punct::DoublePlus
+                    | Punct::DoubleDash
+                    | Punct::Tilde
+                    | Punct::Bang
+            ),
+            MetaToken::Keyword(k, _) => matches!(
+                k,
                 RawKeyword::InstanceOf
-                | RawKeyword::In
-                | RawKeyword::Delete
-                | RawKeyword::Void
-                | RawKeyword::TypeOf
-                | RawKeyword::Throw
-                | RawKeyword::New => true,
-                _ => false,
-            },
+                    | RawKeyword::In
+                    | RawKeyword::Delete
+                    | RawKeyword::Void
+                    | RawKeyword::TypeOf
+                    | RawKeyword::Throw
+                    | RawKeyword::New
+            ),
             _ => false,
         }
     }
@@ -573,6 +571,10 @@ impl<'b> Scanner<'b> {
             };
         }
         (line_ct, byte_position)
+    }
+
+    pub fn has_pending_new_line(&self) -> bool {
+        self.manual_scanner.pending_new_line
     }
 
     /// Helper to handle the error cases

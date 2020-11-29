@@ -3,3 +3,7 @@ coverage:
     project:
       default:
         informational: true
+    patch:
+      default:
+        enabled: no
+        if_not_found: success

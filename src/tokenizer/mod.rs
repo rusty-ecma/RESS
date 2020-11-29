@@ -1358,17 +1358,17 @@ impl<'a> Tokenizer<'a> {
             self.stream.idx,
             self.stream.len
         );
-        let mut ct = 0usize;
+        let mut new_line_ct = 0usize;
         let mut leading_whitespace = 0usize;
         while self.stream.at_whitespace() {
             if self.at_new_line() {
-                ct += 1;
+                new_line_ct += 1;
                 leading_whitespace = 0;
             }
             leading_whitespace = leading_whitespace.saturating_add(1);
             self.stream.skip(1);
         }
-        (ct, leading_whitespace)
+        (new_line_ct, leading_whitespace)
     }
     /// Check if the look ahead is a new line character
     #[inline]
