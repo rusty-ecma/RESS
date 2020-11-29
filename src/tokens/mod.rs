@@ -714,6 +714,8 @@ mod test {
     fn regexes() {
         let r = Token::RegEx(RegEx::from_parts("asdf", None));
         assert!(r.is_regex());
+        assert_ne!(r, "");
+        assert_ne!(r, "/asdf/");
     }
 
     #[test]
@@ -756,5 +758,7 @@ mod test {
         assert!(!t.is_template_body());
         assert!(t.is_template_tail());
         assert!(!t.is_template_no_sub());
+        assert_ne!(t, "");
+        assert_ne!(t, "}asdf`");
     }
 }
