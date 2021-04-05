@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Setup Node.js for use with actions
-      uses: actions/setup-node@v1.4.4
+      uses: actions/setup-node@v2.1.5
     - name: install js test libs from npm
       run: npm install
     - name: Build
@@ -45,7 +45,7 @@ jobs:
     - name: before cargo cache
       run: rm -rf ~/.cargo/registry
     - name: Cache cargo directory
-      uses: actions/cache@v1.0.3
+      uses: actions/cache@v2.1.4
       with:
         key: ${{ runner.os }}.cargo
         path: ~/.cargo
