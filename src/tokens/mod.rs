@@ -186,13 +186,15 @@ impl<T> Token<T> {
         }
     }
     pub fn is_literal(&self) -> bool {
-        matches!(self,
-                Token::Boolean(_)
+        matches!(
+            self,
+            Token::Boolean(_)
                 | Token::String(_)
                 | Token::Null
                 | Token::Number(_)
                 | Token::RegEx(_)
-                | Token::Template(_))
+                | Token::Template(_)
+        )
     }
     pub fn is_comment(&self) -> bool {
         matches!(self, Token::Comment(_))
