@@ -84,7 +84,7 @@ impl<'a> Tokenizer<'a> {
     /// note: this should only be used after first getting `/` or `/=`
     /// from the `next` method.
     pub fn next_regex(&mut self, start_len: usize) -> Res<RawItem> {
-        trace!("next_regex{} {}", self.stream.idx, self.stream.len);
+        trace!("next_regex {} {}", self.stream.idx, self.stream.len);
         self.current_start = self.stream.idx;
         let mut end_of_body = false;
         let mut body_idx = 0;
@@ -116,10 +116,7 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx,
                         msg: "new line in regex literal".to_string(),
                     });
-                } else if self.look_ahead_byte_matches('[')
-                    || self.look_ahead_byte_matches('/')
-                    || self.look_ahead_byte_matches('\\')
-                {
+                } else {
                     self.stream.skip_bytes(1);
                 }
             } else if is_line_term(c) {
@@ -1660,6 +1657,7 @@ mod test {
             r#"/a\/b/"#,
             r#"/\//"#,
             r#"/a/\u{12345}\u0F00"#,
+            r#"/[\]\[\n\s\/]/"#,
         ];
         for r in REGEX {
             let mut t = Tokenizer::new(r);
@@ -1673,6 +1671,43 @@ mod test {
         }
     }
 
+    #[test]
+    fn validated_regex() {
+        pretty_env_logger::try_init().ok();
+        const REGEX: &[&str] = &[
+            r#"/([.+*?=^!:${}()[\]|/\\])/g"#,
+            r#"/[\]\}\n\s\d\e\3]/"#,
+            r#"/[\/\/\/\/\/\/\/\/\/\/\/]/"#,
+        ];
+        for (i, r) in REGEX.iter().enumerate() {
+            let mut t = Tokenizer::new(r);
+            let next = t.next(true).unwrap();
+            let item = t.next_regex(next.end - next.start).unwrap();
+            assert!(match item.ty {
+                RawToken::RegEx(_) => true,
+                _ => false,
+            });
+            assert!(t.stream.at_end());
+            let mut p = res_regex::RegexParser::new(&r[item.start..item.end]).unwrap_or_else(|e| {
+                panic!("{}: {}", i, e);
+            });
+            p.validate().unwrap_or_else(|e| {
+                panic!("{}: {}", i, e);
+            });
+        }
+    }
+
+    #[test]
+    fn tokenizer_regex_term_in_class() {
+        pretty_env_logger::try_init().ok();
+        let regex = r#"/([.+*?=^!:${}()[\]|/\\])/g"#;
+        let mut t = Tokenizer::new(regex);
+        let next = t.next(true).unwrap();
+        let item = t.next_regex(next.end - next.start).unwrap();
+        assert_eq!(item.ty, RawToken::RegEx(26));
+        assert_eq!(item.start, 0);
+        assert_eq!(item.end, 27);
+    }
     #[test]
     #[should_panic = "new line in regex literal"]
     fn tokenizer_regex_new_line_negative() {
