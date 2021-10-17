@@ -1,6 +1,6 @@
 [package]
 name = "ress"
-version = "0.11.1"
+version = "0.11.2"
 authors = ["Robert Masen <r@robertmasen.pizza>"]
 description = "A scanner/tokenizer for JS files"
 keywords = ["JavaScript", "parsing", "JS", "ES", "ECMA"]
@@ -24,6 +24,7 @@ pretty_env_logger = "0.4"
 regex_generate = "0.2"
 criterion = "0.3"
 lazy_static = "1"
+res-regex = "0.1"
 
 [features]
 default = []
