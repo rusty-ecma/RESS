@@ -315,18 +315,34 @@ fn regex_column() {
     );
 }
 
+#[test]
+fn regex_out_of_order() {
+    pretty_env_logger::try_init().ok();
+    let regex = r#"((?:[^BEGHLMOSWYZabcdhmswyz']+)|(?:'(?:[^']|'')*')|(?:G{1,5}|y{1,4}|Y{1,4}|M{1,5}|L{1,5}|w{1,2}|W{1}|d{1,2}|E{1,6}|c{1,6}|a{1,5}|b{1,5}|B{1,5}|h{1,2}|H{1,2}|m{1,2}|s{1,2}|S{1,3}|z{1,4}|Z{1,5}|O{1,4}))([\s\S]*)"#;
+    let js = format!("var DATE_FORMATS_SPLIT = /{}/", &regex);
+    compare_with_position(
+        js.as_str(),
+        &[
+            (Token::Keyword(Keyword::Var("var")), 1, 1),
+            (Token::Ident("DATE_FORMATS_SPLIT".into()), 1, 5),
+            (Token::Punct(Punct::Equal), 1, 24),
+            (Token::RegEx(RegEx::from_parts(regex, None)), 1, 26),
+        ],
+    );
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));
     }
 }
-#[track_caller]
+
 fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) {
     let scanner = Scanner::new(js).map(|r| r.unwrap());
     for (i, (r, ex)) in scanner.zip(expectation.iter()).enumerate() {
-        assert_eq!((i, &r.token), (i, &ex.0));
-        assert_eq!((i, r.location.start.line), (i, ex.1));
-        assert_eq!((i, r.location.start.column), (i, ex.2));
+        assert_eq!((i, &r.token), (i, &ex.0), "{:?} vs {:?}", r, ex.0);
+        assert_eq!((i, r.location.start.line), (i, ex.1), "{:?} vs {:?}", r, ex.0);
+        assert_eq!((i, r.location.start.column), (i, ex.2), "{:?} vs {:?}", r, ex.0);
     }
 }
 
