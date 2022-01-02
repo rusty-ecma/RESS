@@ -341,8 +341,20 @@ fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) 
     let scanner = Scanner::new(js).map(|r| r.unwrap());
     for (i, (r, ex)) in scanner.zip(expectation.iter()).enumerate() {
         assert_eq!((i, &r.token), (i, &ex.0), "{:?} vs {:?}", r, ex.0);
-        assert_eq!((i, r.location.start.line), (i, ex.1), "{:?} vs {:?}", r, ex.0);
-        assert_eq!((i, r.location.start.column), (i, ex.2), "{:?} vs {:?}", r, ex.0);
+        assert_eq!(
+            (i, r.location.start.line),
+            (i, ex.1),
+            "{:?} vs {:?}",
+            r,
+            ex.0
+        );
+        assert_eq!(
+            (i, r.location.start.column),
+            (i, ex.2),
+            "{:?} vs {:?}",
+            r,
+            ex.0
+        );
     }
 }
 
