@@ -842,6 +842,7 @@ impl<'a> Tokenizer<'a> {
             } else if c == '$' {
                 if self.look_ahead_byte_matches('{') {
                     self.stream.skip_bytes(1);
+                    last_len = last_len.saturating_add(1);
                     self.curly_stack.push(OpenCurlyKind::Template);
                     if start == '`' {
                         return self.gen_template(

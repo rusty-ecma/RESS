@@ -399,3 +399,139 @@ pub struct ScannerState {
     pub line_cursor: usize,
     pub at_first_on_line: bool,
 }
+
+#[cfg(test)]
+mod test {
+    use crate::{Position, SourceLocation};
+
+    use super::*;
+
+    #[test]
+    fn template_literals() {
+        let js = "`asdf${0}asdf${0}asdf`";
+        let expected = &[
+            Item {
+                location: SourceLocation {
+                    start: Position { line: 1, column: 1 },
+                    end: Position { line: 1, column: 8 },
+                },
+                token: Token::Template(Template::Head(TemplateLiteral {
+                    content: "asdf",
+                    contains_octal_escape: false,
+                    contains_invalid_unicode_escape: false,
+                    contains_invalid_hex_escape: false,
+                })),
+                span: Span { start: 0, end: 7 },
+            },
+            Item {
+                token: Token::Number("0".into()),
+                span: Span { start: 7, end: 8 },
+                location: SourceLocation {
+                    start: Position { line: 1, column: 8 },
+                    end: Position { line: 1, column: 9 },
+                },
+            },
+            Item {
+                location: SourceLocation {
+                    start: Position { line: 1, column: 9 },
+                    end: Position {
+                        line: 1,
+                        column: 16,
+                    },
+                },
+                token: Token::Template(Template::Middle(TemplateLiteral {
+                    content: "asdf",
+                    contains_octal_escape: false,
+                    contains_invalid_unicode_escape: false,
+                    contains_invalid_hex_escape: false,
+                })),
+                span: Span { start: 8, end: 15 },
+            },
+            Item {
+                token: Token::Number("0".into()),
+                span: Span { start: 15, end: 16 },
+                location: SourceLocation {
+                    start: Position {
+                        line: 1,
+                        column: 16,
+                    },
+                    end: Position {
+                        line: 1,
+                        column: 17,
+                    },
+                },
+            },
+            Item {
+                location: SourceLocation {
+                    start: Position {
+                        line: 1,
+                        column: 17,
+                    },
+                    end: Position {
+                        line: 1,
+                        column: 23,
+                    },
+                },
+                token: Token::Template(Template::Tail(TemplateLiteral {
+                    content: "asdf",
+                    contains_octal_escape: false,
+                    contains_invalid_unicode_escape: false,
+                    contains_invalid_hex_escape: false,
+                })),
+                span: Span { start: 16, end: 22 },
+            },
+        ];
+        let mut s = ManualScanner::new(js);
+        let iter = std::iter::from_fn(move || s.next_token());
+        for (i, (item, expected)) in iter.zip(expected.iter()).enumerate() {
+            let item = item.as_ref().unwrap();
+            assert_eq!(item, expected, "{}", i)
+        }
+    }
+    #[test]
+    fn template_literals_with_new_line() {
+        let js = "`asdf\n${0}`";
+        let expected = &[
+            Item {
+                location: SourceLocation {
+                    start: Position { line: 1, column: 1 },
+                    end: Position { line: 2, column: 2 },
+                },
+                token: Token::Template(Template::Head(TemplateLiteral {
+                    content: "asdf\n",
+                    contains_octal_escape: false,
+                    contains_invalid_unicode_escape: false,
+                    contains_invalid_hex_escape: false,
+                })),
+                span: Span { start: 0, end: 8 },
+            },
+            Item {
+                token: Token::Number("0".into()),
+                span: Span { start: 8, end: 9 },
+                location: SourceLocation {
+                    start: Position { line: 2, column: 2 },
+                    end: Position { line: 2, column: 3 },
+                },
+            },
+            Item {
+                location: SourceLocation {
+                    start: Position { line: 2, column: 3 },
+                    end: Position { line: 2, column: 5 },
+                },
+                token: Token::Template(Template::Tail(TemplateLiteral {
+                    content: "",
+                    contains_octal_escape: false,
+                    contains_invalid_unicode_escape: false,
+                    contains_invalid_hex_escape: false,
+                })),
+                span: Span { start: 9, end: 11 },
+            },
+        ];
+        let mut s = ManualScanner::new(js);
+        let iter = std::iter::from_fn(move || s.next_token());
+        for (i, (item, expected)) in iter.zip(expected.iter()).enumerate() {
+            let item = item.as_ref().unwrap();
+            assert_eq!(item, expected, "{}", i)
+        }
+    }
+}
