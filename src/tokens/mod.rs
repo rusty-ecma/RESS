@@ -395,6 +395,7 @@ pub enum Punct {
     TripleGreaterThanEqual,
     TripleGreaterThan,
 }
+
 impl PartialEq<str> for Punct {
     fn eq(&self, other: &str) -> bool {
         self.matches_str(other)
