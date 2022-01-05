@@ -258,10 +258,10 @@ impl<'b> ManualScanner<'b> {
     /// Get the next token as a regular expression. The previous token
     /// should have been `/` or `/=`,
     pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<&'b str>>> {
-        let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
         self.stream
             .stream
             .skip_back_bytes(self.last_skipped_whitespace);
+        let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
         let next = match self.stream.next_regex(prev_len) {
             Ok(n) => n,
             Err(e) => {
@@ -286,7 +286,7 @@ impl<'b> ManualScanner<'b> {
                     next.start,
                     next.end,
                     prev_lines + 1,
-                    prev_line_cursor.saturating_sub(prev_len),
+                    prev_line_cursor.saturating_sub(prev_len + self.last_skipped_whitespace),
                     prev_lines + 1,
                     self.line_cursor,
                 )
@@ -529,6 +529,30 @@ mod test {
         ];
         let mut s = ManualScanner::new(js);
         let iter = std::iter::from_fn(move || s.next_token());
+        for (i, (item, expected)) in iter.zip(expected.iter()).enumerate() {
+            let item = item.as_ref().unwrap();
+            assert_eq!(item, expected, "{}", i)
+        }
+    }
+    #[test]
+    fn regex_literal() {
+        let js = "/regex/f";
+        let expected = &[Item {
+            location: SourceLocation {
+                start: Position { line: 1, column: 1 },
+                end: Position { line: 1, column: 9 },
+            },
+            token: Token::RegEx(RegEx {
+                body: "regex",
+                flags: Some("f"),
+            }),
+            span: Span { start: 0, end: 8 },
+        }];
+        let mut s = ManualScanner::new(js);
+        let iter = std::iter::from_fn(move || {
+            let _ = s.next_token().unwrap();
+            s.next_regex(1)
+        });
         for (i, (item, expected)) in iter.zip(expected.iter()).enumerate() {
             let item = item.as_ref().unwrap();
             assert_eq!(item, expected, "{}", i)
