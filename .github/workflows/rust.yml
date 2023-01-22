@@ -29,7 +29,7 @@ jobs:
       run: cargo fmt --all -- --check
       if: success()
     - name: Get tarpaulin install script
-      run: bash <(curl https://raw.githubusercontent.com/xd009642/tarpaulin/master/travis-install.sh)
+      run: cargo install cargo-tarpaulin
       if: success()
     - name: Run tarpaulin and upload to CodeCov.io
       run: cargo tarpaulin --out Xml && bash <(curl -s https://codecov.io/bash)

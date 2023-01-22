@@ -24,7 +24,7 @@ fn moment_regex_error() {
 fn number_member() {
     compare(
         "20..toString()",
-        &vec![
+        &[
             Token::Number("20.".into()),
             Token::Punct(Punct::Period),
             Token::Ident("toString".into()),
@@ -37,7 +37,7 @@ fn number_member() {
 fn if_then_regex() {
     compare(
         "if (1) /a/",
-        &vec![
+        &[
             Token::Keyword(Keyword::If("If")),
             Token::Punct(Punct::OpenParen),
             Token::Number("1".into()),
@@ -90,7 +90,7 @@ fn div_over_regex() {
   ({} / function(){return 1});
 }
 ";
-    for tok in panicing_scanner(js) {
+    for tok in panicking_scanner(js) {
         eprintln!("{:?}", tok)
     }
 }
@@ -269,9 +269,9 @@ fn star_only_regex() {
 fn leading_space_regex() {
     let js = r"/ \{[\s\S]*$/";
     compare(
-        &js,
+        js,
         &[Token::RegEx(RegEx {
-            body: r" \{[\s\S]*$".into(),
+            body: r" \{[\s\S]*$",
             flags: None,
         })],
     )
@@ -352,17 +352,71 @@ fn regex_out_of_order() {
     );
 }
 
+#[test]
+fn regex_over_a0() {
+    let js = r#"val = / /"#;
+    compare(
+        js,
+        &[
+            Token::Ident("val".into()),
+            Token::Punct(Punct::Equal),
+            Token::RegEx(RegEx {
+                body: "\u{a0}",
+                flags: None,
+            }),
+        ],
+    )
+}
+
+#[test]
+fn regex_over_a0_manual() {
+    use ress::ManualScanner;
+    let js = r#"val = / /"#;
+    let mut scanner = ManualScanner::new(js);
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Ident("val".into())
+    );
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Punct(Punct::Equal)
+    );
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Punct(Punct::ForwardSlash)
+    );
+    assert_eq!(
+        scanner.next_regex(1).unwrap().unwrap().token,
+        Token::RegEx(RegEx {
+            body: "\u{a0}",
+            flags: None
+        })
+    );
+}
+
+#[test]
+fn regex_all_whitespaces() {
+    let re: String = [
+        '\t', '\u{000b}', '\u{000c}', ' ', '\u{feff}', '\u{2000}', '\u{2001}', '\u{2002}',
+        '\u{2003}', '\u{2004}', '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}',
+        '\u{200a}', '\u{202f}', '\u{205f}', '\u{3000}',
+    ]
+    .iter()
+    .collect();
+    run_failure(&format!("var = /{re}/"));
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
-    for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
+    for (i, (par, ex)) in panicking_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));
     }
 }
 
 fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) {
-    let mut scanner = Scanner::new(js);
+    let scanner = Scanner::new(js);
     let mut i = 0;
     let mut expectation = expectation.iter();
-    while let Some(r) = scanner.next() {
+    for r in scanner {
         let r = r.unwrap();
         if r.is_eof() {
             return;
@@ -393,9 +447,9 @@ fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) 
 }
 
 fn run_failure(js: &str) {
-    for _ in panicing_scanner(js) {}
+    for _ in panicking_scanner(js) {}
 }
 
-fn panicing_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
+fn panicking_scanner(js: &str) -> impl Iterator<Item = Token<&str>> {
     Scanner::new(js).map(|r| r.unwrap().token)
 }

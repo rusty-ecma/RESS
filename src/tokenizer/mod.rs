@@ -15,7 +15,7 @@ mod keyword_trie;
 /// simply providing the start and end of the
 /// span and the type of token that span
 /// represents
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RawItem {
     pub ty: tokens::RawToken,
     pub start: usize,
@@ -63,7 +63,7 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(next_char, allow_html_comment_close);
         }
-        if next_char.is_digit(10) {
+        if next_char.is_ascii_digit() {
             return self.number(next_char);
         }
         if next_char == '`' {
@@ -79,7 +79,7 @@ impl<'a> Tokenizer<'a> {
         self.punct(next_char, allow_html_comment_close)
     }
     /// get the next regex token from the js text, providing
-    /// the lenth of the already consumed token (this will be either 1 or 2)
+    /// the length of the already consumed token (this will be either 1 or 2)
     ///
     /// note: this should only be used after first getting `/` or `/=`
     /// from the `next` method.
@@ -229,7 +229,7 @@ impl<'a> Tokenizer<'a> {
     }
 
     /// Consume an escaped code point returning a tuple of the u32
-    /// represented in the string as well as the lenght of the code
+    /// represented in the string as well as the length of the code
     /// point only (the {} will not be included in the count)
     ///
     /// ```js
@@ -719,7 +719,7 @@ impl<'a> Tokenizer<'a> {
                         self.bin_number()
                     } else if next == 'n' {
                         self.gen_number(NumberKind::BigInt)
-                    } else if next.is_digit(10) {
+                    } else if next.is_ascii_digit() {
                         self.dec_number(false, next)
                     } else if next == '.' {
                         self.dec_number(true, next)
@@ -801,7 +801,7 @@ impl<'a> Tokenizer<'a> {
                             if acc > 0x10_FFFF {
                                 found_invalid_unicode = true;
                             }
-                        } else if ch.is_digit(16) {
+                        } else if ch.is_ascii_hexdigit() {
                             for _ in 0..3 {
                                 if self.stream.at_hex() {
                                     self.stream.skip_bytes(1);
@@ -992,7 +992,7 @@ impl<'a> Tokenizer<'a> {
     fn hex_number(&mut self) -> Res<RawItem> {
         trace!("hex_number ({}, {})", self.current_start, self.stream.idx);
         let mut prev_char = if let Some(c) = self.stream.next_char() {
-            if !c.is_digit(16) {
+            if !c.is_ascii_hexdigit() {
                 return Err(RawError {
                     msg: "empty hex literal".to_string(),
                     idx: self.current_start,
@@ -1119,8 +1119,8 @@ impl<'a> Tokenizer<'a> {
         self.check_trailing_ident_start()?;
         self.gen_number(kind)
     }
-    /// Helper to consume consectuive digits, taking into account
-    /// that _ is a valid numeric seperator
+    /// Helper to consume consecutive digits, taking into account
+    /// that _ is a valid numeric separator
     fn consume_digits(&mut self, radix: u32, mut prev_char: char) -> Res<char> {
         trace!(
             "consume_digits {}, {} ({}, {})",
@@ -1163,7 +1163,8 @@ impl<'a> Tokenizer<'a> {
             if Self::is_id_start(next) {
                 return Err(RawError {
                     idx: self.stream.idx,
-                    msg: "Number literal cannot be immedatly followed by an identifier".to_string(),
+                    msg: "Number literal cannot be immediately followed by an identifier"
+                        .to_string(),
                 });
             }
         }
@@ -1181,7 +1182,7 @@ impl<'a> Tokenizer<'a> {
         );
         if char_1 == '_' && char_2 == '_' {
             Err(RawError {
-                msg: "double numeric seperator".to_string(),
+                msg: "double numeric separator".to_string(),
                 idx: self.current_start,
             })
         } else {
@@ -1242,7 +1243,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.stream.look_ahead_matches(s.as_bytes())
     }
-    /// Convience method for wrapping a `Punct` in a `RawItem`
+    /// Convenience method for wrapping a `Punct` in a `RawItem`
     #[inline]
     fn gen_punct(&self, p: Punct) -> Res<RawItem> {
         trace!(
@@ -1253,7 +1254,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.gen_token(RawToken::Punct(p))
     }
-    /// Convience method for wrapping a `Number` in a `RawItem`
+    /// Convenience method for wrapping a `Number` in a `RawItem`
     #[inline]
     fn gen_number(&self, n: NumberKind) -> Res<RawItem> {
         trace!(
@@ -1264,7 +1265,7 @@ impl<'a> Tokenizer<'a> {
         );
         self.gen_token(RawToken::Number(n))
     }
-    /// Convience method for wrapping a `Template` in a `RawItem`
+    /// Convenience method for wrapping a `Template` in a `RawItem`
     #[inline]
     fn gen_template(
         &self,
@@ -1292,7 +1293,7 @@ impl<'a> Tokenizer<'a> {
             found_invalid_hex_escape: invalid_hex,
         })
     }
-    /// Convience method for wrapping a `RegEx` in a `RawItem`
+    /// Convenience method for wrapping a `RegEx` in a `RawItem`
     #[inline]
     fn gen_regex(&self, start_len: usize, body_idx: usize) -> Res<RawItem> {
         trace!(
@@ -1308,7 +1309,7 @@ impl<'a> Tokenizer<'a> {
             ty: RawToken::RegEx(body_idx),
         })
     }
-    /// Convience method for wrapping a `Comment` in a `RawItem`
+    /// Convenience method for wrapping a `Comment` in a `RawItem`
     #[inline]
     fn gen_comment(
         &self,
@@ -1332,7 +1333,7 @@ impl<'a> Tokenizer<'a> {
             end_index,
         })
     }
-    /// Convience method for wrapping a `RawToken` in a `RawItem`
+    /// Convenience method for wrapping a `RawToken` in a `RawItem`
     #[inline]
     fn gen_token(&self, ty: RawToken) -> Res<RawItem> {
         trace!(
@@ -1379,7 +1380,7 @@ impl<'a> Tokenizer<'a> {
     fn local_index(&self) -> usize {
         self.stream.idx - self.current_start
     }
-    /// Carrage Return is always a special case so that
+    /// Carriage Return is always a special case so that
     /// must be handled inline
     #[inline]
     fn is_new_line_not_cr(c: char) -> bool {
@@ -1617,10 +1618,7 @@ mod test {
             let mut t = Tokenizer::new(n);
             let item = t.next(true).unwrap();
             dbg!(&n[item.start..item.end]);
-            assert!(match item.ty {
-                RawToken::Number(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::Number(_)));
             assert!(t.stream.at_end());
         }
     }
@@ -1664,10 +1662,7 @@ mod test {
             let mut t = Tokenizer::new(r);
             let next = t.next(true).unwrap();
             let item = t.next_regex(next.end - next.start).unwrap();
-            assert!(match item.ty {
-                RawToken::RegEx(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::RegEx(_)));
             assert!(t.stream.at_end());
         }
     }
@@ -1684,10 +1679,7 @@ mod test {
             let mut t = Tokenizer::new(r);
             let next = t.next(true).unwrap();
             let item = t.next_regex(next.end - next.start).unwrap();
-            assert!(match item.ty {
-                RawToken::RegEx(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::RegEx(_)));
             assert!(t.stream.at_end());
             let mut p = res_regex::RegexParser::new(&r[item.start..item.end]).unwrap_or_else(|e| {
                 panic!("{}: {}", i, e);
@@ -1895,10 +1887,7 @@ mod test {
         for b in &["true", "false"] {
             let mut t = Tokenizer::new(b);
             let item = t.next(true).unwrap();
-            assert!(match item.ty {
-                RawToken::Boolean(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::Boolean(_)));
             assert!(t.stream.at_end());
         }
     }
@@ -2030,7 +2019,7 @@ mod test {
         let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next(true);
-        assert_eq!(t.skip_whitespace().0, 1); // line seperator
+        assert_eq!(t.skip_whitespace().0, 1); // line separator
         let _ = t.next(true);
         assert_eq!(t.skip_whitespace().0, 0);
         let _ = t.next(true);
@@ -2096,7 +2085,7 @@ mod test {
     }
     #[test]
     #[should_panic = "unescaped new line in string literal"]
-    fn unescaped_carrage_return_in_str() {
+    fn unescaped_carriage_return_in_str() {
         let mut t = Tokenizer::new("'asdf\r'");
         t.next(true).unwrap();
     }
@@ -2176,7 +2165,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic = "double numeric seperator"]
+    #[should_panic = "double numeric separator"]
     fn rep_sep() {
         let mut t = Tokenizer::new("1__1;");
         t.next(true).unwrap();
@@ -2258,9 +2247,33 @@ mod test {
     }
 
     #[test]
-    #[should_panic = "Number literal cannot be immedatly followed by an identifier"]
+    #[should_panic = "Number literal cannot be immediately followed by an identifier"]
     fn number_followed_by_ident_start() {
         let mut t = Tokenizer::new("1234.56e78in []");
         t.next(true).unwrap();
+    }
+
+    #[test]
+    fn regex_with_single_multi_code_point_char() {
+        let regex = "/\u{a0}/";
+        let mut t = Tokenizer::new(regex);
+        let slash = t.next(true).unwrap();
+        assert_eq!(
+            slash,
+            RawItem {
+                end: 1,
+                start: 0,
+                ty: RawToken::Punct(Punct::ForwardSlash),
+            }
+        );
+        let regex_tail = t.next_regex(slash.end - slash.start).unwrap();
+        assert_eq!(
+            regex_tail,
+            RawItem {
+                end: regex.len(),
+                start: 0,
+                ty: RawToken::RegEx(4),
+            }
+        )
     }
 }

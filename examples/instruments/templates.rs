@@ -1,3 +1,4 @@
+#![allow(clippy::forget_non_drop)]
 // This example exists to allow for profiling
 // applications to provide details about
 // the criterion benchmarks
@@ -29,7 +30,7 @@ fn main() {
 }
 #[inline]
 fn parse_two(s: &str) {
-    let mut t = Tokenizer::new(&s);
+    let mut t = Tokenizer::new(s);
     let _ = t.next(true).unwrap();
     let d = t.next(true).unwrap();
     core::mem::forget(d);

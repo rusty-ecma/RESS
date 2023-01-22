@@ -511,8 +511,8 @@ mod test {
     fn test_with_escapes(k: &str, expect: RawToken) {
         let start = k.chars().next().expect("empty keyword");
         let first = test_keyword(start, k)
-            .expect(&format!("failed to parse {}", k))
-            .expect(&format!("failed to parse {}", k));
+            .unwrap_or_else(|e| panic!("failed to parse {}: {}", k, e))
+            .unwrap_or_else(|| panic!("failed to parse {}", k));
         assert_eq!(first, expect);
         let mut escape_char_code;
         let mut escape_code_points;
@@ -529,28 +529,28 @@ mod test {
                 }
             }
             let second = test_keyword(start, &escape_char_code)
-                .expect(&format!(
-                    "failed to parse escaped keyword {}",
-                    escape_char_code
-                ))
-                .expect(&format!(
-                    "failed to parse escaped keyword {}",
-                    escape_char_code
-                ));
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "failed to parse escaped keyword {}: {}",
+                        escape_char_code, e
+                    )
+                })
+                .unwrap_or_else(|| panic!("failed to parse escaped keyword {}", escape_char_code));
             assert_eq!(
                 second, expect,
                 "{} doesn't match expected keyword",
                 escape_char_code
             );
             let third = test_keyword(start, &escape_code_points)
-                .expect(&format!(
-                    "failed to parse escaped keyword {}",
-                    escape_code_points
-                ))
-                .expect(&format!(
-                    "failed to parse escaped keyword {}",
-                    escape_code_points
-                ));
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "failed to parse escaped keyword {}: {}",
+                        escape_code_points, e
+                    )
+                })
+                .unwrap_or_else(|| {
+                    panic!("failed to parse escaped keyword {}", escape_code_points)
+                });
             assert_eq!(
                 third, expect,
                 "{} doesn't match expected keyword",
@@ -559,7 +559,8 @@ mod test {
         }
         let not = format!("{}_not", k);
         assert_eq!(
-            test_keyword(start, &not).expect(&format!("Failed to parse not keyword {}", not)),
+            test_keyword(start, &not)
+                .unwrap_or_else(|e| panic!("Failed to parse not keyword {}: {}", not, e)),
             None
         );
     }

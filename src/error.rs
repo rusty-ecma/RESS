@@ -1,4 +1,4 @@
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Error {
     pub line: usize,
     pub column: usize,
@@ -14,7 +14,7 @@ impl ::std::fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RawError {
     pub idx: usize,
     pub msg: String,

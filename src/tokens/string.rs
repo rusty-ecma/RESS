@@ -1,11 +1,11 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// A single or double quoted string
 /// literal
 pub enum StringLit<T> {
     Single(InnerString<T>),
     Double(InnerString<T>),
 }
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct InnerString<T> {
     pub content: T,
     pub contains_octal_escape: bool,
@@ -39,7 +39,7 @@ where
     T: AsRef<str>,
 {
     fn as_ref(&self) -> &str {
-        &self.content.as_ref()
+        self.content.as_ref()
     }
 }
 

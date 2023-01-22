@@ -144,16 +144,10 @@ impl<T> Token<T> {
         matches!(self, Token::String(_))
     }
     pub fn is_double_quoted_string(&self) -> bool {
-        match self {
-            Token::String(ref s) => matches!(s, StringLit::Double(_)),
-            _ => false,
-        }
+        matches!(self, Token::String(StringLit::Double(_)))
     }
     pub fn is_single_quoted_string(&self) -> bool {
-        match self {
-            Token::String(ref s) => matches!(s, StringLit::Single(_)),
-            _ => false,
-        }
+        matches!(self, Token::String(StringLit::Single(_)))
     }
     pub fn is_regex(&self) -> bool {
         matches!(self, Token::RegEx(_))
@@ -337,7 +331,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// All available punctuation
 pub enum Punct {
     Ampersand,
