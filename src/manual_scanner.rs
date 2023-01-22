@@ -129,7 +129,7 @@ impl<'b> ManualScanner<'b> {
                                 let actual_end = idx.saturating_add(3);
                                 if actual_end < next.end {
                                     let tail = &s[actual_end..];
-                                    let tail = if tail == "" { None } else { Some(tail) };
+                                    let tail = if tail.is_empty() { None } else { Some(tail) };
                                     (&s[start_idx..idx], tail)
                                 } else {
                                     (&s[start_idx..], None)
@@ -264,7 +264,7 @@ impl<'b> ManualScanner<'b> {
     pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<&'b str>>> {
         Some(self.next_regex_item(prev_len))
     }
-    
+
     fn next_regex_item(&mut self, prev_len: usize) -> Res<Item<&'b str>> {
         self.stream
             .stream
@@ -394,11 +394,11 @@ impl<'b> ManualScanner<'b> {
         if start > end {
             return self.error(RawError {
                 idx: start,
-                msg: format!("failed to slice original text {start} > {end}")
-            })
+                msg: format!("failed to slice original text {start} > {end}"),
+            });
         }
         if let Some(slice) = self.original.get(start..end) {
-            return Ok(slice)
+            return Ok(slice);
         }
         self.index_failed(start, end)
     }
@@ -410,9 +410,7 @@ impl<'b> ManualScanner<'b> {
             if start_idx == 0 {
                 return self.error(RawError {
                     idx: start,
-                    msg: format!(
-                        "indexing failed at {start}-{end}"
-                    ),
+                    msg: format!("indexing failed at {start}-{end}"),
                 });
             }
         }
@@ -422,9 +420,7 @@ impl<'b> ManualScanner<'b> {
             if end_idx > self.original.len() {
                 return self.error(RawError {
                     idx: start,
-                    msg: format!(
-                        "indexing failed at {start_idx}-{end}"
-                    ),
+                    msg: format!("indexing failed at {start_idx}-{end}"),
                 });
             }
         }

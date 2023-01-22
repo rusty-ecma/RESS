@@ -105,7 +105,7 @@ fn get_file(path: impl AsRef<Path>) -> String {
             panic!("npm install failed to make {:?} available", path)
         }
     }
-    read_to_string(path).expect(&format!("Failed to read {:?} to a string", path))
+    read_to_string(path).unwrap_or_else(|e| panic!("Failed to read {:?} to a string {}", path, e))
 }
 
 fn npm_install() {

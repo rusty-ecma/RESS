@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// A JS number literal. There are 4 kinds of number
 /// literals allowed in JS.
 ///
@@ -34,7 +34,7 @@ where
             Some("0b") | Some("0B") => NumberKind::Bin,
             Some("0o") | Some("0O") => NumberKind::Oct,
             _ => {
-                if s.ends_with("n") {
+                if s.ends_with('n') {
                     NumberKind::BigInt
                 } else {
                     NumberKind::Dec
@@ -90,7 +90,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// The 5 kinds of numbers
 pub enum NumberKind {
     Dec,

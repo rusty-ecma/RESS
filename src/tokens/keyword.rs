@@ -267,13 +267,10 @@ impl<T> Keyword<T> {
     /// - implements
     /// - super
     pub fn is_future_reserved(&self) -> bool {
-        match self {
-            Keyword::Enum(_) => true,
-            Keyword::Export(_) => true,
-            Keyword::Implements(_) => true,
-            Keyword::Super(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Keyword::Enum(_) | Keyword::Export(_) | Keyword::Implements(_) | Keyword::Super(_)
+        )
     }
     /// Is this keyword a reserved word when the context
     /// has a 'use strict' directive.
@@ -289,18 +286,18 @@ impl<T> Keyword<T> {
     /// - yield
     /// - let
     pub fn is_strict_reserved(&self) -> bool {
-        match self {
-            Keyword::Implements(_) => true,
-            Keyword::Interface(_) => true,
-            Keyword::Package(_) => true,
-            Keyword::Private(_) => true,
-            Keyword::Protected(_) => true,
-            Keyword::Public(_) => true,
-            Keyword::Static(_) => true,
-            Keyword::Yield(_) => true,
-            Keyword::Let(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Keyword::Implements(_)
+                | Keyword::Interface(_)
+                | Keyword::Package(_)
+                | Keyword::Private(_)
+                | Keyword::Protected(_)
+                | Keyword::Public(_)
+                | Keyword::Static(_)
+                | Keyword::Yield(_)
+                | Keyword::Let(_)
+        )
     }
     /// Is this keyword a reserved word
     ///

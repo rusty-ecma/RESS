@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// A template string
 ///
 /// These include strings that are wrapped in back ticks (`)
@@ -11,7 +11,7 @@ pub enum Template<T> {
     Tail(TemplateLiteral<T>),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TemplateLiteral<T> {
     pub content: T,
     pub contains_octal_escape: bool,
@@ -48,28 +48,16 @@ impl<T> Template<T> {
         Template::Tail(TemplateLiteral::new(content, oct, uni, hex))
     }
     pub fn is_head(&self) -> bool {
-        match self {
-            Template::Head(_) => true,
-            _ => false,
-        }
+        matches!(self, Template::Head(_))
     }
     pub fn is_middle(&self) -> bool {
-        match self {
-            Template::Middle(_) => true,
-            _ => false,
-        }
+        matches!(self, Template::Middle(_))
     }
     pub fn is_tail(&self) -> bool {
-        match self {
-            Template::Tail(_) => true,
-            _ => false,
-        }
+        matches!(self, Template::Tail(_))
     }
     pub fn is_no_sub(&self) -> bool {
-        match self {
-            Template::NoSub(_) => true,
-            _ => false,
-        }
+        matches!(self, Template::NoSub(_))
     }
 }
 

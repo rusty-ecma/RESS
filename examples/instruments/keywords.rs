@@ -1,3 +1,4 @@
+#![allow(clippy::forget_non_drop)]
 // This example exists to allow for profiling
 // applications to provide details about
 // the criterion benchmarks

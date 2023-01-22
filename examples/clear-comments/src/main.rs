@@ -127,7 +127,7 @@ fn main() {
         if space_before(&last_token, &token) {
             out.write_all(b" ").expect("error writing space");
         }
-        out.write_all(&(token_to_string(&token)).as_bytes())
+        out.write_all(token_to_string(&token).as_bytes())
             .expect("Error writing token");
         last_token = token;
     }

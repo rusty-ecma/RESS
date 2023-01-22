@@ -1,6 +1,6 @@
 use crate::tokens::{CommentKind, Keyword, NumberKind, Punct};
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum RawToken {
     /// `true` of `false`
     Boolean(bool),
@@ -65,47 +65,34 @@ impl Copy for Keyword<()> {}
 
 impl RawToken {
     pub fn is_punct(&self) -> bool {
-        if let RawToken::Punct(_) = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, RawToken::Punct(_))
     }
 
     pub fn is_comment(&self) -> bool {
-        if let RawToken::Comment { .. } = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, RawToken::Comment { .. })
     }
     pub fn is_div_punct(&self) -> bool {
-        if let RawToken::Punct(ref p) = self {
-            match p {
-                Punct::ForwardSlash => true,
-                Punct::ForwardSlashEqual => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
+        matches!(
+            self,
+            RawToken::Punct(Punct::ForwardSlash | Punct::ForwardSlashEqual)
+        )
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StringKind {
     Double,
     Single,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TemplateKind {
     NoSub,
     Head,
     Body,
     Tail,
 }
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub enum RawKeyword {
     Await,
     Break,

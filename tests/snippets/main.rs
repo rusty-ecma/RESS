@@ -24,7 +24,7 @@ fn moment_regex_error() {
 fn number_member() {
     compare(
         "20..toString()",
-        &vec![
+        &[
             Token::Number("20.".into()),
             Token::Punct(Punct::Period),
             Token::Ident("toString".into()),
@@ -37,7 +37,7 @@ fn number_member() {
 fn if_then_regex() {
     compare(
         "if (1) /a/",
-        &vec![
+        &[
             Token::Keyword(Keyword::If("If")),
             Token::Punct(Punct::OpenParen),
             Token::Number("1".into()),
@@ -269,9 +269,9 @@ fn star_only_regex() {
 fn leading_space_regex() {
     let js = r"/ \{[\s\S]*$/";
     compare(
-        &js,
+        js,
         &[Token::RegEx(RegEx {
-            body: r" \{[\s\S]*$".into(),
+            body: r" \{[\s\S]*$",
             flags: None,
         })],
     )
@@ -361,7 +361,7 @@ fn regex_over_a0() {
             Token::Ident("val".into()),
             Token::Punct(Punct::Equal),
             Token::RegEx(RegEx {
-                body: "\u{a0}".into(),
+                body: "\u{a0}",
                 flags: None,
             }),
         ],
@@ -387,7 +387,7 @@ fn regex_over_a0_manual() {
     assert_eq!(
         scanner.next_regex(1).unwrap().unwrap().token,
         Token::RegEx(RegEx {
-            body: "\u{a0}".into(),
+            body: "\u{a0}",
             flags: None
         })
     );
@@ -400,10 +400,10 @@ fn compare(js: &str, expectation: &[Token<&str>]) {
 }
 
 fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) {
-    let mut scanner = Scanner::new(js);
+    let scanner = Scanner::new(js);
     let mut i = 0;
     let mut expectation = expectation.iter();
-    while let Some(r) = scanner.next() {
+    for r in scanner {
         let r = r.unwrap();
         if r.is_eof() {
             return;
@@ -437,6 +437,6 @@ fn run_failure(js: &str) {
     for _ in panicking_scanner(js) {}
 }
 
-fn panicking_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
+fn panicking_scanner(js: &str) -> impl Iterator<Item = Token<&str>> {
     Scanner::new(js).map(|r| r.unwrap().token)
 }

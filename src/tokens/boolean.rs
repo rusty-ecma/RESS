@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// The tokenized representation of `true` or `false`
 pub enum Boolean {
     True,
@@ -6,27 +6,24 @@ pub enum Boolean {
 }
 impl PartialEq<bool> for Boolean {
     fn eq(&self, other: &bool) -> bool {
-        match (self, other) {
-            (Boolean::True, true) | (Boolean::False, false) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Boolean::True, true) | (Boolean::False, false)
+        )
     }
 }
 impl PartialEq<str> for Boolean {
     fn eq(&self, other: &str) -> bool {
-        match (self, other) {
-            (Boolean::True, "true") | (Boolean::False, "false") => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (Boolean::True, "true") | (Boolean::False, "false")
+        )
     }
 }
 impl Boolean {
     /// Test if this instance represents `true`
     pub fn is_true(self) -> bool {
-        match self {
-            Boolean::True => true,
-            _ => false,
-        }
+        matches!(self, Boolean::True)
     }
 }
 
@@ -54,11 +51,11 @@ impl From<bool> for Boolean {
     }
 }
 
-impl Into<String> for Boolean {
+impl From<Boolean> for String {
     /// Return this Boolean to the text
     /// that was parsed to create it
-    fn into(self) -> String {
-        match self {
+    fn from(b: Boolean) -> String {
+        match b {
             Boolean::True => "true".into(),
             Boolean::False => "false".into(),
         }
@@ -76,20 +73,20 @@ impl ToString for Boolean {
     }
 }
 
-impl Into<bool> for Boolean {
+impl From<Boolean> for bool {
     /// Creates a Rust bool for a js bool
-    fn into(self) -> bool {
-        match self {
+    fn from(b: Boolean) -> bool {
+        match b {
             Boolean::True => true,
             Boolean::False => false,
         }
     }
 }
 
-impl<'a> Into<bool> for &'a Boolean {
+impl From<&Boolean> for bool {
     /// Creates a js bool for a rust bool
-    fn into(self) -> bool {
-        match self {
+    fn from(b: &Boolean) -> bool {
+        match b {
             Boolean::True => true,
             Boolean::False => false,
         }

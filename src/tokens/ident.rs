@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// An identifier
 pub struct Ident<T>(T);
 
@@ -35,11 +35,11 @@ where
     }
 }
 
-impl<T> Into<String> for Ident<T>
+impl<T> From<Ident<T>> for String
 where
     T: ToString,
 {
-    fn into(self) -> String {
-        self.0.to_string()
+    fn from(id: Ident<T>) -> Self {
+        id.0.to_string()
     }
 }

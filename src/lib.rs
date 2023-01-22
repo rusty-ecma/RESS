@@ -53,7 +53,7 @@ pub fn tokenize(text: &str) -> Res<Vec<Token<&str>>> {
         .collect()
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// The start and end position of a token
 /// including the line/column number
 pub struct SourceLocation {
@@ -104,7 +104,7 @@ impl Position {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// The start and end of a token as the byte
 /// index in the original text
 pub struct Span {
@@ -270,7 +270,7 @@ impl<'b> Scanner<'b> {
         };
         if advance_cursor {
             if let Ok(i) = &ret {
-                if let Err(e) = self.keep_books(&i) {
+                if let Err(e) = self.keep_books(i) {
                     return Some(Err(e));
                 }
             }
@@ -415,14 +415,8 @@ impl<'b> Scanner<'b> {
     fn is_regex_start(&self) -> bool {
         if let Some(ref last_token) = self.last_three.one() {
             match last_token {
-                MetaToken::Keyword(k, _) => match k {
-                    RawKeyword::This => false,
-                    _ => true,
-                },
-                MetaToken::Punct(p) => match p {
-                    Punct::CloseBracket => false,
-                    _ => true,
-                },
+                MetaToken::Keyword(k, _) => !matches!(k, RawKeyword::This),
+                MetaToken::Punct(p) => !matches!(p, Punct::CloseBracket),
                 MetaToken::CloseParen(open) => open.conditional,
                 MetaToken::CloseBrace(close) => {
                     if close.is_block {
@@ -447,10 +441,10 @@ impl<'b> Scanner<'b> {
     /// > used in determining if we are at a regex or not
     fn check_token_for_conditional(tok: MetaToken) -> bool {
         if let MetaToken::Keyword(k, _) = tok {
-            match k {
-                RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With => true,
-                _ => false,
-            }
+            matches!(
+                k,
+                RawKeyword::If | RawKeyword::For | RawKeyword::While | RawKeyword::With
+            )
         } else {
             false
         }
@@ -463,11 +457,10 @@ impl<'b> Scanner<'b> {
         if Self::is_op(token) {
             true
         } else {
-            match token {
-                MetaToken::Keyword(RawKeyword::Return, _)
-                | MetaToken::Keyword(RawKeyword::Case, _) => true,
-                _ => false,
-            }
+            matches!(
+                token,
+                MetaToken::Keyword(RawKeyword::Return, _) | MetaToken::Keyword(RawKeyword::Case, _)
+            )
         }
     }
     /// Determine if a token is a punctuation or keyword
@@ -595,7 +588,7 @@ fn is_line_term(c: char) -> bool {
     c == '\n' || c == '\r' || c == '\u{2028}' || c == '\u{2029}'
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 /// For keeping track of the nested-ness of
 /// templates and blocks
 pub enum OpenCurlyKind {
@@ -632,12 +625,12 @@ function thing() {
             }),
             Token::String(StringLit::single("use strict", false)),
             Token::Punct(Punct::SemiColon),
-            Token::Keyword(Keyword::Function("function".into())),
+            Token::Keyword(Keyword::Function("function")),
             Token::Ident("thing".into()),
             Token::Punct(Punct::OpenParen),
             Token::Punct(Punct::CloseParen),
             Token::Punct(Punct::OpenBrace),
-            Token::Keyword(Keyword::Let("let".into())),
+            Token::Keyword(Keyword::Let("let")),
             Token::Ident("x".into()),
             Token::Punct(Punct::Equal),
             Token::Number("0".into()),

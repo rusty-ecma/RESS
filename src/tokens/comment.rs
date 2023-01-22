@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// A comment, effectively should be treated
 /// as white space. There are 3 kinds of comments
 /// according to the specification.
@@ -74,7 +74,7 @@ where
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 /// The 4 kinds of comments
 pub enum CommentKind {
     Single,

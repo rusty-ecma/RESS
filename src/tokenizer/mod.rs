@@ -15,7 +15,7 @@ mod keyword_trie;
 /// simply providing the start and end of the
 /// span and the type of token that span
 /// represents
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RawItem {
     pub ty: tokens::RawToken,
     pub start: usize,
@@ -63,7 +63,7 @@ impl<'a> Tokenizer<'a> {
         if next_char == '(' || next_char == ')' || next_char == ';' {
             return self.punct(next_char, allow_html_comment_close);
         }
-        if next_char.is_digit(10) {
+        if next_char.is_ascii_digit() {
             return self.number(next_char);
         }
         if next_char == '`' {
@@ -719,7 +719,7 @@ impl<'a> Tokenizer<'a> {
                         self.bin_number()
                     } else if next == 'n' {
                         self.gen_number(NumberKind::BigInt)
-                    } else if next.is_digit(10) {
+                    } else if next.is_ascii_digit() {
                         self.dec_number(false, next)
                     } else if next == '.' {
                         self.dec_number(true, next)
@@ -801,7 +801,7 @@ impl<'a> Tokenizer<'a> {
                             if acc > 0x10_FFFF {
                                 found_invalid_unicode = true;
                             }
-                        } else if ch.is_digit(16) {
+                        } else if ch.is_ascii_hexdigit() {
                             for _ in 0..3 {
                                 if self.stream.at_hex() {
                                     self.stream.skip_bytes(1);
@@ -992,7 +992,7 @@ impl<'a> Tokenizer<'a> {
     fn hex_number(&mut self) -> Res<RawItem> {
         trace!("hex_number ({}, {})", self.current_start, self.stream.idx);
         let mut prev_char = if let Some(c) = self.stream.next_char() {
-            if !c.is_digit(16) {
+            if !c.is_ascii_hexdigit() {
                 return Err(RawError {
                     msg: "empty hex literal".to_string(),
                     idx: self.current_start,
@@ -1618,10 +1618,7 @@ mod test {
             let mut t = Tokenizer::new(n);
             let item = t.next(true).unwrap();
             dbg!(&n[item.start..item.end]);
-            assert!(match item.ty {
-                RawToken::Number(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::Number(_)));
             assert!(t.stream.at_end());
         }
     }
@@ -1665,10 +1662,7 @@ mod test {
             let mut t = Tokenizer::new(r);
             let next = t.next(true).unwrap();
             let item = t.next_regex(next.end - next.start).unwrap();
-            assert!(match item.ty {
-                RawToken::RegEx(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::RegEx(_)));
             assert!(t.stream.at_end());
         }
     }
@@ -1685,10 +1679,7 @@ mod test {
             let mut t = Tokenizer::new(r);
             let next = t.next(true).unwrap();
             let item = t.next_regex(next.end - next.start).unwrap();
-            assert!(match item.ty {
-                RawToken::RegEx(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::RegEx(_)));
             assert!(t.stream.at_end());
             let mut p = res_regex::RegexParser::new(&r[item.start..item.end]).unwrap_or_else(|e| {
                 panic!("{}: {}", i, e);
@@ -1896,10 +1887,7 @@ mod test {
         for b in &["true", "false"] {
             let mut t = Tokenizer::new(b);
             let item = t.next(true).unwrap();
-            assert!(match item.ty {
-                RawToken::Boolean(_) => true,
-                _ => false,
-            });
+            assert!(matches!(item.ty, RawToken::Boolean(_)));
             assert!(t.stream.at_end());
         }
     }
