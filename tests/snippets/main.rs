@@ -352,6 +352,47 @@ fn regex_out_of_order() {
     );
 }
 
+#[test]
+fn regex_over_a0() {
+    let js = r#"val = / /"#;
+    compare(
+        js,
+        &[
+            Token::Ident("val".into()),
+            Token::Punct(Punct::Equal),
+            Token::RegEx(RegEx {
+                body: "\u{a0}".into(),
+                flags: None,
+            }),
+        ],
+    )
+}
+#[test]
+fn regex_over_a0_manual() {
+    use ress::ManualScanner;
+    let js = r#"val = / /"#;
+    let mut scanner = ManualScanner::new(js);
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Ident("val".into())
+    );
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Punct(Punct::Equal)
+    );
+    assert_eq!(
+        scanner.next_token().unwrap().unwrap().token,
+        Token::Punct(Punct::ForwardSlash)
+    );
+    assert_eq!(
+        scanner.next_regex(1).unwrap().unwrap().token,
+        Token::RegEx(RegEx {
+            body: "\u{a0}".into(),
+            flags: None
+        })
+    );
+}
+
 fn compare(js: &str, expectation: &[Token<&str>]) {
     for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));

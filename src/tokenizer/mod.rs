@@ -15,7 +15,7 @@ mod keyword_trie;
 /// simply providing the start and end of the
 /// span and the type of token that span
 /// represents
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct RawItem {
     pub ty: tokens::RawToken,
     pub start: usize,
@@ -1363,8 +1363,8 @@ impl<'a> Tokenizer<'a> {
                 new_line_ct += 1;
                 leading_whitespace = 0;
             }
-            leading_whitespace = leading_whitespace.saturating_add(1);
-            self.stream.skip(1);
+            let len = self.stream.skip(1);
+            leading_whitespace = leading_whitespace.saturating_add(len);
         }
         (new_line_ct, leading_whitespace)
     }
@@ -2262,5 +2262,29 @@ mod test {
     fn number_followed_by_ident_start() {
         let mut t = Tokenizer::new("1234.56e78in []");
         t.next(true).unwrap();
+    }
+
+    #[test]
+    fn regex_with_single_multi_code_point_char() {
+        let regex = "/\u{a0}/";
+        let mut t = Tokenizer::new(regex);
+        let slash = t.next(true).unwrap();
+        assert_eq!(
+            slash,
+            RawItem {
+                end: 1,
+                start: 0,
+                ty: RawToken::Punct(Punct::ForwardSlash),
+            }
+        );
+        let regex_tail = t.next_regex(slash.end - slash.start).unwrap();
+        assert_eq!(
+            regex_tail,
+            RawItem {
+                end: regex.len(),
+                start: 0,
+                ty: RawToken::RegEx(4),
+            }
+        )
     }
 }
