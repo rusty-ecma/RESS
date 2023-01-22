@@ -367,6 +367,7 @@ fn regex_over_a0() {
         ],
     )
 }
+
 #[test]
 fn regex_over_a0_manual() {
     use ress::ManualScanner;
@@ -391,6 +392,18 @@ fn regex_over_a0_manual() {
             flags: None
         })
     );
+}
+
+#[test]
+fn regex_all_whitespaces() {
+    let re: String = [
+        '\t', '\u{000b}', '\u{000c}', ' ', '\u{feff}', '\u{2000}', '\u{2001}', '\u{2002}',
+        '\u{2003}', '\u{2004}', '\u{2005}', '\u{2006}', '\u{2007}', '\u{2008}', '\u{2009}',
+        '\u{200a}', '\u{202f}', '\u{205f}', '\u{3000}',
+    ]
+    .iter()
+    .collect();
+    run_failure(&format!("var = /{re}/"));
 }
 
 fn compare(js: &str, expectation: &[Token<&str>]) {

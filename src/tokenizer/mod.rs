@@ -1364,8 +1364,8 @@ impl<'a> Tokenizer<'a> {
                 new_line_ct += 1;
                 leading_whitespace = 0;
             }
-            let len = self.stream.skip(1);
-            leading_whitespace = leading_whitespace.saturating_add(len);
+            leading_whitespace = leading_whitespace.saturating_add(1);
+            self.stream.skip(1);
         }
         (new_line_ct, leading_whitespace)
     }

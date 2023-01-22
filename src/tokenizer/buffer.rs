@@ -145,13 +145,16 @@ impl<'a> JSBuffer<'a> {
     /// Skip the number of characters provided returning the number of bytes skipped
     /// note: these are full unicode characters, not just bytes
     #[inline]
-    pub fn skip(&mut self, count: usize) -> usize {
-        let mut ret = 0;
+    pub fn skip(&mut self, count: usize) {
         for _ in 0..count {
-            let len = self.next_char().map(|c| c.len_utf8()).unwrap_or(0);
-            ret += len;
+            self.next_char();
         }
-        ret
+    }
+    #[inline]
+    pub fn skip_back(&mut self, count: usize) {
+        for _ in 0..count {
+            self.prev_char();
+        }
     }
     /// Skip a single byte
     /// note: this can cause the buffer to become unaligned

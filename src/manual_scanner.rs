@@ -266,9 +266,7 @@ impl<'b> ManualScanner<'b> {
     }
 
     fn next_regex_item(&mut self, prev_len: usize) -> Res<Item<&'b str>> {
-        self.stream
-            .stream
-            .skip_back_bytes(self.last_skipped_whitespace);
+        self.stream.stream.skip_back(self.last_skipped_whitespace);
         let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
         let next = match self.stream.next_regex(prev_len) {
             Ok(n) => n,
