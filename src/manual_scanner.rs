@@ -91,7 +91,7 @@ impl<'b> ManualScanner<'b> {
         let mut len = next.end - next.start;
         let ret = {
             let mut new_lines = 0;
-            let s = &self.original[next.start..next.end];
+            let s = self.slice_original(next.start, next.end)?;
             let token = match next.ty {
                 RawToken::Boolean(b) => Token::Boolean(b.into()),
                 RawToken::Comment {
@@ -282,15 +282,13 @@ impl<'b> ManualScanner<'b> {
                 self.line_cursor = self.line_cursor.saturating_sub(prev_len);
                 self.line_cursor = self.line_cursor.saturating_add(next.end - next.start);
                 let flags = if next.end > body_end {
-                    Some(&self.original[body_end..next.end])
+                    Some(self.slice_original(body_end, next.end)?)
                 } else {
                     None
                 };
+                let body = self.slice_original(next.start + 1, body_end - 1)?;
                 Item::new_(
-                    Token::RegEx(RegEx {
-                        body: &self.original[next.start + 1..body_end - 1],
-                        flags,
-                    }),
+                    Token::RegEx(RegEx { body, flags }),
                     next.start,
                     next.end,
                     prev_lines + 1,
@@ -324,11 +322,7 @@ impl<'b> ManualScanner<'b> {
     }
     /// Get a &str for any given span
     pub fn str_for(&self, span: &Span) -> Option<&'b str> {
-        if self.original.len() < span.start || self.original.len() < span.end {
-            None
-        } else {
-            Some(&self.original[span.start..span.end])
-        }
+        self.slice_original(span.start, span.end).ok()
     }
     /// Get the line/column pair for any given byte index
     pub fn position_for(&self, idx: usize) -> (usize, usize) {
@@ -374,15 +368,15 @@ impl<'b> ManualScanner<'b> {
         }
     }
     #[inline]
-    fn at_first_on_line(&self, token_start: usize) -> bool {
+    fn at_first_on_line(&self, token_start: usize) -> Res<bool> {
         trace!("at_first_on_line");
         if self.line_cursor <= 1 {
-            return true;
+            return Ok(true);
         }
         let start = token_start.saturating_sub(self.line_cursor - 1);
-        let prefix = &self.original[start..token_start];
+        let prefix = self.slice_original(start, token_start)?;
         trace!("prefix: {:?}", prefix);
-        prefix.chars().all(|c| c.is_whitespace())
+        Ok(prefix.chars().all(|c| c.is_whitespace()))
     }
     /// Helper to handle the error cases
     fn error<T>(&self, raw_error: RawError) -> Res<T> {
@@ -393,6 +387,53 @@ impl<'b> ManualScanner<'b> {
             column,
             msg: msg.clone(),
             idx: *idx,
+        })
+    }
+
+    fn slice_original(&self, start: usize, end: usize) -> Res<&'b str> {
+        if start > end {
+            return self.error(RawError {
+                idx: start,
+                msg: format!("failed to slice original text {start} > {end}")
+            })
+        }
+        if let Some(slice) = self.original.get(start..end) {
+            return Ok(slice)
+        }
+        self.index_failed(start, end)
+    }
+
+    fn index_failed<T>(&self, start: usize, end: usize) -> Res<T> {
+        let mut start_idx = start;
+        while !self.original.is_char_boundary(start_idx) {
+            start_idx = start_idx.saturating_sub(1);
+            if start_idx == 0 {
+                return self.error(RawError {
+                    idx: start,
+                    msg: format!(
+                        "indexing failed at {start}-{end}"
+                    ),
+                });
+            }
+        }
+        let mut end_idx = end;
+        while !self.original.is_char_boundary(end_idx) {
+            end_idx = end_idx.saturating_add(1);
+            if end_idx > self.original.len() {
+                return self.error(RawError {
+                    idx: start,
+                    msg: format!(
+                        "indexing failed at {start_idx}-{end}"
+                    ),
+                });
+            }
+        }
+        self.error(RawError {
+            idx: end,
+            msg: format!(
+                "indexing failed for {:?} (start: {start} -> {start_idx}, end: {end} -> {end_idx})",
+                &self.original[start_idx..end_idx],
+            ),
         })
     }
 }
