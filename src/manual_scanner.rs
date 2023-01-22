@@ -75,12 +75,16 @@ impl<'b> ManualScanner<'b> {
             debug!("end of iterator, returning None");
             return None;
         };
+        Some(self.next_item())
+    }
+
+    fn next_item(&mut self) -> Res<Item<&'b str>> {
         let (_, prev_lines, prev_line_cursor) = self.capture_cursors();
         let next = match self.stream.next(self.at_first_on_line) {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
-                return Some(self.error(e));
+                return self.error(e);
             }
         };
 
@@ -133,16 +137,16 @@ impl<'b> ManualScanner<'b> {
                             } else {
                                 (&s[start_idx..], None)
                             };
-                            if start_idx == 0 && !self.at_first_on_line(next.start) {
+                            if start_idx == 0 && !self.at_first_on_line(next.start)? {
                                 self.errored = true;
-                                return Some(Err(Error {
+                                return Err(Error {
                                     line: self.new_line_count,
                                     column: self.line_cursor,
                                     msg: "--> comments must either be a part of a full HTML \
                                           comment or the first item on a new line"
                                         .to_string(),
                                     idx: start_idx,
-                                }));
+                                });
                             }
                             Token::Comment(Comment::new_html(content, tail))
                         }
@@ -153,7 +157,7 @@ impl<'b> ManualScanner<'b> {
                 }
                 RawToken::EoF => {
                     self.eof = true;
-                    return Some(Ok(Item::new_(
+                    return Ok(Item::new_(
                         Token::EoF,
                         self.original.len(),
                         self.original.len(),
@@ -161,7 +165,7 @@ impl<'b> ManualScanner<'b> {
                         prev_line_cursor,
                         self.new_line_count.saturating_add(1),
                         self.line_cursor,
-                    )));
+                    ));
                 }
                 RawToken::Ident => Token::Ident(Ident::from(s)),
                 RawToken::Keyword(k) => Token::Keyword(k.with_str(s)),
@@ -253,11 +257,15 @@ impl<'b> ManualScanner<'b> {
         self.bump_line_cursors(new_line_count, leading_whitespace);
         self.pending_new_line = new_line_count > 0;
         self.last_skipped_whitespace = leading_whitespace;
-        Some(Ok(ret))
+        Ok(ret)
     }
     /// Get the next token as a regular expression. The previous token
     /// should have been `/` or `/=`,
     pub fn next_regex(&mut self, prev_len: usize) -> Option<Res<Item<&'b str>>> {
+        Some(self.next_regex_item(prev_len))
+    }
+    
+    fn next_regex_item(&mut self, prev_len: usize) -> Res<Item<&'b str>> {
         self.stream
             .stream
             .skip_back_bytes(self.last_skipped_whitespace);
@@ -266,7 +274,7 @@ impl<'b> ManualScanner<'b> {
             Ok(n) => n,
             Err(e) => {
                 self.errored = true;
-                return Some(self.error(e));
+                return self.error(e);
             }
         };
         let ret = match next.ty {
@@ -299,7 +307,7 @@ impl<'b> ManualScanner<'b> {
         let (new_line_count, leading_whitespace) = self.stream.skip_whitespace();
         self.bump_line_cursors(new_line_count, leading_whitespace);
         self.pending_new_line = new_line_count > 0;
-        Some(Ok(ret))
+        Ok(ret)
     }
 
     fn capture_cursors(&self) -> (usize, usize, usize) {
