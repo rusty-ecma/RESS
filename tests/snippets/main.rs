@@ -90,7 +90,7 @@ fn div_over_regex() {
   ({} / function(){return 1});
 }
 ";
-    for tok in panicing_scanner(js) {
+    for tok in panicking_scanner(js) {
         eprintln!("{:?}", tok)
     }
 }
@@ -394,7 +394,7 @@ fn regex_over_a0_manual() {
 }
 
 fn compare(js: &str, expectation: &[Token<&str>]) {
-    for (i, (par, ex)) in panicing_scanner(js).zip(expectation.iter()).enumerate() {
+    for (i, (par, ex)) in panicking_scanner(js).zip(expectation.iter()).enumerate() {
         assert_eq!((i, &par), (i, ex));
     }
 }
@@ -434,9 +434,9 @@ fn compare_with_position(js: &str, expectation: &[(Token<&str>, usize, usize)]) 
 }
 
 fn run_failure(js: &str) {
-    for _ in panicing_scanner(js) {}
+    for _ in panicking_scanner(js) {}
 }
 
-fn panicing_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
+fn panicking_scanner<'a>(js: &'a str) -> impl Iterator<Item = Token<&'a str>> {
     Scanner::new(js).map(|r| r.unwrap().token)
 }

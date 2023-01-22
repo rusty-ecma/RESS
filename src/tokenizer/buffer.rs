@@ -142,7 +142,7 @@ impl<'a> JSBuffer<'a> {
         }
     }
 
-    /// Skip the number of characters provided
+    /// Skip the number of characters provided returning the number of bytes skipped
     /// note: these are full unicode characters, not just bytes
     #[inline]
     pub fn skip(&mut self, count: usize) -> usize {
