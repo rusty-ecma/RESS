@@ -1,4 +1,5 @@
 # RESS
+
 > Rusty EcmaScript Scanner
 
 [![Github Actions](https://img.shields.io/github/workflow/status/rusty-ecma/RESS/Rust)](https://travis-ci.org/FreeMasen/RESS)
@@ -8,6 +9,7 @@
 A scanner/tokenizer for JS written in Rust
 
 ## Usage
+
 The primary way to interact with ress is through the `Scanner` struct which implements `Iterator` over the `Item` struct. `Item` has three fields `token` for the `Token` found, `span` which represents the start and end of the byte position in the original string and `location` which represents start and end character position with a line and column. It's definition looks like this.
 
 ```rust
@@ -30,9 +32,10 @@ Item {
 }
 ```
 
-Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these unrendered lines.
+Note: the EcmaScript spec allows for 4 new line characters, only two of which are normally rendered by modern text editors the location line numbers will count these un-rendered lines.
 
-Here is an example that check some JS text for the existence of a semicolon and panics if one is found.
+Here is an example that will check some JS text for the existence of a semicolon and panics if one
+is found.
 
 ```rust
 use ress::Scanner;
@@ -50,14 +53,15 @@ fn main() {
     println!("Good show! Why use something that's optional?")
 }
 ```
+
 By far the most important part of `Item` is the `Token` enum, which will represent the 11 different types of token's supported by the [ECMAScript specification](https://tc39.es/ecma262/#sec-ecmascript-language-lexical-grammar).
 
 In Javascript [it is hard to know if a forward slash means divide or is the start of a regular expression](https://github.com/rusty-ecma/RESS/blob/master/regex.md).
 The above `Scanner` will detect RegEx automatically by keeping track of the previously
-parsed tokens, this makes things very connivent, however if you are parsing Javascript
+parsed tokens, this makes things very convenient, however if you are parsing Javascript
 into an AST, you likely already need to keep track of the same information. In that
 case, you may not want to pay the performance cost of that automatic RegEx detection,
-in that case you would want to reach for the `ManualScanner`. Instead of exposing
+ you would want to reach for the `ManualScanner`. Instead of exposing
 the basic `Iterator` interface, it exposes two primary methods for driving the scanner
 `next_token` and `next_regex`. The first of those will always return a `/` or `/=` when
 encountering a regular expression, the latter will fail if the next token isn't
@@ -82,6 +86,7 @@ fn main() {
 ```
 
 ### ES Tokens
+
 - Boolean Literal
 - End of File
 - Identifier
@@ -103,9 +108,11 @@ fn is_punct(&self) -> bool;
 fn matches_punct(&self, p: Punct) -> bool;
 fn matches_punct_str(&self, s: &str) -> bool;
 ```
+
 A similar set of functions are available for each case.
 
 Like all `Iterators` the `Scanner` has a `next` method, It also has a `look_ahead` method that will allow you to parse the next value without advancing. Using this method can be a convenient way to get the next token without performing a mutable borrow, however you will be incurring the cost of parsing that token twice. All `Iterators` can be converted into a `Peekable` Iterator with a `peek` method, this will allow you to look ahead while only paying the cost once however `peek` performs a mutable borrow which means it needs to be in a different scope than a call to `next`.
+
 ```rust
 // look_ahead
 let js = "function() { return; }";
@@ -135,15 +142,16 @@ s.set_state(start);
 assert_eq!(s.next().unwrap().unwrap().token, Token::Keyword(Keyword::Function));
 ```
 
-
 ## Why?
+
 Wouldn't it be nice to write new JS development tools in Rust? The [clear-comments](https://github.com/FreeMasen/RESS/blob/master/examples/clear-comments/src/main.rs) example is a proof of concept on how you might use this crate to do just that. This example will take in a JS file and output a version with all of the comments removed. An example of how you might see it in action is below (assuming you have a file called in.js in the project root).
 
 ```sh
-$ cargo run --example clear-comments -- ./in.js ./out.js
+cargo run --example clear-comments -- ./in.js ./out.js
 ```
 
-# Performance
+## Performance
+
 The below stats are from running `cargo +nightly bench` on a MBP (2.9 GHz i9-8850H & 16bg RAM).
 
 | Lib         | Size     | Time      | +/-        |
@@ -157,9 +165,9 @@ The below stats are from running `cargo +nightly bench` on a MBP (2.9 GHz i9-885
 If you are interested in getting an idea about performance without waiting for `cargo bench` to complete you can run the following command.
 
 ```sh
-$ cargo run --example major_libs
+cargo run --example major_libs
 ```
 
-# Contributing
+## Contributing
 
 [see contributing.md](https://github.com/FreeMasen/RESS/blob/master/CONTRIBUTING.md)
