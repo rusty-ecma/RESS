@@ -353,6 +353,27 @@ fn regex_out_of_order() {
 }
 
 #[test]
+fn regex_pattern() {
+    pretty_env_logger::try_init().ok();
+    let re = r#" \{[\s\S]*$"#;
+    let js = format!("/{re}/");
+
+    let mut scanner = Scanner::new(&js);
+    let Item {
+        location,
+        token: Token::RegEx(re2),
+        ..
+    } = scanner.next().unwrap().unwrap() else {
+        panic!("Expected regex");
+    };
+    assert_eq!(location.start.line, 1);
+    assert_eq!(location.end.line, 1);
+    assert_eq!(location.start.column, 1);
+    assert_eq!(re2.body, re);
+    assert_eq!(location.end.column, re.len() + 3);
+}
+
+#[test]
 fn regex_over_a0() {
     let js = r#"val = / /"#;
     compare(
