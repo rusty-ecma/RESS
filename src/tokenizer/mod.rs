@@ -422,7 +422,7 @@ impl<'a> Tokenizer<'a> {
             '[' => self.gen_punct(Punct::OpenBracket),
             ']' => self.gen_punct(Punct::CloseBracket),
             ':' => self.gen_punct(Punct::Colon),
-            '?' => self.gen_punct(Punct::QuestionMark),
+            '?' => self.question_mark(),
             '#' => self.hash(),
             '~' => self.gen_punct(Punct::Tilde),
             '{' => self.open_curly(OpenCurlyKind::Block, Punct::OpenBrace),
@@ -587,6 +587,10 @@ impl<'a> Tokenizer<'a> {
         trace!("ampersand ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('&') {
             self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoubleAmpersandEqual);
+            }
             self.gen_punct(Punct::DoubleAmpersand)
         } else if self.look_ahead_byte_matches('=') {
             self.stream.skip_bytes(1);
@@ -601,6 +605,10 @@ impl<'a> Tokenizer<'a> {
         trace!("pipe ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('|') {
             self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoublePipeEqual);
+            }
             self.gen_punct(Punct::DoublePipe)
         } else if self.look_ahead_byte_matches('=') {
             self.stream.skip_bytes(1);
@@ -684,6 +692,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Caret)
         }
     }
+
     /// a `#` could also be the start of a hash bang comment `#!`
     #[inline]
     fn hash(&mut self) -> Res<RawItem> {
@@ -698,6 +707,29 @@ impl<'a> Tokenizer<'a> {
             self.gen_comment(CommentKind::Hashbang, 0, 0, self.local_index())
         } else {
             self.gen_punct(Punct::Hash)
+        }
+    }
+    /// a `?` could also be the start of a ??. ??=, ?. operator
+    #[inline]
+    fn question_mark(&mut self) -> Res<RawItem> {
+        trace!(
+            "question_mark ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
+        // hashbang comment can only appear at the start
+        if self.look_ahead_byte_matches('?') {
+            self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoubleQuestionMarkEqual);
+            }
+            self.gen_punct(Punct::DoubleQuestionMark)
+        } else if self.look_ahead_byte_matches('.') {
+            self.stream.skip_bytes(1);
+            self.gen_punct(Punct::QuestionMarkDot)
+        } else {
+            self.gen_punct(Punct::QuestionMark)
         }
     }
     /// parse a number, this can include decimal or float literals
@@ -1409,13 +1441,13 @@ mod test {
             "-", "/", "*", "%", "&", "|", "^", ">>>=", //3 char
             "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
             "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
-            "^=", "%=", "<=", ">=", "=>", "**", "@",
+            "^=", "%=", "<=", ">=", "=>", "**", "@", "??", "??=", "?.", "&&=", "||=",
         ];
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
             let item = t.next(true).unwrap();
             assert!(item.ty.is_punct());
-            assert!(t.stream.at_end());
+            assert!(t.stream.at_end(), "'{}' was not at the end", p);
         }
     }
     #[test]
