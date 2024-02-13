@@ -353,6 +353,7 @@ pub enum Punct {
     DoubleDash,
     DashEqual,
     DoubleAmpersand,
+    DoubleAmpersandEqual,
     DoubleAsterisk,
     DoubleAsteriskEqual,
     DoubleEqual,
@@ -361,7 +362,10 @@ pub enum Punct {
     DoubleLessThan,
     DoubleLessThanEqual,
     DoublePipe,
+    DoublePipeEqual,
     DoublePlus,
+    DoubleQuestionMark,
+    DoubleQuestionMarkEqual,
     Ellipsis,
     Equal,
     EqualGreaterThan,
@@ -383,6 +387,7 @@ pub enum Punct {
     Plus,
     PlusEqual,
     QuestionMark,
+    QuestionMarkDot,
     SemiColon,
     Tilde,
     TripleEqual,
@@ -453,6 +458,11 @@ impl Punct {
             Punct::DoubleAsterisk => "**" == s,
             Punct::Hash => "#" == s,
             Punct::AtMark => "@" == s,
+            Punct::DoubleAmpersandEqual => s == "&&=",
+            Punct::DoublePipeEqual => s == "||=",
+            Punct::DoubleQuestionMark => s == "??",
+            Punct::DoubleQuestionMarkEqual => s == "??=",
+            Punct::QuestionMarkDot => s == "?.",
         }
     }
 }
@@ -514,6 +524,11 @@ impl ToString for Punct {
             Punct::DoubleAsterisk => "**",
             Punct::Hash => "#",
             Punct::AtMark => "@",
+            Punct::DoubleAmpersandEqual => "&&=",
+            Punct::DoublePipeEqual => "||=",
+            Punct::DoubleQuestionMark => "??",
+            Punct::DoubleQuestionMarkEqual => "??=",
+            Punct::QuestionMarkDot => "?.",
         }
         .into()
     }
