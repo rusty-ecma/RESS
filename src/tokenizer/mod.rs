@@ -727,7 +727,24 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::DoubleQuestionMark)
         } else if self.look_ahead_byte_matches('.') {
             self.stream.skip_bytes(1);
-            self.gen_punct(Punct::QuestionMarkDot)
+            if let Some(next) = self.stream.peek_char() {
+                if Self::is_id_start(next) {
+                    // a?.b
+                    self.gen_punct(Punct::QuestionMarkDot)
+                } else if self.look_ahead_byte_matches('(') {
+                    // a?.()
+                    self.gen_punct(Punct::QuestionMarkDot)
+                } else if self.look_ahead_byte_matches('[') {
+                    // a?.['b']
+                    self.gen_punct(Punct::QuestionMarkDot)
+                } else {
+                    // ternary operator
+                    self.stream.skip_back(1);
+                    self.gen_punct(Punct::QuestionMark)
+                }
+            } else {
+                self.gen_punct(Punct::QuestionMark)
+            }
         } else {
             self.gen_punct(Punct::QuestionMark)
         }
