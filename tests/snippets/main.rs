@@ -1,4 +1,6 @@
+use ress::prelude::StringLit::Single;
 use ress::prelude::*;
+use ress::tokens::InnerString;
 
 #[test]
 fn vue_number_error() {
@@ -334,6 +336,128 @@ fn regex_spaces() {
         );
         last_end = item.location.end.column;
     }
+}
+
+#[test]
+fn nullish_coalescing_assignment() {
+    let js = r"a??=b";
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::DoubleQuestionMarkEqual),
+            Token::Ident(Ident::from("b")),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn logical_or_assignment() {
+    let js = r"a||=b";
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::DoublePipeEqual),
+            Token::Ident(Ident::from("b")),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn logical_and_assignment() {
+    let js = r"a&&=b";
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::DoubleAmpersandEqual),
+            Token::Ident(Ident::from("b")),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn nullish_coalescing() {
+    let js = r#"a??b"#;
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::DoubleQuestionMark),
+            Token::Ident(Ident::from("b")),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn optional_chaining1() {
+    let js = r#"a?.b"#;
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::QuestionMarkDot),
+            Token::Ident(Ident::from("b")),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn optional_chaining2() {
+    let js = r#"a?.()"#;
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::QuestionMarkDot),
+            Token::Punct(Punct::OpenParen),
+            Token::Punct(Punct::CloseParen),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn optional_chaining3() {
+    let js = r#"a?.['b']"#;
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::QuestionMarkDot),
+            Token::Punct(Punct::OpenBracket),
+            Token::String(Single(InnerString {
+                content: "b",
+                contains_octal_escape: false,
+            })),
+            Token::Punct(Punct::CloseBracket),
+            Token::EoF,
+        ],
+    )
+}
+
+#[test]
+fn optional_chaining4() {
+    let js = r#"a==b?.123:.321"#;
+    compare(
+        js,
+        &[
+            Token::Ident(Ident::from("a")),
+            Token::Punct(Punct::DoubleEqual),
+            Token::Ident(Ident::from("b")),
+            Token::Punct(Punct::QuestionMark),
+            Token::Number(Number::from(".123")),
+            Token::Punct(Punct::Colon),
+            Token::Number(Number::from(".321")),
+            Token::EoF,
+        ],
+    )
 }
 
 #[test]
