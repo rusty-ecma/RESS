@@ -723,7 +723,13 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::DoubleQuestionMark)
         } else if self.look_ahead_byte_matches('.') {
             self.stream.skip_bytes(1);
-            self.gen_punct(Punct::QuestionMarkDot)
+            if self.stream.at_decimal() {
+                // floating point numbers can be defined with a leading period: ".123"
+                self.stream.skip_back(1);
+                self.gen_punct(Punct::QuestionMark)
+            } else {
+                self.gen_punct(Punct::QuestionMarkDot)
+            }
         } else {
             self.gen_punct(Punct::QuestionMark)
         }
