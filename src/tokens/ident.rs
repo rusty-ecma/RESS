@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// An identifier
 pub struct Ident<T>(T);
@@ -26,12 +28,12 @@ impl<'a> From<&'a str> for Ident<&'a str> {
     }
 }
 
-impl<T> ToString for Ident<T>
+impl<T> Display for Ident<T>
 where
-    T: AsRef<str>,
+    T: Display,
 {
-    fn to_string(&self) -> String {
-        self.0.as_ref().to_string()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -41,5 +43,19 @@ where
 {
     fn from(id: Ident<T>) -> Self {
         id.0.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_string() {
+        for raw in ["ident1", "ident2", "ident3"] {
+            let ident = Ident::from(raw);
+            assert_eq!(ident.to_string(), raw);
+            assert_eq!(Into::<String>::into(ident), raw);
+        }
     }
 }

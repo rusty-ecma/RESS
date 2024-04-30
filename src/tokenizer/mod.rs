@@ -1563,7 +1563,10 @@ mod test {
 
     #[test]
     fn tokenizer_idents() {
-        let _ = pretty_env_logger::try_init();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         static IDENTS: &[&str] = &[
             r#"$"#,
             r#"_"#,
@@ -1711,7 +1714,10 @@ mod test {
 
     #[test]
     fn validated_regex() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         const REGEX: &[&str] = &[
             r#"/([.+*?=^!:${}()[\]|/\\])/g"#,
             r#"/[\]\}\n\s\d\e\3]/"#,
@@ -1734,7 +1740,10 @@ mod test {
 
     #[test]
     fn tokenizer_regex_term_in_class() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         let regex = r#"/([.+*?=^!:${}()[\]|/\\])/g"#;
         let mut t = Tokenizer::new(regex);
         let next = t.next(true).unwrap();
@@ -1746,7 +1755,10 @@ mod test {
 
     #[test]
     fn tokenizer_regex_out_of_order() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         let regex = r#"/((?:[^BEGHLMOSWYZabcdhmswyz']+)|(?:'(?:[^']|'')*')|(?:G{1,5}|y{1,4}|Y{1,4}|M{1,5}|L{1,5}|w{1,2}|W{1}|d{1,2}|E{1,6}|c{1,6}|a{1,5}|b{1,5}|B{1,5}|h{1,2}|H{1,2}|m{1,2}|s{1,2}|S{1,3}|z{1,4}|Z{1,5}|O{1,4}))([\s\S]*)/"#;
         let mut t = Tokenizer::new(regex);
         let next = t.next(true).unwrap();

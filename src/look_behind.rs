@@ -1,5 +1,6 @@
 use crate::tokenizer::RawKeyword;
 use crate::tokens::Punct;
+use std::fmt::Debug;
 use std::rc::Rc;
 
 /// A 2 element buffer of
@@ -7,10 +8,20 @@ use std::rc::Rc;
 /// "ring buffer"-esque scheme
 /// for automatically overwriting
 /// any element after 2
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct LookBehind {
     list: [Option<MetaToken>; 3],
     pointer: u8,
+}
+
+impl Debug for LookBehind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entry(self.one())
+            .entry(self.two())
+            .entry(self.three())
+            .finish()
+    }
 }
 
 impl LookBehind {

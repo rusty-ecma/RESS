@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// A Regular Expression Literal
 ///
@@ -16,16 +18,30 @@ impl<T> RegEx<T> {
     }
 }
 
-impl<T> ToString for RegEx<T>
+impl<T> Display for RegEx<T>
 where
-    T: AsRef<str>,
+    T: Display,
 {
-    fn to_string(&self) -> String {
-        let f = if let Some(f) = &self.flags {
-            f.as_ref().to_string()
-        } else {
-            String::new()
-        };
-        format!("/{}/{}", self.body.as_ref(), f)
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "/{}/", self.body)?;
+
+        if let Some(flags) = &self.flags {
+            write!(f, "{}", flags)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn to_string() {
+        assert_eq!(RegEx::from_parts("regex", None).to_string(), "/regex/");
+        assert_eq!(
+            RegEx::from_parts("regex", Some("g")).to_string(),
+            "/regex/g"
+        );
     }
 }
