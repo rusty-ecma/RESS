@@ -141,6 +141,7 @@ impl<T> Item<T> {
             location,
         }
     }
+
     fn new_(
         token: Token<T>,
         span_start: usize,
@@ -262,7 +263,7 @@ impl<'b> Scanner<'b> {
                 return Some(Err(e));
             }
         };
-
+        debug!("get_next_token\n{:?}\n{:?}", self.last_three, next.token);
         let ret = if next.token.is_div_punct() && self.is_regex_start() {
             self.manual_scanner.next_regex(next.span.len())?
         } else {
@@ -454,6 +455,7 @@ impl<'b> Scanner<'b> {
     ///
     /// > used in determining if we are at a regex or not
     fn check_for_expression(token: MetaToken) -> bool {
+        debug!("check_for_expression {:?}", token);
         if Self::is_op(token) {
             true
         } else {
@@ -710,7 +712,7 @@ this.y = 0;
     fn validate(s: Scanner, expected: Vec<Token<&str>>) {
         for (i, (lhs, rhs)) in s.zip(expected.into_iter()).enumerate() {
             let lhs = lhs.unwrap();
-            println!("{:?}, {:?}", lhs.token, rhs);
+            debug!("{:?}, {:?}", lhs.token, rhs);
             assert_eq!((i, lhs.token), (i, rhs));
         }
     }
@@ -755,6 +757,7 @@ this.y = 0;
         let r = s.next().unwrap().unwrap();
         assert_eq!(r.token, Token::RegEx(regex));
     }
+
     #[test]
     fn regex_replace() {
         let expect = vec![
@@ -837,6 +840,7 @@ f`;
         assert_eq!(format!("{}", Position::new(1, 25)), "1:25".to_string(),);
         assert_eq!(format!("{}", Position::new(25, 0)), "25:0".to_string(),);
     }
+
     #[test]
     fn position_ord() {
         assert!(
@@ -932,5 +936,82 @@ ley z = 9;";
         let _break = s.next().unwrap().unwrap();
         let re = s.next().unwrap().unwrap();
         assert!(re.token.is_regex(), "regex was not a regex: {:?}", re);
+    }
+
+    #[test]
+    fn is_helpers() {
+        assert!(!Item::new(
+            Token::Ident(Ident::from("ident")),
+            Span::new(0, 1),
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2))
+        )
+        .is_string());
+        assert!(Item::new(
+            Token::String(StringLit::double("ident", false)),
+            Span::new(0, 1),
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2))
+        )
+        .is_string());
+        assert!(!Item::new(
+            Token::String(StringLit::double("ident", false)),
+            Span::new(0, 1),
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2))
+        )
+        .is_template());
+        assert!(Item::new(
+            Token::Template(Template::no_sub_template("ident", false, false, false)),
+            Span::new(0, 1),
+            SourceLocation::new(Position::new(1, 1), Position::new(1, 2))
+        )
+        .is_template());
+    }
+
+    #[test]
+    #[ignore = "regex detection is broken... should fix that..."]
+    fn function_division() {
+        let div2 = "let b = function() {} / 100;";
+        run_regex_test(div2, false);
+    }
+
+    #[test]
+    #[ignore = "regex detection is broken... should fix that..."]
+    fn regex() {
+        let div1 = "let a = 0 / 1";
+        let div2 = "let b = function() {} / 100;";
+        let re1 = "let c = /.+/";
+        let re2 = "let d = /asdf/g";
+        run_regex_test(div1, false);
+        run_regex_test(div2, false);
+        run_regex_test(re1, true);
+        run_regex_test(re2, true);
+    }
+
+    #[track_caller]
+    fn run_regex_test(js: &str, should_include: bool) {
+        for item in Scanner::new(js) {
+            match item {
+                Ok(item) => {
+                    if !should_include && item.token.is_regex() {
+                        let leading = item.span.start.saturating_sub(1);
+                        let region = item.span.end - item.span.start;
+                        let trailing = js.len() - (leading + region);
+                        panic!(
+                            "Unexpected regex:\n`{}`\n{}{}{}",
+                            js,
+                            " ".repeat(leading),
+                            "^".repeat(region),
+                            " ".repeat(trailing),
+                        )
+                    }
+                }
+                Err(e) => {
+                    let mut cursor = " ".repeat(js.len());
+                    if let Some(cursor) = unsafe { cursor.as_bytes_mut() }.get_mut(e.idx) {
+                        *cursor = b'^';
+                    }
+                    panic!("Invalid JS: {}\n`{}`\n{}", e.msg, js, cursor,);
+                }
+            }
+        }
     }
 }

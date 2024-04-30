@@ -14,6 +14,8 @@ pub mod prelude {
     };
 }
 
+use std::fmt::Display;
+
 pub use boolean::Boolean;
 pub use comment::{Comment, CommentKind};
 pub use ident::Ident;
@@ -99,12 +101,14 @@ impl<T> Token<T> {
     pub fn is_boolean(&self) -> bool {
         matches!(self, Token::Boolean(_))
     }
+
     pub fn is_boolean_true(&self) -> bool {
         match self {
             Token::Boolean(ref b) => b.into(),
             _ => false,
         }
     }
+
     pub fn is_boolean_false(&self) -> bool {
         match self {
             Token::Boolean(ref b) => {
@@ -114,15 +118,19 @@ impl<T> Token<T> {
             _ => false,
         }
     }
+
     pub fn is_eof(&self) -> bool {
         matches!(self, Token::EoF)
     }
+
     pub fn is_ident(&self) -> bool {
         matches!(self, Token::Ident(_))
     }
+
     pub fn is_keyword(&self) -> bool {
         matches!(self, Token::Keyword(_))
     }
+
     pub fn is_strict_reserved(&self) -> bool {
         match self {
             Token::Keyword(ref k) => k.is_strict_reserved(),
@@ -133,6 +141,7 @@ impl<T> Token<T> {
     pub fn is_null(&self) -> bool {
         matches!(self, Token::Null)
     }
+
     pub fn is_number(&self) -> bool {
         matches!(self, Token::Number(_))
     }
@@ -140,45 +149,55 @@ impl<T> Token<T> {
     pub fn is_punct(&self) -> bool {
         matches!(self, Token::Punct(_))
     }
+
     pub fn is_string(&self) -> bool {
         matches!(self, Token::String(_))
     }
+
     pub fn is_double_quoted_string(&self) -> bool {
         matches!(self, Token::String(StringLit::Double(_)))
     }
+
     pub fn is_single_quoted_string(&self) -> bool {
         matches!(self, Token::String(StringLit::Single(_)))
     }
+
     pub fn is_regex(&self) -> bool {
         matches!(self, Token::RegEx(_))
     }
+
     pub fn is_template(&self) -> bool {
         matches!(self, Token::Template(_))
     }
+
     pub fn is_template_no_sub(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_no_sub(),
             _ => false,
         }
     }
+
     pub fn is_template_head(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_head() || s.is_no_sub(),
             _ => false,
         }
     }
+
     pub fn is_template_body(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_middle(),
             _ => false,
         }
     }
+
     pub fn is_template_tail(&self) -> bool {
         match self {
             Token::Template(ref s) => s.is_tail() || s.is_no_sub(),
             _ => false,
         }
     }
+
     pub fn is_literal(&self) -> bool {
         matches!(
             self,
@@ -190,21 +209,25 @@ impl<T> Token<T> {
                 | Token::Template(_)
         )
     }
+
     pub fn is_comment(&self) -> bool {
         matches!(self, Token::Comment(_))
     }
+
     pub fn is_multi_line_comment(&self) -> bool {
         match self {
             Token::Comment(ref t) => t.kind == CommentKind::Multi,
             _ => false,
         }
     }
+
     pub fn is_single_line_comment(&self) -> bool {
         match self {
             Token::Comment(ref t) => t.kind == CommentKind::Single,
             _ => false,
         }
     }
+
     pub fn matches_boolean(&self, b: Boolean) -> bool {
         match self {
             Token::Boolean(m) => m == &b,
@@ -227,6 +250,7 @@ impl<T> Token<T> {
             _ => false,
         }
     }
+
     pub fn matches_keyword_str(&self, name: &str) -> bool {
         match self {
             Token::Keyword(n) => n.as_str() == name,
@@ -240,6 +264,7 @@ impl<T> Token<T> {
             _ => false,
         }
     }
+
     pub fn matches_punct_str(&self, s: &str) -> bool {
         match self {
             Token::Punct(ref p) => p.matches_str(s),
@@ -265,12 +290,14 @@ where
             _ => false,
         }
     }
+
     pub fn is_bin_literal(&self) -> bool {
         match self {
             Token::Number(ref n) => n.is_bin(),
             _ => false,
         }
     }
+
     pub fn is_oct_literal(&self) -> bool {
         match self {
             Token::Number(ref n) => n.is_oct(),
@@ -312,7 +339,7 @@ where
 
 impl<T> ToString for Token<T>
 where
-    T: AsRef<str>,
+    T: Display,
 {
     fn to_string(&self) -> String {
         match self {
@@ -571,14 +598,22 @@ mod test {
         assert!(c2.is_comment());
         assert!(!c2.is_single_line_comment());
         assert!(c2.is_multi_line_comment());
+        assert!(!Token::<&str>::Null.is_comment());
+        assert!(!Token::<&str>::Null.is_multi_line_comment());
+        assert!(!Token::<&str>::Null.is_single_line_comment());
     }
+
     #[test]
     fn idents() {
         let i = Token::Ident(Ident::from("asdf"));
+        let ni = Token::<&str>::Null;
         assert!(i.is_ident());
         assert!(i.matches_ident_str("asdf"));
         assert!(i == "asdf");
+        assert!(!ni.is_ident());
+        assert!(!ni.matches_ident_str("asdf"));
     }
+
     #[test]
     fn keywords() {
         check_keyword("await", Token::Keyword(Keyword::Await("await")));
@@ -630,6 +665,8 @@ mod test {
         check_keyword("while", Token::Keyword(Keyword::While("while")));
         check_keyword("with", Token::Keyword(Keyword::With("with")));
         check_keyword("yield", Token::Keyword(Keyword::Yield("yield")));
+        assert!(!Token::<&str>::Null.matches_keyword(Keyword::Yield("yield")));
+        assert!(!Token::<&str>::Null.matches_keyword_str("yield"));
     }
 
     fn check_keyword(s: &str, tok: Token<&str>) {
@@ -638,6 +675,22 @@ mod test {
         assert!(tok.matches_keyword_str(s));
         assert_eq!(tok, s);
     }
+
+    #[test]
+    fn is_strict_reserved() {
+        assert!(Token::Keyword(Keyword::Implements(())).is_strict_reserved());
+        assert!(!Token::Keyword(Keyword::Await(())).is_strict_reserved());
+        assert!(!Token::<&str>::Null.is_strict_reserved());
+    }
+
+    #[test]
+    fn is_restricted() {
+        assert!(Token::Ident(Ident::from("arguments")).is_restricted());
+        assert!(Token::Ident(Ident::from("eval")).is_restricted());
+        assert!(!Token::Ident(Ident::from("ident")).is_restricted());
+        assert!(!Token::<&str>::Null.is_restricted());
+    }
+
     #[test]
     fn numbers() {
         let int = "1234";
@@ -720,6 +773,10 @@ mod test {
         assert!(!tok.is_oct_literal());
         assert!(!tok.is_bin_literal());
         assert!(!tok.is_hex_literal());
+        assert!(!Token::<&str>::Null.is_hex_literal());
+        assert!(!Token::<&str>::Null.is_bin_literal());
+        assert!(!Token::<&str>::Null.is_oct_literal());
+        assert!(!Token::<&str>::Null.matches_number_str("0.0"));
     }
 
     #[test]
@@ -772,5 +829,262 @@ mod test {
         assert!(!t.is_template_no_sub());
         assert_ne!(t, "");
         assert_ne!(t, "}asdf`");
+        assert!(!Token::<&str>::Null.is_template());
+        assert!(!Token::<&str>::Null.is_template_body());
+        assert!(!Token::<&str>::Null.is_template_no_sub());
+        assert!(!Token::<&str>::Null.is_template_head());
+        assert!(!Token::<&str>::Null.is_template_tail());
+    }
+
+    #[test]
+    fn partial_eq() {
+        assert_eq!(Token::<&str>::Boolean(Boolean::True), "true");
+        assert_eq!(Token::<&str>::EoF, "");
+        assert_eq!(Token::Ident(Ident::from("ident")), "ident");
+        assert_eq!(Token::Keyword(Keyword::new("await")), "await");
+        assert_eq!(Token::<&str>::Null, "null");
+        assert_eq!(Token::Number(Number::from("0.0")), "0.0");
+        assert_eq!(Token::<&str>::Punct(Punct::Ampersand), "&");
+        assert_eq!(Token::String(StringLit::double("string", false)), "string");
+        assert!(Token::<&str>::Boolean(Boolean::True).eq(&true));
+        assert!(Token::<&str>::Boolean(Boolean::False).eq(&false));
+        assert_ne!(Token::<&str>::Null, false);
+    }
+
+    #[test]
+    fn is_boolean() {
+        assert!(Token::<&str>::Boolean(Boolean::True).is_boolean());
+        assert!(!Token::<&str>::Null.is_boolean());
+        assert!(Token::<&str>::Boolean(Boolean::True).is_boolean_true());
+        assert!(!Token::<&str>::Boolean(Boolean::True).is_boolean_false());
+        assert!(Token::<&str>::Boolean(Boolean::False).is_boolean_false());
+        assert!(!Token::<&str>::Boolean(Boolean::False).is_boolean_true());
+        assert!(!Token::<&str>::Null.is_boolean_true());
+        assert!(!Token::<&str>::Null.is_boolean_false());
+    }
+
+    #[test]
+    fn is_null() {
+        assert!(Token::<&str>::Null.is_null());
+        assert!(!Token::<&str>::EoF.is_null());
+    }
+
+    #[test]
+    fn is_punct() {
+        assert!(!Token::<&str>::Null.is_punct());
+        assert!(!Token::<&str>::Null.is_div_punct());
+        assert!(Token::<&str>::Punct(Punct::Ampersand).is_punct());
+        assert!(!Token::<&str>::Punct(Punct::Ampersand).is_div_punct());
+        assert!(Token::<&str>::Punct(Punct::ForwardSlash).is_div_punct());
+        assert!(Token::<&str>::Punct(Punct::ForwardSlashEqual).is_div_punct());
+    }
+
+    #[test]
+    fn is_literal() {
+        assert!(Token::String(StringLit::double("content", false)).is_literal());
+        assert!(Token::<&str>::Boolean(Boolean::True).is_literal());
+        assert!(Token::Number(Number::from("0.0")).is_literal());
+        assert!(Token::RegEx(RegEx::from_parts("regex", None)).is_literal());
+        assert!(Token::Template(Template::NoSub(TemplateLiteral::new(
+            "", false, false, false
+        )))
+        .is_literal());
+    }
+
+    #[test]
+    fn matches_bool() {
+        let t = Boolean::True;
+        let f = Boolean::False;
+        let tt = Token::<&str>::Boolean(t);
+        let ft = Token::<&str>::Boolean(f);
+        assert!(tt.matches_boolean(t.clone()));
+        assert!(ft.matches_boolean(f.clone()));
+        assert!(!tt.matches_boolean(f.clone()));
+        assert!(!ft.matches_boolean(t.clone()));
+        assert!(!Token::<&str>::Null.matches_boolean(t));
+        assert!(tt.matches_boolean_str("true"));
+        assert!(!tt.matches_boolean_str(""));
+        assert!(ft.matches_boolean_str("false"));
+        assert!(!Token::<&str>::Null.matches_boolean_str("true"));
+    }
+
+    #[test]
+    fn token_to_string() {
+        assert_eq!(Token::<&str>::Boolean(Boolean::True).to_string(), "true");
+        assert_eq!(
+            Token::<&str>::Comment(Comment::new_single_line("comment")).to_string(),
+            "//comment"
+        );
+        assert_eq!(Token::<&str>::EoF.to_string(), "");
+        assert_eq!(Token::<&str>::Ident(Ident::from("ident")), "ident");
+        assert_eq!(
+            Token::<&str>::Keyword(Keyword::Await("await")).to_string(),
+            "await"
+        );
+        assert_eq!(Token::<&str>::Null.to_string(), "null");
+        assert_eq!(
+            Token::<&str>::Number(Number::from("0.0")).to_string(),
+            "0.0"
+        );
+        assert_eq!(Token::<&str>::Punct(Punct::Ampersand).to_string(), "&");
+        assert_eq!(
+            Token::<&str>::RegEx(RegEx::from_parts("regex", None)).to_string(),
+            "/regex/"
+        );
+        assert_eq!(
+            Token::<&str>::String(StringLit::double("string", false)).to_string(),
+            r#""string""#
+        );
+        assert_eq!(
+            Token::<&str>::Template(Template::no_sub_template(
+                "template no sub",
+                false,
+                false,
+                false
+            ))
+            .to_string(),
+            "`template no sub`"
+        );
+    }
+
+    #[test]
+    fn string_matches() {
+        let content = "string";
+        assert!(Token::String(StringLit::double(content, false)).matches_string_content(content));
+        assert!(Token::String(StringLit::single(content, false)).matches_string_content(content));
+        assert!(!Token::<&str>::Null.matches_string_content(content));
+    }
+
+    #[test]
+    fn comment_matches() {
+        let content = "comment";
+        assert!(Token::Comment(Comment::new_single_line(content)).matches_comment_str(content));
+        assert!(!Token::<&str>::Null.matches_comment_str(content));
+    }
+
+    #[test]
+    fn punct_matches_str() {
+        assert!(Punct::Ampersand.matches_str("&"));
+        assert!(Punct::AmpersandEqual.matches_str("&="));
+        assert!(Punct::Asterisk.matches_str("*"));
+        assert!(Punct::AsteriskEqual.matches_str("*="));
+        assert!(Punct::AtMark.matches_str("@"));
+        assert!(Punct::Bang.matches_str("!"));
+        assert!(Punct::BangDoubleEqual.matches_str("!=="));
+        assert!(Punct::BangEqual.matches_str("!="));
+        assert!(Punct::Caret.matches_str("^"));
+        assert!(Punct::CaretEqual.matches_str("^="));
+        assert!(Punct::CloseBrace.matches_str("}"));
+        assert!(Punct::CloseBracket.matches_str("]"));
+        assert!(Punct::CloseParen.matches_str(")"));
+        assert!(Punct::Colon.matches_str(":"));
+        assert!(Punct::Comma.matches_str(","));
+        assert!(Punct::Dash.matches_str("-"));
+        assert!(Punct::DoubleDash.matches_str("--"));
+        assert!(Punct::DashEqual.matches_str("-="));
+        assert!(Punct::DoubleAmpersand.matches_str("&&"));
+        assert!(Punct::DoubleAmpersandEqual.matches_str("&&="));
+        assert!(Punct::DoubleAsterisk.matches_str("**"));
+        assert!(Punct::DoubleAsteriskEqual.matches_str("**="));
+        assert!(Punct::DoubleEqual.matches_str("=="));
+        assert!(Punct::DoubleGreaterThan.matches_str(">>"));
+        assert!(Punct::DoubleGreaterThanEqual.matches_str(">>="));
+        assert!(Punct::DoubleLessThan.matches_str("<<"));
+        assert!(Punct::DoubleLessThanEqual.matches_str("<<="));
+        assert!(Punct::DoublePipe.matches_str("||"));
+        assert!(Punct::DoublePipeEqual.matches_str("||="));
+        assert!(Punct::DoublePlus.matches_str("++"));
+        assert!(Punct::DoubleQuestionMark.matches_str("??"));
+        assert!(Punct::DoubleQuestionMarkEqual.matches_str("??="));
+        assert!(Punct::Ellipsis.matches_str("..."));
+        assert!(Punct::Equal.matches_str("="));
+        assert!(Punct::EqualGreaterThan.matches_str("=>"));
+        assert!(Punct::ForwardSlash.matches_str("/"));
+        assert!(Punct::ForwardSlashEqual.matches_str("/="));
+        assert!(Punct::GreaterThan.matches_str(">"));
+        assert!(Punct::GreaterThanEqual.matches_str(">="));
+        assert!(Punct::Hash.matches_str("#"));
+        assert!(Punct::LessThan.matches_str("<"));
+        assert!(Punct::LessThanEqual.matches_str("<="));
+        assert!(Punct::OpenBrace.matches_str("{"));
+        assert!(Punct::OpenBracket.matches_str("["));
+        assert!(Punct::OpenParen.matches_str("("));
+        assert!(Punct::Percent.matches_str("%"));
+        assert!(Punct::PercentEqual.matches_str("%="));
+        assert!(Punct::Period.matches_str("."));
+        assert!(Punct::Pipe.matches_str("|"));
+        assert!(Punct::PipeEqual.matches_str("|="));
+        assert!(Punct::Plus.matches_str("+"));
+        assert!(Punct::PlusEqual.matches_str("+="));
+        assert!(Punct::QuestionMark.matches_str("?"));
+        assert!(Punct::QuestionMarkDot.matches_str("?."));
+        assert!(Punct::SemiColon.matches_str(";"));
+        assert!(Punct::Tilde.matches_str("~"));
+        assert!(Punct::TripleEqual.matches_str("==="));
+        assert!(Punct::TripleGreaterThanEqual.matches_str(">>>="));
+        assert!(Punct::TripleGreaterThan.matches_str(">>>"));
+    }
+
+    #[test]
+    fn punct_to_string() {
+        assert_eq!(Punct::Ampersand.to_string(), "&");
+        assert_eq!(Punct::AmpersandEqual.to_string(), "&=");
+        assert_eq!(Punct::Asterisk.to_string(), "*");
+        assert_eq!(Punct::AsteriskEqual.to_string(), "*=");
+        assert_eq!(Punct::AtMark.to_string(), "@");
+        assert_eq!(Punct::Bang.to_string(), "!");
+        assert_eq!(Punct::BangDoubleEqual.to_string(), "!==");
+        assert_eq!(Punct::BangEqual.to_string(), "!=");
+        assert_eq!(Punct::Caret.to_string(), "^");
+        assert_eq!(Punct::CaretEqual.to_string(), "^=");
+        assert_eq!(Punct::CloseBrace.to_string(), "}");
+        assert_eq!(Punct::CloseBracket.to_string(), "]");
+        assert_eq!(Punct::CloseParen.to_string(), ")");
+        assert_eq!(Punct::Colon.to_string(), ":");
+        assert_eq!(Punct::Comma.to_string(), ",");
+        assert_eq!(Punct::Dash.to_string(), "-");
+        assert_eq!(Punct::DoubleDash.to_string(), "--");
+        assert_eq!(Punct::DashEqual.to_string(), "-=");
+        assert_eq!(Punct::DoubleAmpersand.to_string(), "&&");
+        assert_eq!(Punct::DoubleAmpersandEqual.to_string(), "&&=");
+        assert_eq!(Punct::DoubleAsterisk.to_string(), "**");
+        assert_eq!(Punct::DoubleAsteriskEqual.to_string(), "**=");
+        assert_eq!(Punct::DoubleEqual.to_string(), "==");
+        assert_eq!(Punct::DoubleGreaterThan.to_string(), ">>");
+        assert_eq!(Punct::DoubleGreaterThanEqual.to_string(), ">>=");
+        assert_eq!(Punct::DoubleLessThan.to_string(), "<<");
+        assert_eq!(Punct::DoubleLessThanEqual.to_string(), "<<=");
+        assert_eq!(Punct::DoublePipe.to_string(), "||");
+        assert_eq!(Punct::DoublePipeEqual.to_string(), "||=");
+        assert_eq!(Punct::DoublePlus.to_string(), "++");
+        assert_eq!(Punct::DoubleQuestionMark.to_string(), "??");
+        assert_eq!(Punct::DoubleQuestionMarkEqual.to_string(), "??=");
+        assert_eq!(Punct::Ellipsis.to_string(), "...");
+        assert_eq!(Punct::Equal.to_string(), "=");
+        assert_eq!(Punct::EqualGreaterThan.to_string(), "=>");
+        assert_eq!(Punct::ForwardSlash.to_string(), "/");
+        assert_eq!(Punct::ForwardSlashEqual.to_string(), "/=");
+        assert_eq!(Punct::GreaterThan.to_string(), ">");
+        assert_eq!(Punct::GreaterThanEqual.to_string(), ">=");
+        assert_eq!(Punct::Hash.to_string(), "#");
+        assert_eq!(Punct::LessThan.to_string(), "<");
+        assert_eq!(Punct::LessThanEqual.to_string(), "<=");
+        assert_eq!(Punct::OpenBrace.to_string(), "{");
+        assert_eq!(Punct::OpenBracket.to_string(), "[");
+        assert_eq!(Punct::OpenParen.to_string(), "(");
+        assert_eq!(Punct::Percent.to_string(), "%");
+        assert_eq!(Punct::PercentEqual.to_string(), "%=");
+        assert_eq!(Punct::Period.to_string(), ".");
+        assert_eq!(Punct::Pipe.to_string(), "|");
+        assert_eq!(Punct::PipeEqual.to_string(), "|=");
+        assert_eq!(Punct::Plus.to_string(), "+");
+        assert_eq!(Punct::PlusEqual.to_string(), "+=");
+        assert_eq!(Punct::QuestionMark.to_string(), "?");
+        assert_eq!(Punct::QuestionMarkDot.to_string(), "?.");
+        assert_eq!(Punct::SemiColon.to_string(), ";");
+        assert_eq!(Punct::Tilde.to_string(), "~");
+        assert_eq!(Punct::TripleEqual.to_string(), "===");
+        assert_eq!(Punct::TripleGreaterThanEqual.to_string(), ">>>=");
+        assert_eq!(Punct::TripleGreaterThan.to_string(), ">>>");
     }
 }

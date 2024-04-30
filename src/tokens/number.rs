@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// A JS number literal. There are 4 kinds of number
 /// literals allowed in JS.
@@ -46,21 +48,26 @@ where
     pub fn is_hex(&self) -> bool {
         self.kind() == NumberKind::Hex
     }
+
     pub fn is_bin(&self) -> bool {
         self.kind() == NumberKind::Bin
     }
+
     pub fn is_oct(&self) -> bool {
         self.kind() == NumberKind::Oct
     }
+
     pub fn is_dec(&self) -> bool {
         self.kind() == NumberKind::Dec
     }
+
     pub fn has_exponent(&self) -> bool {
         match self.kind() {
             NumberKind::Dec => self.0.as_ref().contains(|c| c == 'e' || c == 'E'),
             _ => false,
         }
     }
+
     pub fn is_big_int(&self) -> bool {
         self.kind() == NumberKind::BigInt
     }
@@ -72,12 +79,12 @@ impl<'a> From<&'a str> for Number<&'a str> {
     }
 }
 
-impl<T> ToString for Number<T>
+impl<T> Display for Number<T>
 where
-    T: AsRef<str>,
+    T: Display,
 {
-    fn to_string(&self) -> String {
-        self.0.as_ref().to_string()
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -98,4 +105,95 @@ pub enum NumberKind {
     Bin,
     Oct,
     BigInt,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn kind() {
+        assert_eq!(Number::from("0x0").kind(), NumberKind::Hex);
+        assert_eq!(Number::from("0o0").kind(), NumberKind::Oct);
+        assert_eq!(Number::from("0b0").kind(), NumberKind::Bin);
+        assert_eq!(Number::from("0.0").kind(), NumberKind::Dec);
+        assert_eq!(Number::from("0.0n").kind(), NumberKind::BigInt);
+    }
+
+    #[test]
+    fn helpers() {
+        assert_helpers(
+            "hex",
+            &Number::from("0x0"),
+            &Number::is_hex,
+            &[
+                &Number::is_big_int,
+                &Number::is_oct,
+                &Number::is_dec,
+                &Number::is_bin,
+            ],
+        );
+        assert_helpers(
+            "oct",
+            &Number::from("0o0"),
+            &Number::is_oct,
+            &[
+                &Number::is_big_int,
+                &Number::is_hex,
+                &Number::is_dec,
+                &Number::is_bin,
+            ],
+        );
+        assert_helpers(
+            "bin",
+            &Number::from("0b0"),
+            &Number::is_bin,
+            &[
+                &Number::is_big_int,
+                &Number::is_hex,
+                &Number::is_dec,
+                &Number::is_oct,
+            ],
+        );
+        assert_helpers(
+            "dec",
+            &Number::from("0.0"),
+            &Number::is_dec,
+            &[
+                &Number::is_big_int,
+                &Number::is_hex,
+                &Number::is_bin,
+                &Number::is_oct,
+            ],
+        );
+        assert_helpers(
+            "big",
+            &Number::from("0.0n"),
+            &Number::is_big_int,
+            &[
+                &Number::is_dec,
+                &Number::is_hex,
+                &Number::is_bin,
+                &Number::is_oct,
+            ],
+        );
+        assert!(Number::from("0.0e0").has_exponent());
+        assert!(!Number::from("0.0").has_exponent());
+        assert!(!Number::from("0.0n").has_exponent());
+        assert!(!Number::from("0x0").has_exponent());
+        assert!(!Number::from("0o0").has_exponent());
+        assert!(!Number::from("0b0").has_exponent());
+    }
+
+    fn assert_helpers<'a>(
+        name: &'static str,
+        num: &'a Number<&'a str>,
+        yes: impl Fn(&'a Number<&'a str>) -> bool,
+        nos: &'a [&dyn Fn(&Number<&'a str>) -> bool],
+    ) {
+        assert!(yes(num), "`{}` ({}) failed for yes", num, name);
+        for (i, f) in nos.into_iter().enumerate() {
+            assert!(!f(num), "`{}` ({}) failed for no {}", num, name, i)
+        }
+    }
 }

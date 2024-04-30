@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialOrd, Ord)]
 /// A JS Keyword
 ///
 /// # Standard
@@ -193,6 +193,12 @@ impl<T, U> PartialEq<Keyword<T>> for Keyword<U> {
                 | (With(_), With(_))
                 | (Yield(_), Yield(_))
         )
+    }
+}
+
+impl<T> std::hash::Hash for Keyword<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        core::mem::discriminant(self).hash(state);
     }
 }
 
@@ -511,6 +517,7 @@ impl<'a> Keyword<&'a str> {
             _ => panic!("Invalid keyword..."),
         }
     }
+
     pub fn has_unicode_escape(&self) -> bool {
         match self {
             Keyword::Await(s) => s,
@@ -558,5 +565,230 @@ impl<'a> Keyword<&'a str> {
             Keyword::Yield(s) => s,
         }
         .contains("\\u")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{collections::BTreeSet, iter::FromIterator};
+
+    use super::*;
+
+    const RAW_KEYWORDS: &[&str] = &[
+        "await",
+        "break",
+        "case",
+        "catch",
+        "class",
+        "const",
+        "continue",
+        "debugger",
+        "default",
+        "import",
+        "delete",
+        "do",
+        "else",
+        "enum",
+        "export",
+        "extends",
+        "finally",
+        "for",
+        "function",
+        "if",
+        "in",
+        "implements",
+        "instanceof",
+        "interface",
+        "let",
+        "new",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "static",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with",
+        "yield",
+    ];
+    const UNIT_KEYWORDS: &[Keyword<()>] = &[
+        Keyword::Await(()),
+        Keyword::Break(()),
+        Keyword::Case(()),
+        Keyword::Catch(()),
+        Keyword::Class(()),
+        Keyword::Const(()),
+        Keyword::Continue(()),
+        Keyword::Debugger(()),
+        Keyword::Default(()),
+        Keyword::Delete(()),
+        Keyword::Do(()),
+        Keyword::Else(()),
+        Keyword::Enum(()),
+        Keyword::Export(()),
+        Keyword::Extends(()),
+        Keyword::Finally(()),
+        Keyword::For(()),
+        Keyword::Function(()),
+        Keyword::If(()),
+        Keyword::Implements(()),
+        Keyword::Import(()),
+        Keyword::In(()),
+        Keyword::InstanceOf(()),
+        Keyword::Interface(()),
+        Keyword::Let(()),
+        Keyword::New(()),
+        Keyword::Package(()),
+        Keyword::Private(()),
+        Keyword::Protected(()),
+        Keyword::Public(()),
+        Keyword::Return(()),
+        Keyword::Static(()),
+        Keyword::Super(()),
+        Keyword::Switch(()),
+        Keyword::This(()),
+        Keyword::Throw(()),
+        Keyword::Try(()),
+        Keyword::TypeOf(()),
+        Keyword::Var(()),
+        Keyword::Void(()),
+        Keyword::While(()),
+        Keyword::With(()),
+        Keyword::Yield(()),
+    ];
+
+    #[test]
+    fn test_clone() {
+        for k in RAW_KEYWORDS {
+            let keyword = Keyword::new(k);
+            assert_eq!(keyword, keyword.clone());
+        }
+    }
+
+    #[test]
+    fn partial_eq() {
+        for keyword in UNIT_KEYWORDS {
+            let str_keyword = Keyword::new(keyword.as_str());
+            assert!(keyword.eq(&str_keyword));
+            assert!(keyword.eq(keyword.as_str()));
+        }
+    }
+
+    #[test]
+    fn partial_with_str() {
+        for keyword in UNIT_KEYWORDS {
+            let str_keyword = keyword.with_str(keyword.as_str());
+            assert!(keyword.eq(&str_keyword));
+        }
+    }
+
+    #[test]
+    fn helpers() {
+        let all_keywords = BTreeSet::from_iter(RAW_KEYWORDS.iter().map(|s| Keyword::new(*s)));
+        let future_reserved: BTreeSet<Keyword<&str>> = BTreeSet::from_iter(
+            ["enum", "export", "implements", "super"]
+                .iter()
+                .map(|k| Keyword::new(*k)),
+        );
+        for k in &future_reserved {
+            assert!(k.is_future_reserved())
+        }
+        for k in all_keywords.difference(&future_reserved) {
+            assert!(!k.is_future_reserved());
+        }
+        let strict_reserved = BTreeSet::from_iter(
+            [
+                "implements",
+                "interface",
+                "package",
+                "private",
+                "protected",
+                "public",
+                "static",
+                "yield",
+                "let",
+            ]
+            .iter()
+            .map(|s| Keyword::new(*s)),
+        );
+        for k in &strict_reserved {
+            assert!(k.is_strict_reserved())
+        }
+        for k in all_keywords.difference(&strict_reserved) {
+            assert!(!k.is_strict_reserved());
+        }
+        let reserved = BTreeSet::from_iter(
+            [
+                "break",
+                "case",
+                "catch",
+                "class",
+                "continue",
+                "debugger",
+                "default",
+                "delete",
+                "do",
+                "else",
+                "export",
+                "extends",
+                "finally",
+                "for",
+                "function",
+                "if",
+                "import",
+                "in",
+                "instanceof",
+                "new",
+                "return",
+                "switch",
+                "super",
+                "this",
+                "throw",
+                "try",
+                "typeof",
+                "var",
+                "void",
+                "while",
+                "with",
+            ]
+            .iter()
+            .map(|s| Keyword::new(*s)),
+        );
+        for k in &reserved {
+            assert!(k.is_reserved())
+        }
+        for k in all_keywords.difference(&reserved) {
+            assert!(!k.is_reserved());
+        }
+    }
+
+    #[test]
+    fn to_empty() {
+        for k in RAW_KEYWORDS.iter().map(|s| Keyword::new(*s)) {
+            let unit = k.to_empty();
+            assert_eq!(unit, k);
+        }
+    }
+
+    #[test]
+    #[should_panic = "Invalid keyword..."]
+    fn bad_ctor() {
+        Keyword::new("junk");
+    }
+
+    #[test]
+    fn has_unicode_escape() {
+        for k in RAW_KEYWORDS.iter().map(|s| Keyword::new(*s)) {
+            assert!(!k.has_unicode_escape());
+        }
+        assert!(Keyword::Await(()).with_str("\\uAAAA").has_unicode_escape())
     }
 }
