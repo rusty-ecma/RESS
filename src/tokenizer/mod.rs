@@ -116,7 +116,7 @@ impl<'a> Tokenizer<'a> {
                         idx: self.stream.idx,
                         msg: "new line in regex literal".to_string(),
                     });
-                } else {
+                } else if !self.stream.at_end() {
                     self.stream.skip_bytes(1);
                 }
             } else if is_line_term(c) {
@@ -139,10 +139,14 @@ impl<'a> Tokenizer<'a> {
         if end_of_body {
             return self.gen_regex(start_len, body_idx);
         }
+        log::debug!("Error at {}..{}", self.current_start, self.stream.idx);
         Err(RawError {
             msg: format!(
                 "unterminated regex at {}",
-                String::from_utf8_lossy(&self.stream.buffer[self.current_start..self.stream.idx])
+                String::from_utf8_lossy(
+                    &self.stream.buffer
+                        [(self.current_start.saturating_sub(start_len))..self.stream.idx]
+                )
             ),
             idx: self.current_start,
         })
@@ -2325,5 +2329,14 @@ mod test {
                 ty: RawToken::RegEx(4),
             }
         )
+    }
+
+    #[test]
+    #[should_panic = r#"unterminated regex at /\\"#]
+    fn two_slash_regex() {
+        let re = r#"/\"#;
+        let mut tokenizer = Tokenizer::new(re);
+        let _token = tokenizer.next(false).unwrap();
+        tokenizer.next_regex(1).unwrap();
     }
 }
