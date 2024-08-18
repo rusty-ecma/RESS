@@ -363,7 +363,8 @@ fn regex_pattern() {
         location,
         token: Token::RegEx(re2),
         ..
-    } = scanner.next().unwrap().unwrap() else {
+    } = scanner.next().unwrap().unwrap()
+    else {
         panic!("Expected regex");
     };
     assert_eq!(location.start.line, 1);
