@@ -12,6 +12,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
 struct Args {
     pub angular: bool,
     pub jquery: bool,
@@ -22,29 +23,19 @@ struct Args {
     pub dexie: bool,
 }
 
-impl ::std::default::Default for Args {
-    fn default() -> Args {
-        Args {
-            angular: false,
-            jquery: false,
-            react: false,
-            react_dom: false,
-            vue: false,
-            moment: false,
-            dexie: false,
-        }
-    }
-}
-
 impl Args {
     fn pristine(&self) -> bool {
-        !self.angular
-            && !self.jquery
-            && !self.react
-            && !self.react_dom
-            && !self.vue
-            && !self.moment
-            && !self.dexie
+        self == &Self::default()
+    }
+
+    fn mark_all_true(&mut self) {
+        self.angular = true;
+        self.jquery = true;
+        self.react = true;
+        self.react_dom = true;
+        self.vue = true;
+        self.moment = true;
+        self.dexie = true;
     }
 }
 
@@ -70,6 +61,9 @@ fn main() {
             a.dexie = true;
         }
     }
+    if a.pristine() {
+        a.mark_all_true();
+    }
     if a.jquery {
         jquery();
     }
@@ -89,15 +83,6 @@ fn main() {
         moment();
     }
     if a.dexie {
-        dexie();
-    }
-    if a.pristine() {
-        jquery();
-        angular1();
-        react();
-        react_dom();
-        vue();
-        moment();
         dexie();
     }
 }

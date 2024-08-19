@@ -71,7 +71,10 @@ fn es2015_module_test() {
 }
 
 fn ensure_logging() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::formatted_builder()
+        .is_test(true)
+        .try_init()
+        .ok();
 }
 
 enum EsVersion {

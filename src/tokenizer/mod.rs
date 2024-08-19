@@ -422,7 +422,7 @@ impl<'a> Tokenizer<'a> {
             '[' => self.gen_punct(Punct::OpenBracket),
             ']' => self.gen_punct(Punct::CloseBracket),
             ':' => self.gen_punct(Punct::Colon),
-            '?' => self.gen_punct(Punct::QuestionMark),
+            '?' => self.question_mark(),
             '#' => self.hash(),
             '~' => self.gen_punct(Punct::Tilde),
             '{' => self.open_curly(OpenCurlyKind::Block, Punct::OpenBrace),
@@ -587,6 +587,10 @@ impl<'a> Tokenizer<'a> {
         trace!("ampersand ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('&') {
             self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoubleAmpersandEqual);
+            }
             self.gen_punct(Punct::DoubleAmpersand)
         } else if self.look_ahead_byte_matches('=') {
             self.stream.skip_bytes(1);
@@ -601,6 +605,10 @@ impl<'a> Tokenizer<'a> {
         trace!("pipe ({}, {})", self.current_start, self.stream.idx);
         if self.look_ahead_byte_matches('|') {
             self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoublePipeEqual);
+            }
             self.gen_punct(Punct::DoublePipe)
         } else if self.look_ahead_byte_matches('=') {
             self.stream.skip_bytes(1);
@@ -684,6 +692,7 @@ impl<'a> Tokenizer<'a> {
             self.gen_punct(Punct::Caret)
         }
     }
+
     /// a `#` could also be the start of a hash bang comment `#!`
     #[inline]
     fn hash(&mut self) -> Res<RawItem> {
@@ -698,6 +707,35 @@ impl<'a> Tokenizer<'a> {
             self.gen_comment(CommentKind::Hashbang, 0, 0, self.local_index())
         } else {
             self.gen_punct(Punct::Hash)
+        }
+    }
+    /// a `?` could also be the start of a ??. ??=, ?. operator
+    #[inline]
+    fn question_mark(&mut self) -> Res<RawItem> {
+        trace!(
+            "question_mark ({}, {})",
+            self.current_start,
+            self.stream.idx
+        );
+        // hashbang comment can only appear at the start
+        if self.look_ahead_byte_matches('?') {
+            self.stream.skip_bytes(1);
+            if self.look_ahead_byte_matches('=') {
+                self.stream.skip_bytes(1);
+                return self.gen_punct(Punct::DoubleQuestionMarkEqual);
+            }
+            self.gen_punct(Punct::DoubleQuestionMark)
+        } else if self.look_ahead_byte_matches('.') {
+            self.stream.skip_bytes(1);
+            if self.stream.at_decimal() {
+                // floating point numbers can be defined with a leading period: ".123"
+                self.stream.skip_back(1);
+                self.gen_punct(Punct::QuestionMark)
+            } else {
+                self.gen_punct(Punct::QuestionMarkDot)
+            }
+        } else {
+            self.gen_punct(Punct::QuestionMark)
         }
     }
     /// parse a number, this can include decimal or float literals
@@ -1409,13 +1447,13 @@ mod test {
             "-", "/", "*", "%", "&", "|", "^", ">>>=", //3 char
             "...", "===", "!==", ">>>", "<<=", ">>=", "**=", //2 char
             "&&", "||", "==", "!=", "+=", "-=", "*=", "/=", "++", "--", "<<", ">>", "&=", "|=",
-            "^=", "%=", "<=", ">=", "=>", "**", "@",
+            "^=", "%=", "<=", ">=", "=>", "**", "@", "??", "??=", "?.", "&&=", "||=",
         ];
         for p in PUNCTS {
             let mut t = Tokenizer::new(p);
             let item = t.next(true).unwrap();
             assert!(item.ty.is_punct());
-            assert!(t.stream.at_end());
+            assert!(t.stream.at_end(), "'{}' was not at the end", p);
         }
     }
     #[test]
@@ -1525,7 +1563,10 @@ mod test {
 
     #[test]
     fn tokenizer_idents() {
-        let _ = pretty_env_logger::try_init();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         static IDENTS: &[&str] = &[
             r#"$"#,
             r#"_"#,
@@ -1673,7 +1714,10 @@ mod test {
 
     #[test]
     fn validated_regex() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         const REGEX: &[&str] = &[
             r#"/([.+*?=^!:${}()[\]|/\\])/g"#,
             r#"/[\]\}\n\s\d\e\3]/"#,
@@ -1696,7 +1740,10 @@ mod test {
 
     #[test]
     fn tokenizer_regex_term_in_class() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         let regex = r#"/([.+*?=^!:${}()[\]|/\\])/g"#;
         let mut t = Tokenizer::new(regex);
         let next = t.next(true).unwrap();
@@ -1708,7 +1755,10 @@ mod test {
 
     #[test]
     fn tokenizer_regex_out_of_order() {
-        pretty_env_logger::try_init().ok();
+        pretty_env_logger::formatted_builder()
+            .is_test(true)
+            .try_init()
+            .ok();
         let regex = r#"/((?:[^BEGHLMOSWYZabcdhmswyz']+)|(?:'(?:[^']|'')*')|(?:G{1,5}|y{1,4}|Y{1,4}|M{1,5}|L{1,5}|w{1,2}|W{1}|d{1,2}|E{1,6}|c{1,6}|a{1,5}|b{1,5}|B{1,5}|h{1,2}|H{1,2}|m{1,2}|s{1,2}|S{1,3}|z{1,4}|Z{1,5}|O{1,4}))([\s\S]*)/"#;
         let mut t = Tokenizer::new(regex);
         let next = t.next(true).unwrap();

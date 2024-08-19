@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// A template string
 ///
@@ -61,16 +63,16 @@ impl<T> Template<T> {
     }
 }
 
-impl<T> ToString for Template<T>
+impl<T> Display for Template<T>
 where
-    T: AsRef<str>,
+    T: Display,
 {
-    fn to_string(&self) -> String {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Template::NoSub(ref t) => format!("`{}`", t.content.as_ref()),
-            Template::Head(ref t) => format!("`{}${{", t.content.as_ref()),
-            Template::Middle(ref t) => format!("}}{}${{", t.content.as_ref()),
-            Template::Tail(ref t) => format!("}}{}`", t.content.as_ref()),
+            Template::NoSub(ref t) => write!(f, "`{}`", t.content),
+            Template::Head(ref t) => write!(f, "`{}${{", t.content),
+            Template::Middle(ref t) => write!(f, "}}{}${{", t.content),
+            Template::Tail(ref t) => write!(f, "}}{}`", t.content),
         }
     }
 }

@@ -434,7 +434,7 @@ impl<'b> ManualScanner<'b> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 /// All of the important state
 /// for the scanner, used to
 /// cache and reset a `Scanner`
